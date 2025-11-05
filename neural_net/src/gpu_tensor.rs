@@ -70,6 +70,12 @@ pub fn ensure_kernels_loaded(device: &Arc<CudaDevice>, module: &str) -> Result<(
                 ])?;
                 cache.matrix_ops_loaded = true;
             }
+            "data_prep" => {
+                let kernel_code = include_str!("kernels/data_prep.cu");
+                load_kernel(device, "data_prep", kernel_code, &[
+                    "hwc_to_chw_norm_augment"
+                ])?;
+            }
             // CNN layers use im2col (matrix multiplication) - no special kernels needed
             _ => {}
         }
@@ -536,7 +542,10 @@ impl GpuTensor {
         let mut result = GpuTensor::zeros(self.rows(), self.cols(), self.device.clone())?;
         let rows = self.rows() as u32;
         let cols = self.cols() as u32;
-        let threads_per_block = 256.min(cols);
+        // Use power-of-two thread count for stable shared-memory reductions in CUDA kernel
+        let mut pow2 = 1u32;
+        while pow2 < cols { pow2 <<= 1; }
+        let threads_per_block = pow2.min(256);
 
         let cfg = LaunchConfig {
             grid_dim: (rows, 1, 1),

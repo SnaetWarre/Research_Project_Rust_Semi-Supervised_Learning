@@ -7,6 +7,7 @@ use crate::{Float, gpu_tensor::GpuTensor};
 use cudarc::driver::CudaDevice;
 use std::sync::Arc;
 use crate::gpu_layer::GpuLayer;
+use std::any::Any;
 
 /// GPU Conv2D Layer using im2col (image-to-column) approach
 /// Converts convolution to matrix multiplication for GPU efficiency
@@ -188,6 +189,8 @@ impl GpuConv2D {
 }
 
 impl GpuLayer for GpuConv2D {
+    fn as_any(&self) -> &dyn Any { self }
+    fn as_any_mut(&mut self) -> &mut dyn Any { self }
     fn forward(&mut self, input: &GpuTensor) -> Result<GpuTensor, String> {
         // Input is flattened: (batch, channels*height*width)
         let batch_size = input.rows();
@@ -399,6 +402,8 @@ impl GpuMaxPool2D {
 }
 
 impl GpuLayer for GpuMaxPool2D {
+    fn as_any(&self) -> &dyn Any { self }
+    fn as_any_mut(&mut self) -> &mut dyn Any { self }
     fn forward(&mut self, input: &GpuTensor) -> Result<GpuTensor, String> {
         let batch_size = input.rows();
         let flattened_size = input.cols();
@@ -567,6 +572,8 @@ impl GpuFlatten {
 }
 
 impl GpuLayer for GpuFlatten {
+    fn as_any(&self) -> &dyn Any { self }
+    fn as_any_mut(&mut self) -> &mut dyn Any { self }
     fn forward(&mut self, input: &GpuTensor) -> Result<GpuTensor, String> {
         // Flatten is just a reshape - no data movement needed
         Ok(input.clone())

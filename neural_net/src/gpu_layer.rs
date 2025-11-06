@@ -5,9 +5,12 @@
 use crate::{Float, gpu_tensor::GpuTensor};
 use cudarc::driver::CudaDevice;
 use std::sync::Arc;
+use std::any::Any;
 
 /// Trait for GPU layers
 pub trait GpuLayer: Send + Sync {
+    fn as_any(&self) -> &dyn Any;
+    fn as_any_mut(&mut self) -> &mut dyn Any;
     /// Forward pass on GPU
     fn forward(&mut self, input: &GpuTensor) -> Result<GpuTensor, String>;
 
@@ -136,6 +139,8 @@ impl GpuDense {
 }
 
 impl GpuLayer for GpuDense {
+    fn as_any(&self) -> &dyn Any { self }
+    fn as_any_mut(&mut self) -> &mut dyn Any { self }
     fn forward(&mut self, input: &GpuTensor) -> Result<GpuTensor, String> {
         // Cache input for backward
         self.cached_input = Some(input.clone());
@@ -356,9 +361,27 @@ impl GpuBatchNorm {
 
         Ok(())
     }
+
+    pub fn get_running_stats(&self) -> (GpuTensor, GpuTensor) {
+        (self.running_mean.clone(), self.running_var.clone())
+    }
+
+    pub fn set_running_stats(&mut self, mean: &GpuTensor, var: &GpuTensor) -> Result<(), String> {
+        if mean.rows() != 1 || mean.cols() != self.num_features {
+            return Err("Running mean shape mismatch".to_string());
+        }
+        if var.rows() != 1 || var.cols() != self.num_features {
+            return Err("Running var shape mismatch".to_string());
+        }
+        self.running_mean = mean.clone();
+        self.running_var = var.clone();
+        Ok(())
+    }
 }
 
 impl GpuLayer for GpuBatchNorm {
+    fn as_any(&self) -> &dyn Any { self }
+    fn as_any_mut(&mut self) -> &mut dyn Any { self }
     fn forward(&mut self, input: &GpuTensor) -> Result<GpuTensor, String> {
         if self.training {
             // Compute batch statistics
@@ -517,6 +540,8 @@ impl GpuDropout {
 }
 
 impl GpuLayer for GpuDropout {
+    fn as_any(&self) -> &dyn Any { self }
+    fn as_any_mut(&mut self) -> &mut dyn Any { self }
     fn forward(&mut self, input: &GpuTensor) -> Result<GpuTensor, String> {
         if self.training && self.dropout_rate > 0.0 {
             let mask = self.generate_mask(input.rows(), input.cols())?;
@@ -717,6 +742,12 @@ impl GpuNetwork {
 
     pub fn device(&self) -> &Arc<CudaDevice> {
         &self.device
+    }
+
+    pub fn for_each_layer<F: FnMut(&dyn GpuLayer)>(&self, mut f: F) {
+        for layer in &self.layers {
+            f(layer.as_ref());
+        }
     }
 }
 

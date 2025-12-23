@@ -205,7 +205,7 @@ fn main() -> Result<()> {
             cuda: _cuda,
             seed,
         } => {
-            run_training_simple(
+            plantvillage_ssl::training::actual::run_training::<burn_autodiff::Autodiff<burn_ndarray::NdArray>>(
                 &data_dir,
                 epochs,
                 batch_size,
@@ -216,6 +216,9 @@ fn main() -> Result<()> {
                 seed,
             )?;
         }
+        #[cfg(feature = "cuda")]
+        {
+            plantvillage_ssl::training::actual::run_training::<burn_cuda::Cuda>(
 
         Commands::Infer { input, model, cuda: _cuda } => {
             cmd_infer(&input, &model, true)?;

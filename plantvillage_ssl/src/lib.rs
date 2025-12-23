@@ -49,7 +49,7 @@ pub use inference::benchmark::BenchmarkResult;
 pub use inference::predictor::Predictor;
 pub use model::cnn::PlantClassifier;
 pub use model::config::{ModelConfig, SemiSupervisedConfig};
-pub use training::pseudo_label::PseudoLabeler;
+pub use training::pseudo_label::{PseudoLabelConfig, PseudoLabeler};
 pub use training::trainer::{Trainer, TrainingState};
 pub use training::TrainingConfig;
 pub use utils::error::{PlantVillageError, Result};

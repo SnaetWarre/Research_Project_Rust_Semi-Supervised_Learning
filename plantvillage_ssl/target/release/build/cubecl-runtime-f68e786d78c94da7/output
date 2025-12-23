@@ -1,0 +1,3 @@
+cargo:rustc-check-cfg=cfg(autotune_persistent_cache)
+cargo:rustc-cfg=autotune_persistent_cache
+cargo:rustc-check-cfg=cfg(exclusive_memory_only)

@@ -589,6 +589,7 @@ pub struct GpuSGD {
     learning_rate: Float,
     momentum: Float,
     velocities: Vec<Option<GpuTensor>>,
+    weight_decay: Float,
 }
 
 impl GpuSGD {
@@ -597,6 +598,7 @@ impl GpuSGD {
             learning_rate,
             momentum: 0.0,
             velocities: Vec::new(),
+            weight_decay: 0.0,
         }
     }
 
@@ -605,11 +607,16 @@ impl GpuSGD {
             learning_rate,
             momentum,
             velocities: Vec::new(),
+            weight_decay: 0.0,
         }
     }
 
     pub fn set_learning_rate(&mut self, lr: Float) {
         self.learning_rate = lr;
+    }
+
+    pub fn set_weight_decay(&mut self, wd: Float) {
+        self.weight_decay = wd.max(0.0);
     }
 
     /// Update parameters on GPU
@@ -628,17 +635,22 @@ impl GpuSGD {
         }
 
         for (i, (param, grad)) in parameters.iter_mut().zip(gradients.iter()).enumerate() {
+            // Apply weight decay: grad += wd * param
+            let effective_grad = if self.weight_decay > 0.0 {
+                let wd_term = (*param).scale(self.weight_decay)?;
+                grad.add(&wd_term)?
+            } else { (*grad).clone() };
             if self.momentum > 0.0 {
                 // Update velocity: v = momentum * v - lr * grad
                 let velocity = self.velocities[i].as_mut().unwrap();
-                let scaled_grad = grad.scale(self.learning_rate)?;
+                let scaled_grad = effective_grad.scale(self.learning_rate)?;
                 *velocity = velocity.scale(self.momentum)?.add(&scaled_grad.scale(-1.0)?)?;
 
                 // Update parameter: param = param + velocity
                 **param = param.add(velocity)?;
             } else {
                 // Simple SGD: param = param - lr * grad
-                let update = grad.scale(self.learning_rate)?;
+                let update = effective_grad.scale(self.learning_rate)?;
                 **param = param.add(&update.scale(-1.0)?)?;
             }
         }
@@ -748,6 +760,35 @@ impl GpuNetwork {
         for layer in &self.layers {
             f(layer.as_ref());
         }
+    }
+
+    /// Copy parameters from another network (same architecture)
+    pub fn copy_parameters_from(&mut self, other: &GpuNetwork) -> Result<(), String> {
+        let mut self_params = self.parameters_mut();
+        let other_params = other.parameters();
+        if self_params.len() != other_params.len() {
+            return Err("Parameter count mismatch".to_string());
+        }
+        for (dst, src) in self_params.iter_mut().zip(other_params.iter()) {
+            **dst = (*src).clone();
+        }
+        Ok(())
+    }
+
+    /// EMA update: self = decay*self + (1-decay)*other
+    pub fn ema_update_from(&mut self, other: &GpuNetwork, decay: Float) -> Result<(), String> {
+        if decay < 0.0 || decay > 1.0 { return Err("Invalid EMA decay".to_string()); }
+        let mut self_params = self.parameters_mut();
+        let other_params = other.parameters();
+        if self_params.len() != other_params.len() {
+            return Err("Parameter count mismatch".to_string());
+        }
+        for (dst, src) in self_params.iter_mut().zip(other_params.iter()) {
+            let a = (*dst).scale(decay)?;
+            let b = (*src).scale(1.0 - decay)?;
+            **dst = a.add(&b)?;
+        }
+        Ok(())
     }
 }
 

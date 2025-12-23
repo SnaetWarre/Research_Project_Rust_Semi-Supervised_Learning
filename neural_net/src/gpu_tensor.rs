@@ -73,7 +73,9 @@ pub fn ensure_kernels_loaded(device: &Arc<CudaDevice>, module: &str) -> Result<(
             "data_prep" => {
                 let kernel_code = include_str!("kernels/data_prep.cu");
                 load_kernel(device, "data_prep", kernel_code, &[
-                    "hwc_to_chw_norm_augment"
+                    "hwc_to_chw_norm_augment",
+                    "cutout_apply",
+                    "color_jitter"
                 ])?;
             }
             // CNN layers use im2col (matrix multiplication) - no special kernels needed

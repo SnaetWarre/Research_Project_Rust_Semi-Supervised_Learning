@@ -96,8 +96,8 @@ where
     let split_config = SplitConfig {
         test_fraction: 0.10,
         validation_fraction: 0.10,
-        labeled_fraction: 0.20,
-        stream_fraction: 0.50,
+        labeled_fraction: 0.30,  // 30% for supervised CNN training
+        stream_fraction: 0.70,   // 70% for SSL pipeline
         seed: config.seed,
         stratified: true,
     };
@@ -106,16 +106,14 @@ where
         .map_err(|e| anyhow::anyhow!("Failed to create splits: {:?}", e))?;
 
     let split_stats = splits.stats();
-    println!("  Labeled pool: {} samples", split_stats.labeled_pool_size);
-    println!("  Validation set: {} samples", split_stats.validation_size);
-    println!("  Stream pool: {} samples", split_stats.stream_pool_size);
-    println!("  Future pool: {} samples", split_stats.future_pool_size);
     println!("  Test set: {} samples", split_stats.test_size);
+    println!("  Validation set: {} samples", split_stats.validation_size);
+    println!("  Labeled pool (CNN): {} samples", split_stats.labeled_pool_size);
+    println!("  Stream pool (SSL): {} samples", split_stats.stream_pool_size);
 
-    // Merge stream + future pools for maximum SSL data
-    let mut unlabeled_pool = splits.stream_pool.clone();
-    unlabeled_pool.extend(splits.future_pool.clone());
-    println!("  Combined unlabeled pool: {} samples (stream + future)", unlabeled_pool.len());
+    // Use stream pool directly for SSL (no separate future pool anymore)
+    let unlabeled_pool = splits.stream_pool.clone();
+    println!("  Total unlabeled for SSL: {} samples", unlabeled_pool.len());
 
     // Load or create model
     println!("{}", "Loading Model...".cyan());

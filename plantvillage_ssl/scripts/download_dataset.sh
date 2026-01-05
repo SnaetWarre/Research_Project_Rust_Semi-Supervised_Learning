@@ -53,7 +53,7 @@ ZIP_PATH="$RAW_DIR/plantvillage-dataset.zip"
 
 require_kaggle() {
   command -v kaggle >/dev/null 2>&1 || err "kaggle CLI not found. Install with: pip install kaggle"
-  [[ -f "$HOME/.kaggle/kaggle.json" ]] || err "~/.kaggle/kaggle.json missing. Download from Kaggle account > API and place there (chmod 600)."
+  [[ -f "$HOME/.kaggle/kaggle.json" || -f "$HOME/.config/kaggle/kaggle.json" ]] || err "Kaggle API key missing. Download from Kaggle account > API and place in ~/.config/kaggle/kaggle.json (chmod 600)."
 }
 
 ceil_pct() {
@@ -112,6 +112,15 @@ organize_dataset() {
 
   log "Copying normalized class folders into $ORG_DIR ..."
   rsync -a --delete "$class_root"/ "$ORG_DIR"/
+
+  # Fix folder names with spaces (replace spaces with underscores)
+  log "Normalizing folder names (replacing spaces with underscores)..."
+  find "$ORG_DIR" -maxdepth 1 -type d -name "* *" | while IFS= read -r dir; do
+    local newname
+    newname="$(echo "$dir" | tr ' ' '_')"
+    mv "$dir" "$newname"
+    log "  Renamed: $(basename "$dir") -> $(basename "$newname")"
+  done
 }
 
 create_manifests() {
@@ -122,15 +131,13 @@ create_manifests() {
   local val_file="$SPLIT_DIR/validation.txt"
   local labeled_file="$SPLIT_DIR/labeled_pool.txt"
   local stream_file="$SPLIT_DIR/stream_pool.txt"
-  local future_file="$SPLIT_DIR/future_pool.txt"
 
   : > "$test_file"
   : > "$val_file"
   : > "$labeled_file"
   : > "$stream_file"
-  : > "$future_file"
 
-  local total=0 test_total=0 val_total=0 labeled_total=0 stream_total=0 future_total=0
+  local total=0 test_total=0 val_total=0 labeled_total=0 stream_total=0
 
   for class_dir in "$ORG_DIR"/*/; do
     [[ -d "$class_dir" ]] || continue
@@ -145,21 +152,20 @@ create_manifests() {
       continue
     fi
 
-    local n_test n_val remaining n_labeled n_stream n_future
+    # Split: 10% test, 10% val, 30% labeled (for CNN), 50% stream (for SSL)
+    local n_test n_val remaining n_labeled n_stream
     n_test=$(ceil_pct "$count" 10)
     n_val=$(ceil_pct "$count" 10)
     remaining=$((count - n_test - n_val))
     [[ $remaining -lt 0 ]] && remaining=0
     n_labeled=$(ceil_pct "$remaining" 30)
-    n_stream=$(ceil_pct "$remaining" 60)
-    n_future=$((remaining - n_labeled - n_stream))
-    [[ $n_future -lt 0 ]] && n_future=0
+    n_stream=$((remaining - n_labeled))  # All remaining goes to SSL stream
+    [[ $n_stream -lt 0 ]] && n_stream=0
 
     test_total=$((test_total + n_test))
     val_total=$((val_total + n_val))
     labeled_total=$((labeled_total + n_labeled))
     stream_total=$((stream_total + n_stream))
-    future_total=$((future_total + n_future))
 
     local idx=0
     for f in "${files[@]}"; do
@@ -170,10 +176,8 @@ create_manifests() {
         printf '%s\n' "$rel" >> "$val_file"
       elif [[ $idx -lt $((n_test + n_val + n_labeled)) ]]; then
         printf '%s\n' "$rel" >> "$labeled_file"
-      elif [[ $idx -lt $((n_test + n_val + n_labeled + n_stream)) ]]; then
-        printf '%s\n' "$rel" >> "$stream_file"
       else
-        printf '%s\n' "$rel" >> "$future_file"
+        printf '%s\n' "$rel" >> "$stream_file"
       fi
       idx=$((idx + 1))
     done
@@ -187,21 +191,20 @@ create_manifests() {
     "test": $test_total,
     "validation": $val_total,
     "labeled_pool": $labeled_total,
-    "stream_pool": $stream_total,
-    "future_pool": $future_total
+    "stream_pool": $stream_total
   },
   "fractions": {
     "test": 0.10,
     "validation": 0.10,
     "labeled_of_remaining": 0.30,
-    "stream_of_remaining": 0.60
+    "stream_of_remaining": 0.70
   },
-  "notes": "Manifests list paths relative to organized/; splits are stratified per-class with deterministic shuf seed"
+  "notes": "Manifests list paths relative to organized/; splits are stratified per-class with deterministic shuf seed. All unlabeled data goes to stream_pool for SSL."
 }
 EOF
 
   log "Split manifests written to $SPLIT_DIR"
-  log "Totals -> test: $test_total, val: $val_total, labeled: $labeled_total, stream: $stream_total, future: $future_total"
+  log "Totals -> test: $test_total, val: $val_total, labeled: $labeled_total, stream: $stream_total"
 }
 
 main() {

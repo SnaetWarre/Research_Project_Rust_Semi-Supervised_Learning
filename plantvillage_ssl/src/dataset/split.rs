@@ -11,9 +11,8 @@
 //! The PlantVillage dataset is divided into:
 //! 1. **Test Set (10%)** - Held out, NEVER seen during training (for honest evaluation)
 //! 2. **Validation Set (10%)** - Used for hyperparameter tuning and early stopping
-//! 3. **Labeled Pool (20%)** - Initial labeled data (simulating manual labeling)
-//! 4. **Stream Pool (50%)** - "Incoming" unlabeled images (simulating camera captures)
-//! 5. **Future Pool (10%)** - Reserved for future streaming simulation
+//! 3. **Labeled Pool (30% of remaining)** - Initial labeled data (simulating manual labeling)
+//! 4. **Stream Pool (70% of remaining)** - "Incoming" unlabeled images for SSL pipeline
 //!
 //! This split is deterministic and reproducible using a fixed random seed.
 
@@ -50,8 +49,8 @@ impl Default for SplitConfig {
         Self {
             test_fraction: 0.10,      // 10% for honest evaluation
             validation_fraction: 0.10, // 10% for validation
-            labeled_fraction: 0.20,    // 20% labeled (of remaining 80%)
-            stream_fraction: 0.60,     // 60% for streaming simulation (of remaining 80%)
+            labeled_fraction: 0.30,    // 30% labeled (of remaining 80%)
+            stream_fraction: 0.70,     // 70% for SSL stream (of remaining 80%)
             seed: 42,                  // Fixed seed for reproducibility
             stratified: true,          // Maintain class balance
         }

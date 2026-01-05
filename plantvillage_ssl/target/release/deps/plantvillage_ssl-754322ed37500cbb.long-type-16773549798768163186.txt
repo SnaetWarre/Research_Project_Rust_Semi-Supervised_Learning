@@ -1,1 +1,0 @@
-burn_fusion::backend::Fusion<burn_jit::backend::JitBackend<cubecl_cuda::runtime::CudaRuntime, f32, i32>>: AutodiffBackend

@@ -6,6 +6,7 @@ plantvillage_ssl/target/
 
 # Output/models (generated, do not commit)
 plantvillage_ssl/output/
+!plantvillage_ssl/output/benchmarks/
 output/
 
 # Python cache

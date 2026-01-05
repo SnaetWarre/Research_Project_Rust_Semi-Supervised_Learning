@@ -1,0 +1,18 @@
+{
+  "framework": "Burn (Rust)",
+  "device": "CUDA",
+  "batch_size": 1,
+  "image_size": 128,
+  "num_iterations": 100,
+  "warmup_iterations": 10,
+  "mean_ms": 0.4242190999999999,
+  "std_ms": 0.04529670058238237,
+  "min_ms": 0.385275,
+  "max_ms": 0.7768109999999999,
+  "p50_ms": 0.41491,
+  "p95_ms": 0.474212,
+  "p99_ms": 0.5348459999999999,
+  "throughput_fps": 2357.2724566149905,
+  "model_size_mb": 0.0,
+  "timestamp": "2026-01-05T12:49:56.842871382+00:00"
+}

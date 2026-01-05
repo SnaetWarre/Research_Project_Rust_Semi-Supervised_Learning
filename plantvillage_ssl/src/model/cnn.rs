@@ -17,6 +17,9 @@ use burn::{
 };
 
 /// Configuration for the PlantClassifier CNN model
+/// 
+/// NOTE: Intentionally weak model (~70-80% accuracy) to leave headroom 
+/// for SSL pipeline improvements. Do NOT increase capacity.
 #[derive(Config, Debug)]
 pub struct PlantClassifierConfig {
     /// Number of output classes (default: 38 for PlantVillage)
@@ -27,16 +30,16 @@ pub struct PlantClassifierConfig {
     #[config(default = "256")]
     pub input_size: usize,
 
-    /// Dropout rate for regularization
-    #[config(default = "0.4")]
+    /// Dropout rate for regularization (high = more underfitting)
+    #[config(default = "0.6")]
     pub dropout_rate: f64,
 
     /// Number of input channels (3 for RGB)
     #[config(default = "3")]
     pub in_channels: usize,
 
-    /// Base number of convolutional filters
-    #[config(default = "16")]
+    /// Base number of convolutional filters (low = weak model)
+    #[config(default = "8")]
     pub base_filters: usize,
 }
 
@@ -133,10 +136,10 @@ impl<B: Backend> PlantClassifier<B> {
         // Global average pooling
         let global_pool = AdaptiveAvgPool2dConfig::new([1, 1]).init();
 
-        // Fully connected layers
-        let fc1 = LinearConfig::new(base * 8, 512).init(device);
+        // Fully connected layers (small hidden layer = weak model)
+        let fc1 = LinearConfig::new(base * 8, 64).init(device);
         let dropout = DropoutConfig::new(config.dropout_rate).init();
-        let fc2 = LinearConfig::new(512, config.num_classes).init(device);
+        let fc2 = LinearConfig::new(64, config.num_classes).init(device);
 
         Self {
             conv1,

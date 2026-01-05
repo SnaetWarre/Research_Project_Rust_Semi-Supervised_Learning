@@ -168,9 +168,9 @@ where
     let model_config = PlantClassifierConfig {
         num_classes: 38, // PlantVillage has 38 classes
         input_size: image_size,
-        dropout_rate: 0.4, // Slightly higher dropout to curb overfit and leave SSL headroom
+        dropout_rate: 0.6, // High dropout = weaker model, more SSL headroom
         in_channels: 3,
-        base_filters: 16, // Smaller backbone to reduce supervised ceiling
+        base_filters: 8,   // Tiny backbone = ~70-80% baseline accuracy
     };
     let mut model = PlantClassifier::<B>::new(&model_config, &device);
 

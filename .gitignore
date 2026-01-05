@@ -1,0 +1,19 @@
+# Data (large files - do not commit)
+plantvillage_ssl/data/
+
+# Build artifacts
+plantvillage_ssl/target/
+
+# Output/models (generated, do not commit)
+plantvillage_ssl/output/
+output/
+
+# Python cache
+__pycache__/
+*.pyc
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo

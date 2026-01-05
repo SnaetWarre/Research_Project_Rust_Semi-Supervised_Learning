@@ -19,8 +19,8 @@ use burn::{
 /// Configuration for the PlantClassifier CNN model
 #[derive(Config, Debug)]
 pub struct PlantClassifierConfig {
-    /// Number of output classes (default: 39 for PlantVillage)
-    #[config(default = "39")]
+    /// Number of output classes (default: 38 for PlantVillage)
+    #[config(default = "38")]
     pub num_classes: usize,
 
     /// Input image size (assumes square images)
@@ -28,7 +28,7 @@ pub struct PlantClassifierConfig {
     pub input_size: usize,
 
     /// Dropout rate for regularization
-    #[config(default = "0.5")]
+    #[config(default = "0.4")]
     pub dropout_rate: f64,
 
     /// Number of input channels (3 for RGB)
@@ -36,7 +36,7 @@ pub struct PlantClassifierConfig {
     pub in_channels: usize,
 
     /// Base number of convolutional filters
-    #[config(default = "32")]
+    #[config(default = "16")]
     pub base_filters: usize,
 }
 
@@ -300,12 +300,12 @@ impl<B: Backend> PlantClassifierLite<B> {
     }
 }
 
-#[cfg(all(test, feature = "cpu"))]
+#[cfg(test)]
 mod tests {
     use super::*;
-    use burn_ndarray::NdArray;
+    use burn_cuda::Cuda;
 
-    type TestBackend = NdArray<f32>;
+    type TestBackend = Cuda;
 
     #[test]
     fn test_plant_classifier_output_shape() {

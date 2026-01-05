@@ -4,12 +4,15 @@
 //! data loading and batching during training.
 
 use std::path::PathBuf;
+use std::sync::atomic::{AtomicUsize, Ordering};
 
 use burn::data::dataloader::batcher::Batcher;
 use burn::data::dataset::Dataset;
 use burn::prelude::*;
 use image::imageops::FilterType;
 use image::ImageReader;
+use indicatif::{ProgressBar, ProgressStyle};
+use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
 
 use crate::IMAGE_SIZE;
@@ -91,17 +94,48 @@ impl PlantVillageBurnDataset {
     }
 
     /// Create a new dataset with caching enabled (loads all images into memory)
+    /// Uses parallel loading with rayon for maximum speed
     pub fn new_cached(samples: Vec<(PathBuf, usize)>, image_size: usize) -> anyhow::Result<Self> {
-        let cached_items: Result<Vec<_>, _> = samples
+        let total = samples.len();
+        println!("  📦 Pre-loading {} images into memory (parallel)...", total);
+
+        let pb = ProgressBar::new(total as u64);
+        pb.set_style(
+            ProgressStyle::default_bar()
+                .template("  {spinner:.green} [{elapsed_precise}] [{bar:40.cyan/blue}] {pos}/{len} ({per_sec})")
+                .unwrap()
+                .progress_chars("#>-"),
+        );
+
+        let loaded = AtomicUsize::new(0);
+
+        // Parallel loading with rayon
+        let cached_items: Vec<_> = samples
+            .par_iter()
+            .filter_map(|(path, label)| {
+                let result = PlantVillageItem::from_path(path, *label, image_size).ok();
+                let count = loaded.fetch_add(1, Ordering::Relaxed);
+                if count % 100 == 0 {
+                    pb.set_position(count as u64);
+                }
+                result
+            })
+            .collect();
+
+        pb.finish_with_message(format!("Loaded {} images", cached_items.len()));
+        println!("  ✅ Loaded {} images into GPU-ready format", cached_items.len());
+
+        // Update samples to match successfully loaded items
+        let loaded_samples: Vec<_> = cached_items
             .iter()
-            .map(|(path, label)| PlantVillageItem::from_path(path, *label, image_size))
+            .map(|item| (PathBuf::from(&item.path), item.label))
             .collect();
 
         Ok(Self {
-            samples,
+            samples: loaded_samples,
             image_size,
             cache_enabled: true,
-            cached_items: Some(cached_items?),
+            cached_items: Some(cached_items),
         })
     }
 

@@ -6,8 +6,44 @@
 use std::path::{Path, PathBuf};
 use std::time::{Duration, Instant};
 
-use image::DynamicImage;
+use image::{DynamicImage, imageops::FilterType};
 use serde::{Deserialize, Serialize};
+
+use crate::dataset::{class_name, NUM_CLASSES};
+
+/// ImageNet normalization mean values (RGB)
+const IMAGENET_MEAN: [f32; 3] = [0.485, 0.456, 0.406];
+/// ImageNet normalization std values (RGB)
+const IMAGENET_STD: [f32; 3] = [0.229, 0.224, 0.225];
+
+/// Resize an image to the target dimensions
+fn resize_image(image: &DynamicImage, width: u32, height: u32) -> DynamicImage {
+    image.resize_exact(width, height, FilterType::Lanczos3)
+}
+
+/// Normalize an image to a flat vector with ImageNet normalization
+/// Returns CHW layout: [C, H, W] flattened
+fn normalize_image(image: &DynamicImage) -> Vec<f32> {
+    let rgb = image.to_rgb8();
+    let (width, height) = rgb.dimensions();
+    let num_pixels = (width * height) as usize;
+
+    // Pre-allocate for CHW layout
+    let mut normalized = vec![0.0f32; 3 * num_pixels];
+
+    for (i, pixel) in rgb.pixels().enumerate() {
+        let r = (pixel[0] as f32 / 255.0 - IMAGENET_MEAN[0]) / IMAGENET_STD[0];
+        let g = (pixel[1] as f32 / 255.0 - IMAGENET_MEAN[1]) / IMAGENET_STD[1];
+        let b = (pixel[2] as f32 / 255.0 - IMAGENET_MEAN[2]) / IMAGENET_STD[2];
+
+        // CHW layout: all R values, then all G values, then all B values
+        normalized[i] = r;
+        normalized[num_pixels + i] = g;
+        normalized[2 * num_pixels + i] = b;
+    }
+
+    normalized
+}
 
 /// Result of a single prediction
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -377,5 +413,18 @@ mod tests {
         assert_eq!(stats.total_images, 10);
         assert!(stats.avg_time_per_image_ms > 50.0);
         assert_eq!(stats.high_confidence_count, 10);
+    }
+
+    #[test]
+    fn test_resize_and_normalize() {
+        // Create a simple test image
+        let img = DynamicImage::new_rgb8(100, 100);
+        let resized = resize_image(&img, 256, 256);
+        assert_eq!(resized.width(), 256);
+        assert_eq!(resized.height(), 256);
+
+        let normalized = normalize_image(&resized);
+        // Should be CHW layout: 3 * 256 * 256
+        assert_eq!(normalized.len(), 3 * 256 * 256);
     }
 }

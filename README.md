@@ -1,128 +1,221 @@
-# GPU Neural Network for CIFAR-10 Semi-Supervised Learning
+# Semi-Supervised Plant Disease Classification with Burn
 
-A GPU-only neural network library built from scratch using CUDA for semi-supervised learning on CIFAR-10.
+A semi-supervised neural network for plant disease classification implemented in Rust using the [Burn](https://burn.dev/) framework, designed for deployment on NVIDIA Jetson Orin Nano edge devices.
+
+## Research Project
+
+**Goal:** Implement and compare semi-supervised learning approaches for plant disease classification on edge devices.
+
+**Research Question:** How can a semi-supervised neural network be efficiently implemented in Rust for automatic labeling of partially labeled datasets on an edge device?
+
+## Dataset
+
+- **PlantVillage Dataset**: 61,486 images of plant leaves
+- **39 Classes**: Various plant diseases across 15 crop types
+- **Resolution**: 256x256 RGB images
+- **Semi-Supervised Setup**: 20-30% labeled data, 70-80% unlabeled for pseudo-labeling
 
 ## Features
 
-- **Full GPU acceleration**: All operations run on GPU with minimal CPU transfers
-- **Custom CUDA kernels**: Element-wise operations, activations, and matrix operations
-- **Semi-supervised learning**: Pseudo-labeling support for learning from unlabeled data
-- **No external ML frameworks**: Built entirely from scratch using CUDA and cuBLAS
+- **GPU Acceleration**: CUDA backend for training and inference
+- **Semi-Supervised Learning**: Pseudo-labeling with confidence thresholds
+- **Stream Simulation**: Simulates real-time camera input from edge devices
+- **Edge Deployment**: Optimized for NVIDIA Jetson Orin Nano
+- **Benchmarking**: Full comparison with PyTorch reference implementation
+
+## Project Structure
+
+```
+plantvillage_ssl/          # Main Rust/Burn implementation
+├── src/
+│   ├── dataset/           # Data loading and augmentation
+│   ├── model/             # CNN architecture
+│   ├── training/          # Training loop & pseudo-labeling
+│   ├── inference/         # Inference & benchmarking
+│   └── utils/             # Logging & metrics
+├── scripts/               # Setup & dataset download scripts
+└── output/                # Model weights and results
+
+pytorch_reference/         # PyTorch comparison implementation
+benchmarks/                 # Performance comparison results
+docs/                      # Documentation (installation, user guide)
+archive/                   # Old CIFAR-10 implementation (archived)
+```
 
 ## Requirements
 
-- NVIDIA GPU with CUDA support
-- CUDA toolkit installed
-- Rust toolchain
+### Desktop (Training)
+- Rust 1.70+
+- NVIDIA GPU with CUDA 12.x drivers
+- Python 3.10+ (for PyTorch reference)
 
-## Building
+### Jetson Orin Nano (Inference)
+- NVIDIA Jetson Orin Nano 8GB
+- JetPack SDK
+- CUDA 12.x + cuDNN 9.x
+
+## Installation
+
+### Desktop Setup
 
 ```bash
-# Build with CUDA support
+# Clone repository
+git clone <repository-url>
+cd Source
+
+# Install Rust dependencies
+cd plantvillage_ssl
 cargo build --release --features cuda
 
-# Build training binary
-cargo build --release --features cuda --bin gpu_train
-
-# Build labeling binary
-cargo build --release --features cuda --bin gpu_label
+# Download PlantVillage dataset
+python scripts/download_dataset.py
 ```
+
+### Jetson Setup
+
+```bash
+# Run setup script on Jetson device
+./scripts/setup_jetson.sh
+```
+
+See [docs/installation.md](docs/installation.md) for detailed instructions.
+
+## 🚀 Quick Start - Run Full Research Pipeline
+
+The easiest way to run the entire research project is with the pipeline script:
+
+```bash
+# Run everything with one command
+./run_research_pipeline.sh all
+
+# Run with custom configuration
+./run_research_pipeline.sh all --epochs 20 --batch-size 32
+```
+
+This will:
+1. Download PlantVillage dataset
+2. Train Burn (Rust) model
+3. Train PyTorch model
+4. Run semi-supervised simulation
+5. Benchmark both frameworks
+6. Generate comparison reports
+
+See [scripts/PIPELINE_README.md](scripts/PIPELINE_README.md) for complete pipeline documentation.
 
 ## Usage
 
-### Training
-
-Train a model with semi-supervised learning:
+### Quick Start (Recommended)
 
 ```bash
-cargo run --release --features cuda --bin gpu_train -- \
-    --data-root data/cifar10/cifar-10-batches-bin \
-    --labeled-fraction 0.1 \
-    --batch 256 \
-    --epochs 100 \
-    --lr 0.01 \
-    --momentum 0.9 \
-    --dropout 0.3 \
-    --pseudo-threshold 0.95 \
-    --warmup-epochs 5
+# Run full research pipeline
+./run_research_pipeline.sh all
+
+# Or run specific stages
+./run_research_pipeline.sh train --epochs 50    # Train only
+./run_research_pipeline.sh benchmark            # Benchmark only
+./run_research_pipeline.sh ssl                 # SSL simulation only
 ```
 
-**Arguments:**
-- `--data-root`: Path to CIFAR-10 binary directory
-- `--labeled-fraction`: Fraction of data to use as labeled (default: 0.1)
-- `--batch`: Batch size (default: 256)
-- `--epochs`: Number of training epochs (default: 100)
-- `--lr`: Learning rate (default: 0.01)
-- `--momentum`: Momentum for SGD (default: 0.9)
-- `--dropout`: Dropout rate (default: 0.3)
-- `--pseudo-threshold`: Confidence threshold for pseudo-labeling (default: 0.95)
-- `--warmup-epochs`: Epochs of supervised training before pseudo-labeling (default: 5)
-- `--ema`: Use exponential moving average (0 or 1, default: 0)
+### Individual Commands (Desktop)
 
-**Outputs:**
-- `artifacts/model.json`: Model architecture metadata
-- `artifacts/weights.bin`: Model weights (binary)
-- `artifacts/metrics.json`: Training metrics
-- `artifacts/pseudo_labeling_history.json`: Pseudo-labeling history
-
-### Labeling
-
-Label images using a trained model:
+#### Training
 
 ```bash
-cargo run --release --features cuda --bin gpu_label -- \
-    --model artifacts \
-    --input data/cifar10/cifar-10-batches-bin \
-    --output labels.csv \
-    --confidence-out confidences.csv
+# Train with semi-supervised learning
+cd plantvillage_ssl
+cargo run --release -- train \
+    --data-dir data/plantvillage \
+    --epochs 50 \
+    --batch-size 32 \
+    --labeled-ratio 0.3 \
+    --pseudo-threshold 0.9
 ```
 
-**Arguments:**
-- `--model`: Path to model directory (contains model.json and weights.bin)
-- `--input`: Path to CIFAR-10 binary directory or image directory
-- `--output`: Output CSV file path (default: labels.csv)
-- `--confidence-out`: Optional path to save confidence scores
+#### Inference
 
-**Output CSV format:**
-```csv
-filename,predicted_class,class_name,confidence
-image_00000,0,airplane,0.923456
-image_00001,1,automobile,0.876543
-...
+```bash
+# Run single image prediction
+cargo run --release -- predict \
+    --model output/models/plant_classifier_YYYYMMDD_HHMMSS.mpk \
+    --image path/to/image.jpg
+
+# Benchmark inference performance
+cargo run --release -- benchmark \
+    --iterations 100
 ```
+
+#### Semi-Supervised Simulation
+
+```bash
+# Simulate camera stream with pseudo-labeling
+cargo run --release -- simulate \
+    --data-dir data/plantvillage \
+    --batch-size 500 \
+    --days 10
+```
+
+See [docs/user_guide.md](docs/user_guide.md) for complete usage instructions.
+
+## Performance Targets
+
+- **Primary Metric**: Inference latency < 200ms per image on Jetson Orin Nano
+- **Secondary Metric**: Accuracy ≥ 85% on test set
+- **Semi-Supervised Impact**: ≥ 5% accuracy improvement over labeled-only baseline
 
 ## Architecture
 
-The network architecture:
-- Input: 3072 (32×32×3 RGB)
-- 1024 → 512 → 256 → 128 → 10
-- Each dense layer followed by BatchNorm and Dropout
-- ReLU activations, Linear output
+**CNN Model (ResNet-18 lite)**
+- Input: 224x224x3
+- 4 Convolutional blocks with BatchNorm and ReLU
+- AdaptiveAvgPool + Dropout(0.3)
+- Output: 39 classes (Softmax)
 
-## Library Structure
+## Research Deliverables
 
-- `neural_net/`: Core GPU neural network library
-  - `gpu_tensor.rs`: GPU tensor operations and CUDA kernels
-  - `gpu_layer.rs`: GPU layers (Dense, BatchNorm, Dropout, Network, Optimizer, Loss)
-  - `cifar10.rs`: CIFAR-10 dataset loading
-  - `pseudo_label.rs`: Semi-supervised learning utilities
-  - `model.rs`: Model save/load functionality
+- [ ] Working Rust/Burn codebase
+- [ ] Trained model weights on PlantVillage
+- [ ] Benchmark comparison (Burn vs PyTorch)
+- [ ] Jetson Orin Nano deployment
+- [ ] Demo-ready application with real-time predictions
+- [ ] Complete documentation
 
-- `cifar10_semi_supervised/`: Training and labeling binaries
-  - `bin/gpu_train.rs`: Training binary with CLI
-  - `bin/gpu_label.rs`: Labeling binary
+## Documentation
 
-## Technical Details
+- [Installation Guide](docs/installation.md) - Setup for desktop and Jetson
+- [User Guide](docs/user_guide.md) - Usage and troubleshooting
+- [Research Contract](ResearchProject_Contractplan_Warre_Snaet%20(1).md) - Full research plan
+- [Implementation Plan](STAPPENPLAN_UPDATE_TO_PLANTVILLAGE.md) - Technical details
 
-- All operations run on GPU using CUDA kernels
-- cuBLAS for optimized matrix multiplication
-- Pseudo-labeling with confidence thresholding
-- Learning rate scheduling (step decay every 30 epochs)
-- Model serialization: JSON metadata + binary weights
+## Comparison: Burn vs PyTorch
 
-## Performance
+### Using Pipeline Script (Recommended)
 
-- Batch size: 256
-- Training time: ~18-20s per epoch on RTX 3060
-- Full GPU utilization with minimal CPU transfers
+```bash
+# Run full benchmark comparison
+./run_research_pipeline.sh benchmark --iterations 100
 
+# Or use the full pipeline which includes comparison
+./run_research_pipeline.sh all
+```
+
+### Manual Comparison
+
+```bash
+# Train PyTorch baseline
+cd pytorch_reference
+python trainer.py --data-dir ../plantvillage_ssl/data/plantvillage --epochs 50
+
+# Run comparison benchmarks
+cd ../benchmarks
+python compare_frameworks.py
+```
+
+## License
+
+Research Project - Howest University
+
+## Acknowledgments
+
+- PlantVillage Dataset: [PSU PlantVillage](https://plantvillage.psu.edu/)
+- Burn Framework: [Tracel AI](https://github.com/tracel-ai/burn)
+- Research Supervisor: Gilles Depypere

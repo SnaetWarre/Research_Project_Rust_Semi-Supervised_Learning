@@ -1,0 +1,93 @@
+# Research Pipeline Configuration
+# This file controls the full research pipeline including training,
+# semi-supervised learning, and benchmarking
+
+project:
+  name: "PlantVillage Semi-Supervised Learning"
+  output_dir: "output/research_pipeline"
+
+dataset:
+  path: "data/plantvillage"
+  num_classes: 39
+  image_size: 224
+  validation_split: 0.10
+  test_split: 0.15
+
+training:
+  # Base training configuration
+  epochs: 50
+  batch_size: 32
+  learning_rate: 0.001
+  weight_decay: 0.0001
+  dropout_rate: 0.3
+
+  # Semi-supervised settings
+  labeled_ratio: 0.30  # 30% of training data is initially labeled
+  ssl:
+    enabled: true
+    confidence_threshold: 0.90
+    pseudo_label_weight: 1.0
+    retraining_threshold: 500  # Retrain every N pseudo-labels
+    retraining_epochs: 20
+
+model:
+  architecture: "resnet18_lite"
+  save_path: "output/models"
+  checkpoint_interval: 5
+
+semi_supervised:
+  # Stream simulation (simulates camera over time)
+  enabled: true
+  batch_size: 500  # Images per "day"
+  max_days: 20
+  confidence_threshold: 0.90
+  min_confidence: 0.90
+  track_pseudo_label_quality: true
+
+benchmarking:
+  enabled: true
+  iterations: 100
+  warmup_iterations: 10
+  compare_with_pytorch: true
+
+frameworks:
+  burn:
+    enabled: true
+    features: "cuda"
+    build_flags: "--release"
+
+  pytorch:
+    enabled: true
+    python_env: "python3"
+    requirements: "pytorch_reference/requirements.txt"
+
+jetson_deployment:
+  enabled: false  # Set to true when deploying to Jetson
+  target_latency_ms: 200
+  optimization: "fp16"
+
+pipeline_stages:
+  # Order of execution
+  - name: "download_dataset"
+    enabled: true
+
+  - name: "train_supervised_burn"
+    enabled: true
+
+  - name: "train_supervised_pytorch"
+    enabled: true
+
+  - name: "semi_supervised_simulation"
+    enabled: true
+
+  - name: "benchmark_inference"
+    enabled: true
+
+  - name: "benchmark_training"
+    enabled: true
+
+  - name: "compare_frameworks"
+    enabled: true
+
+  - name: "generate_report"
+    enabled: true

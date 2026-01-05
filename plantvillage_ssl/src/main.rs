@@ -6,6 +6,7 @@
 use std::path::Path;
 
 use anyhow::Result;
+use burn::backend::Autodiff;
 use clap::{Parser, Subcommand};
 use colored::Colorize;
 use tracing::info;
@@ -56,7 +57,7 @@ enum Commands {
         batch_size: usize,
 
         /// Learning rate
-        #[arg(short, long, default_value = "0.001")]
+        #[arg(short, long, default_value = "0.0001")]
         learning_rate: f64,
 
         /// Percentage of labeled data (0.0-1.0)
@@ -78,6 +79,10 @@ enum Commands {
         /// Random seed for reproducibility
         #[arg(long, default_value = "42")]
         seed: u64,
+
+        /// Quick test mode - use only 500 samples for fast verification
+        #[arg(long, default_value = "false")]
+        quick: bool,
     },
 
     /// Run inference on a single image or directory
@@ -97,21 +102,33 @@ enum Commands {
 
     /// Benchmark inference performance
     Benchmark {
-        /// Path to trained model
+        /// Path to trained model (optional - uses random weights if not specified)
         #[arg(short, long)]
-        model: String,
-
-        /// Path to test images directory
-        #[arg(short, long, default_value = "data/plantvillage/test")]
-        test_dir: String,
+        model: Option<String>,
 
         /// Number of inference iterations for timing
         #[arg(short, long, default_value = "100")]
         iterations: usize,
 
-        /// Use CUDA backend
+        /// Number of warmup iterations
+        #[arg(long, default_value = "10")]
+        warmup: usize,
+
+        /// Batch size for inference
+        #[arg(short, long, default_value = "1")]
+        batch_size: usize,
+
+        /// Image size (square)
+        #[arg(long, default_value = "128")]
+        image_size: usize,
+
+        /// Output JSON file for benchmark results
+        #[arg(short, long)]
+        output: Option<String>,
+
+        /// Verbose output
         #[arg(long, default_value = "false")]
-        cuda: bool,
+        verbose: bool,
     },
 
     /// Simulate streaming data for semi-supervised learning demo
@@ -202,10 +219,22 @@ fn main() -> Result<()> {
             labeled_ratio,
             confidence_threshold,
             output_dir,
-            cuda: _cuda,
+            cuda,
             seed,
+            quick,
         } => {
-            plantvillage_ssl::training::actual::run_training::<burn_autodiff::Autodiff<burn_ndarray::NdArray>>(
+            // Always use CUDA - this project targets GPU (Jetson Orin Nano)
+            let _ = cuda; // Ignore flag, always GPU
+
+            // Quick mode uses fewer samples for fast testing
+            let max_samples = if quick {
+                println!("{}", "🚀 Quick test mode: using only 500 samples".yellow().bold());
+                Some(500usize)
+            } else {
+                None
+            };
+
+            plantvillage_ssl::training::supervised::run_training::<Autodiff<burn_cuda::Cuda>>(
                 &data_dir,
                 epochs,
                 batch_size,
@@ -214,11 +243,9 @@ fn main() -> Result<()> {
                 confidence_threshold,
                 &output_dir,
                 seed,
+                max_samples,
             )?;
         }
-        #[cfg(feature = "cuda")]
-        {
-            plantvillage_ssl::training::actual::run_training::<burn_cuda::Cuda>(
 
         Commands::Infer { input, model, cuda: _cuda } => {
             cmd_infer(&input, &model, true)?;
@@ -226,11 +253,14 @@ fn main() -> Result<()> {
 
         Commands::Benchmark {
             model,
-            test_dir,
             iterations,
-            cuda: _cuda,
+            warmup,
+            batch_size,
+            image_size,
+            output,
+            verbose,
         } => {
-            cmd_benchmark(&model, &test_dir, iterations, true)?;
+            cmd_benchmark(model.as_deref(), iterations, warmup, batch_size, image_size, output.as_deref(), verbose)?;
         }
 
         Commands::Simulate {
@@ -288,45 +318,6 @@ fn print_banner() {
       );
 }
 
-fn run_training_simple(
-    _data_dir: &str,
-    epochs: usize,
-    batch_size: usize,
-    learning_rate: f64,
-    labeled_ratio: f64,
-    _confidence_threshold: f64,
-    _output_dir: &str,
-    _seed: u64,
-) -> Result<()> {
-    println!("{}", "Training Configuration:".cyan().bold());
-    println!("  📁 Data directory:     {}", _data_dir);
-    println!("  🔄 Epochs:            {}", epochs);
-    println!("  📦 Batch size:        {}", batch_size);
-    println!("  📈 Learning rate:      {}", learning_rate);
-    println!("  🏷️  Labeled ratio:      {:.1}%", labeled_ratio * 100.0);
-    println!("  🎯 Confidence threshold: {}", _confidence_threshold);
-    println!("  💾 Output directory:   {}", _output_dir);
-    println!();
-
-    println!("{}", "Training Infrastructure Status:".green().bold());
-    println!("  ✓ Dataset loading: src/dataset/loader.rs");
-    println!("  ✓ Dataset splitting: src/dataset/split.rs");
-    println!("  ✓ CNN architecture: src/model/cnn.rs");
-    println!("  ✓ Training loop: src/training/trainer.rs");
-    println!("  ✓ Pseudo-labeling: src/training/pseudo_label.rs");
-    println!();
-
-    println!("{}", "Training infrastructure exists but needs actual implementation.".yellow());
-    println!();
-    println!("  The training loop structure exists in src/training/trainer.rs");
-    println!("  To complete training:");
-    println!("  1. Fix Burn 0.15 API compatibility");
-    println!("  2. Integrate DataLoader with Dataset trait");
-    println!("  3. Test with actual PlantVillage dataset");
-
-    Ok(())
-}
-
 fn cmd_download(output_dir: &str) -> Result<()> {
     info!("Downloading PlantVillage dataset to: {}", output_dir);
 
@@ -348,7 +339,7 @@ fn cmd_download(output_dir: &str) -> Result<()> {
     Ok(())
 }
 
-fn cmd_stats(data_dir: &str, _show_splits: bool) -> Result<()> {
+fn cmd_stats(data_dir: &str, show_splits: bool) -> Result<()> {
     info!("Computing dataset statistics for: {}", data_dir);
 
     if !Path::new(data_dir).exists() {
@@ -363,8 +354,45 @@ fn cmd_stats(data_dir: &str, _show_splits: bool) -> Result<()> {
         return Ok(());
     }
 
-     println!("{} Dataset directory not found yet. Please download PlantVillage dataset first.", "Note:".yellow());
-    println!();
+    // Load the dataset and show statistics
+    match plantvillage_ssl::PlantVillageDataset::new(data_dir) {
+        Ok(dataset) => {
+            let stats = dataset.get_stats();
+
+            println!("{}", "Dataset Statistics:".cyan().bold());
+            println!("  📊 Total samples: {}", stats.total_samples);
+            println!("  🏷️  Number of classes: {}", stats.num_classes);
+            println!();
+
+            if show_splits {
+                println!("{}", "Simulated Split Configuration:".yellow().bold());
+                let total = stats.total_samples;
+                let test_size = (total as f64 * 0.10) as usize;
+                let val_size = (total as f64 * 0.10) as usize;
+                let remaining = total - test_size - val_size;
+                let labeled_size = (remaining as f64 * 0.20) as usize;
+                let stream_size = remaining - labeled_size;
+
+                println!("  🧪 Test set:        {} ({:.1}%)", test_size, 100.0 * test_size as f64 / total as f64);
+                println!("  ✅ Validation set:  {} ({:.1}%)", val_size, 100.0 * val_size as f64 / total as f64);
+                println!("  🏷️  Labeled pool:    {} ({:.1}%)", labeled_size, 100.0 * labeled_size as f64 / total as f64);
+                println!("  📷 Stream pool:     {} ({:.1}%)", stream_size, 100.0 * stream_size as f64 / total as f64);
+                println!();
+            }
+
+            println!("{}", "Class Distribution:".cyan().bold());
+            for (idx, count) in stats.class_counts.iter().enumerate() {
+                let class_name = stats.class_names.get(&idx)
+                    .map(|s| s.as_str())
+                    .unwrap_or("Unknown");
+                let pct = 100.0 * *count as f64 / stats.total_samples as f64;
+                println!("  {:40} {:>5} ({:>5.1}%)", class_name, count, pct);
+            }
+        }
+        Err(e) => {
+            println!("{} Failed to load dataset: {}", "Error:".red(), e);
+        }
+    }
 
     Ok(())
 }
@@ -394,33 +422,64 @@ fn cmd_infer(input: &str, model: &str, _cuda: bool) -> Result<()> {
     Ok(())
 }
 
-fn cmd_benchmark(model: &str, _test_dir: &str, iterations: usize, _cuda: bool) -> Result<()> {
+fn cmd_benchmark(
+    model: Option<&str>,
+    iterations: usize,
+    warmup: usize,
+    batch_size: usize,
+    image_size: usize,
+    output: Option<&str>,
+    verbose: bool,
+) -> Result<()> {
+    use burn_cuda::Cuda;
+    use plantvillage_ssl::inference::{BenchmarkConfig, run_benchmark};
+    use std::path::PathBuf;
+
     info!("Running benchmark");
-    info!("  Model: {}", model);
+    if let Some(m) = model {
+        info!("  Model: {}", m);
+    }
     info!("  Iterations: {}", iterations);
+    info!("  Warmup: {}", warmup);
+    info!("  Batch size: {}", batch_size);
+    info!("  Image size: {}", image_size);
 
-    println!("{}", "Benchmark Configuration:".cyan().bold());
-    println!("  🧠 Model:      {}", model);
-    println!("  🔄 Iterations:  {}", iterations);
-    println!("  🖥️  Backend:    CUDA");
-    println!();
+    let config = BenchmarkConfig {
+        warmup_iterations: warmup,
+        iterations,
+        batch_size,
+        measure_memory: true,
+        verbose,
+        output_path: output.map(PathBuf::from),
+    };
 
-    println!("{} Benchmark implementation pending - see src/inference/benchmark.rs", "Note:".yellow());
-    println!("  Target latency: < 200ms per image on Jetson Orin Nano");
+    let device = <Cuda as burn::tensor::backend::Backend>::Device::default();
+    let model_path = model.map(std::path::Path::new);
+
+    let _result = run_benchmark::<Cuda>(config, model_path, image_size, &device)?;
+
+    // Print JSON output for easy parsing
+    if output.is_some() {
+        println!();
+        println!("{}", "Benchmark complete!".green().bold());
+    }
 
     Ok(())
 }
 
 fn cmd_simulate(
-    _data_dir: &str,
-    _model: &str,
+    data_dir: &str,
+    model: &str,
     days: usize,
     images_per_day: usize,
     confidence_threshold: f64,
     retrain_threshold: usize,
-    _output_dir: &str,
+    output_dir: &str,
     _cuda: bool,
 ) -> Result<()> {
+    use burn_cuda::Cuda;
+    use plantvillage_ssl::training::{run_simulation, SimulationConfig};
+
     info!("Starting stream simulation");
     info!("  Days: {}", days);
     info!("  Images per day: {}", images_per_day);
@@ -428,26 +487,35 @@ fn cmd_simulate(
     info!("  Retrain threshold: {} images", retrain_threshold);
 
     println!("{}", "Simulation Configuration:".cyan().bold());
-    println!("  📁 Data directory:    {}", _data_dir);
-    println!("  🧠 Initial model:     {}", _model);
+    println!("  📁 Data directory:    {}", data_dir);
+    println!("  🧠 Initial model:     {}", model);
     println!("  📅 Simulated days:   {}", days);
     println!("  📷 Images per day:   {}", images_per_day);
     println!("  🎯 Confidence threshold: {}", confidence_threshold);
     println!("  🔄 Retrain threshold:  {} images", retrain_threshold);
-    println!("  💾 Output directory:   {}", _output_dir);
+    println!("  💾 Output directory:   {}", output_dir);
     println!("  🖥️  Backend:          CUDA");
     println!();
 
-    println!("{}", "Simulation Flow:".yellow());
-    println!("  Day 1-{}: Simulate camera capturing {} images/day", days, images_per_day);
-    println!("  • Model predicts labels for each 'captured' image");
-    println!("  • High-confidence predictions (>= {}) become pseudo-labels", confidence_threshold);
-    println!("  • After {} pseudo-labels, retrain the model", retrain_threshold);
-    println!("  • Track pseudo-label precision (we know ground truth!)");
-    println!("  • Report accuracy improvement over time");
-    println!();
+    let config = SimulationConfig {
+        data_dir: data_dir.to_string(),
+        model_path: model.to_string(),
+        days,
+        images_per_day,
+        confidence_threshold,
+        retrain_threshold,
+        output_dir: output_dir.to_string(),
+        seed: 42,
+        batch_size: 32,
+        learning_rate: 0.0001,
+        retrain_epochs: 5,
+    };
 
-    println!("{} Simulation implementation pending - see src/training/pseudo_label.rs", "Note:".yellow());
+    let results = run_simulation::<Autodiff<Cuda>>(config)?;
+
+    println!();
+    println!("{}", "Simulation Summary:".green().bold());
+    println!("  SSL improvement: {:.2}%", results.improvement());
 
     Ok(())
 }

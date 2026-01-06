@@ -278,8 +278,8 @@ load_config() {
 # Get Python executable (from conda env if specified, otherwise system python3)
 get_python() {
     if [ -n "$CONDA_ENV" ] && command -v conda &> /dev/null; then
-        # Use conda run to execute in the specified environment
-        echo "conda run -n $CONDA_ENV python"
+        # Use conda run with --live-stream to avoid output buffering
+        echo "conda run --live-stream -n $CONDA_ENV python"
     else
         echo "python3"
     fi
@@ -288,7 +288,7 @@ get_python() {
 # Get pip executable (from conda env if specified, otherwise system pip)
 get_pip() {
     if [ -n "$CONDA_ENV" ] && command -v conda &> /dev/null; then
-        echo "conda run -n $CONDA_ENV pip"
+        echo "conda run --live-stream -n $CONDA_ENV pip"
     else
         echo "pip"
     fi

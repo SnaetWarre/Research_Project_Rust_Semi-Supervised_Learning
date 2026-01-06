@@ -1,5 +1,7 @@
 # Data (large files - do not commit)
 plantvillage_ssl/data/
+cifar10_semi_supervised/
+*.tar.gz
 
 # Build artifacts
 plantvillage_ssl/target/

@@ -212,10 +212,30 @@ where
         let mut correct = 0usize;
         let mut total_samples = 0usize;
 
-        // Create shuffled batches for this epoch
-        let train_batches = create_batches_shuffled(&train_dataset, &batcher, batch_size, &mut epoch_rng);
+        // Create shuffled indices for this epoch (don't pre-create batches to save GPU memory)
+        let shuffled_indices = create_shuffled_indices(&train_dataset, &mut epoch_rng);
+        let num_batches = (shuffled_indices.len() + batch_size - 1) / batch_size;
 
-        for (batch_idx, batch) in train_batches.iter().enumerate() {
+        for batch_idx in 0..num_batches {
+            // Create batch on-demand (lazy batching to avoid GPU OOM)
+            let start = batch_idx * batch_size;
+            let end = (start + batch_size).min(shuffled_indices.len());
+            let batch_indices = &shuffled_indices[start..end];
+            
+            let items: Vec<_> = batch_indices
+                .iter()
+                .filter_map(|&i| {
+                    use burn::data::dataset::Dataset;
+                    train_dataset.get(i)
+                })
+                .collect();
+            
+            if items.is_empty() {
+                continue;
+            }
+            
+            let batch = batcher.batch(items);
+
             // Forward pass
             let output = model.forward(batch.images.clone());
 
@@ -246,19 +266,22 @@ where
             model = optimizer.step(learning_rate, model, grads);
 
             // Progress logging
-            if (batch_idx + 1) % 10 == 0 || batch_idx == train_batches.len() - 1 {
+            if (batch_idx + 1) % 10 == 0 || batch_idx == num_batches - 1 {
                 let running_acc = 100.0 * correct as f64 / total_samples as f64;
                 println!(
                     "  Batch {:>4}/{}: loss = {:.4}, acc = {:.2}%",
                     batch_idx + 1,
-                    train_batches.len(),
+                    num_batches,
                     loss_value,
                     running_acc
                 );
             }
+            
+            // Drop batch explicitly to free GPU memory before next iteration
+            drop(batch);
         }
 
-        let avg_loss = epoch_loss / train_batches.len().max(1) as f64;
+        let avg_loss = epoch_loss / num_batches.max(1) as f64;
         let train_acc = 100.0 * correct as f64 / total_samples.max(1) as f64;
 
         // Validation phase
@@ -320,37 +343,17 @@ where
     Ok(())
 }
 
-/// Create batches from a dataset with shuffling
-fn create_batches_shuffled<B: AutodiffBackend>(
+/// Create shuffled indices for an epoch (memory-efficient - doesn't create batches upfront)
+fn create_shuffled_indices(
     dataset: &PlantVillageBurnDataset,
-    batcher: &PlantVillageBatcher<B>,
-    batch_size: usize,
     rng: &mut ChaCha8Rng,
-) -> Vec<crate::PlantVillageBatch<B>> {
+) -> Vec<usize> {
     use burn::data::dataset::Dataset;
-
+    
     let len = dataset.len();
-    let mut batches = Vec::new();
-
-    // Create shuffled indices for this epoch
     let mut indices: Vec<usize> = (0..len).collect();
     indices.shuffle(rng);
-
-    for start in (0..len).step_by(batch_size) {
-        let end = (start + batch_size).min(len);
-        let batch_indices = &indices[start..end];
-        let items: Vec<_> = batch_indices
-            .iter()
-            .filter_map(|&i| dataset.get(i))
-            .collect();
-
-        if !items.is_empty() {
-            let batch = batcher.batch(items);
-            batches.push(batch);
-        }
-    }
-
-    batches
+    indices
 }
 
 /// Evaluate the model on a dataset

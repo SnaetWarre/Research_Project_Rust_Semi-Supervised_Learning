@@ -1,93 +1,91 @@
-# Research Pipeline Configuration
-# This file controls the full research pipeline including training,
-# semi-supervised learning, and benchmarking
+# ==============================================================================
+# Pipeline Configuration - Single Source of Truth
+# ==============================================================================
+#
+# This file controls the entire research pipeline. Edit values here and run:
+#   ./run_research_pipeline.sh all
+#
+# All settings are read from this file. CLI arguments can override these values.
+#
+# ==============================================================================
 
-project:
-  name: "PlantVillage Semi-Supervised Learning"
+# ------------------------------------------------------------------------------
+# Paths - where data and outputs are stored
+# ------------------------------------------------------------------------------
+paths:
+  data_dir: "plantvillage_ssl/data/plantvillage/organized"
   output_dir: "output/research_pipeline"
 
+# ------------------------------------------------------------------------------
+# Python Environment
+# ------------------------------------------------------------------------------
+# Conda environment to use for PyTorch training and benchmarking
+# Leave empty to use system Python or currently activated environment
+#
+python:
+  conda_env: "pytorch_assignment_env"  # Conda environment name
+
+# ------------------------------------------------------------------------------
+# Dataset Configuration
+# ------------------------------------------------------------------------------
+# PlantVillage dataset split strategy:
+#   - 30% Labeled Training (for initial supervised learning)
+#   - 10% Validation (monitor training progress)
+#   - 10% Test (final evaluation only)
+#   - 50% SSL Stream Pool (all remaining images for semi-supervised learning)
+#
 dataset:
-  path: "data/plantvillage"
-  num_classes: 39
-  image_size: 224
-  validation_split: 0.10
-  test_split: 0.15
+  num_classes: 39                    # PlantVillage has 39 disease classes
+  image_size: 224                    # Input image size (square)
+  labeled_ratio: 0.30                # 30% of data used as labeled training set
+  validation_split: 0.10             # 10% for validation
+  test_split: 0.10                   # 10% held out for final testing
+  # Remaining 50% goes to SSL stream pool (calculated automatically)
 
+# ------------------------------------------------------------------------------
+# Training Settings
+# ------------------------------------------------------------------------------
+# These settings are shared by both Burn (Rust) and PyTorch training
+#
 training:
-  # Base training configuration
-  epochs: 50
-  batch_size: 32
-  learning_rate: 0.001
-  weight_decay: 0.0001
-  dropout_rate: 0.3
+  epochs: 20                         # Number of training epochs
+  batch_size: 32                     # Batch size for training
+  learning_rate: 0.001               # Initial learning rate
+  weight_decay: 0.0001               # L2 regularization
+  dropout_rate: 0.3                  # Dropout rate for regularization
 
-  # Semi-supervised settings
-  labeled_ratio: 0.30  # 30% of training data is initially labeled
-  ssl:
-    enabled: true
-    confidence_threshold: 0.90
-    pseudo_label_weight: 1.0
-    retraining_threshold: 500  # Retrain every N pseudo-labels
-    retraining_epochs: 20
+# ------------------------------------------------------------------------------
+# Semi-Supervised Learning (SSL) Settings
+# ------------------------------------------------------------------------------
+# Controls the SSL simulation that uses pseudo-labeling on unlabeled data
+#
+ssl:
+  enabled: true                      # Enable SSL simulation stage
+  confidence_threshold: 0.90         # Min confidence to accept pseudo-label
+  use_all_unlabeled: true            # Use ALL remaining images in stream pool
+  retrain_threshold: 500             # Retrain model after N pseudo-labels
+  retrain_epochs: 20                 # Epochs per retraining cycle
 
-model:
-  architecture: "resnet18_lite"
-  save_path: "output/models"
-  checkpoint_interval: 5
-
-semi_supervised:
-  # Stream simulation (simulates camera over time)
-  enabled: true
-  batch_size: 500  # Images per "day"
-  max_days: 20
-  confidence_threshold: 0.90
-  min_confidence: 0.90
-  track_pseudo_label_quality: true
-
+# ------------------------------------------------------------------------------
+# Benchmarking Settings
+# ------------------------------------------------------------------------------
+# Controls inference and training benchmarks
+#
 benchmarking:
-  enabled: true
-  iterations: 100
-  warmup_iterations: 10
-  compare_with_pytorch: true
+  enabled: true                      # Enable benchmarking stage
+  iterations: 100                    # Number of inference iterations
+  warmup: 10                         # Warmup iterations (excluded from timing)
+  compare_frameworks: true           # Generate Burn vs PyTorch comparison charts
 
-frameworks:
-  burn:
-    enabled: true
-    features: "cuda"
-    build_flags: "--release"
-
-  pytorch:
-    enabled: true
-    python_env: "python3"
-    requirements: "pytorch_reference/requirements.txt"
-
-jetson_deployment:
-  enabled: false  # Set to true when deploying to Jetson
-  target_latency_ms: 200
-  optimization: "fp16"
-
-pipeline_stages:
-  # Order of execution
-  - name: "download_dataset"
-    enabled: true
-
-  - name: "train_supervised_burn"
-    enabled: true
-
-  - name: "train_supervised_pytorch"
-    enabled: true
-
-  - name: "semi_supervised_simulation"
-    enabled: true
-
-  - name: "benchmark_inference"
-    enabled: true
-
-  - name: "benchmark_training"
-    enabled: true
-
-  - name: "compare_frameworks"
-    enabled: true
-
-  - name: "generate_report"
-    enabled: true
+# ------------------------------------------------------------------------------
+# Pipeline Stages
+# ------------------------------------------------------------------------------
+# Toggle individual stages on/off. Set to false to skip a stage.
+#
+stages:
+  download_dataset: true             # Download PlantVillage dataset if not present
+  train_burn: true                   # Train model using Burn (Rust)
+  train_pytorch: true                # Train model using PyTorch
+  ssl_simulation: true               # Run semi-supervised learning simulation
+  benchmark: true                    # Run inference benchmarks
+  compare: true                      # Generate comparison reports and charts

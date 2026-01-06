@@ -3,9 +3,12 @@
 # Full Research Pipeline Script
 # ==============================================================================
 #
-# This script runs the complete research pipeline:
+# This script runs the complete research pipeline, reading configuration from
+# pipeline_config.yaml (single source of truth).
+#
+# Pipeline stages:
 # 1. Downloads dataset (if needed)
-# 2. Trains supervised model (Burn)
+# 2. Trains supervised model (Burn/Rust)
 # 3. Trains supervised model (PyTorch)
 # 4. Runs semi-supervised simulation
 # 5. Benchmarks inference and training
@@ -21,16 +24,47 @@
 #   benchmark     - Run benchmarks
 #   compare       - Compare and generate reports
 #   clean         - Clean output directories
+#   config        - Show current configuration
 #   help          - Show help
 #
-# Examples:
-#   ./run_research_pipeline.sh all                    # Run everything
-#   ./run_research_pipeline.sh train --epochs 10      # Train with custom epochs
-#   ./run_research_pipeline.sh benchmark --iter 200   # Benchmark with 200 iterations
+# Configuration is read from pipeline_config.yaml. CLI args override YAML values.
 #
 # ==============================================================================
 
 set -e
+
+# ==============================================================================
+# Initialize Conda (handles lazy-loaded conda setups)
+# ==============================================================================
+init_conda() {
+    # If conda is already available, nothing to do
+    if command -v conda &> /dev/null; then
+        return 0
+    fi
+    
+    # Try to find and source conda initialization
+    local conda_paths=(
+        "$HOME/anaconda3/etc/profile.d/conda.sh"
+        "$HOME/miniconda3/etc/profile.d/conda.sh"
+        "/opt/anaconda3/etc/profile.d/conda.sh"
+        "/opt/miniconda3/etc/profile.d/conda.sh"
+        "/usr/local/anaconda3/etc/profile.d/conda.sh"
+        "/usr/local/miniconda3/etc/profile.d/conda.sh"
+    )
+    
+    for conda_sh in "${conda_paths[@]}"; do
+        if [ -f "$conda_sh" ]; then
+            source "$conda_sh"
+            return 0
+        fi
+    done
+    
+    # Could not find conda
+    return 1
+}
+
+# Initialize conda early (before we need it)
+init_conda 2>/dev/null || true
 
 # Colors for output
 RED='\033[0;31m'
@@ -44,27 +78,96 @@ NC='\033[0m' # No Color
 # Get script directory and project root
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$SCRIPT_DIR"
-
-# Default configuration
 CONFIG_FILE="$PROJECT_ROOT/pipeline_config.yaml"
-DATA_DIR="$PROJECT_ROOT/plantvillage_ssl/data/plantvillage/organized"
-OUTPUT_DIR="output/research_pipeline"
-EPOCHS=50
-BATCH_SIZE=32
-ITERATIONS=100
-WARMUP=10
-IMAGE_SIZE=224
 
-# Flags
-SKIP_DOWNLOAD=false
-SKIP_TRAIN_BURN=false
-SKIP_TRAIN_PYTORCH=false
-SKIP_SSL=false
-SKIP_BENCHMARK=false
-SKIP_COMPARE=false
-DRY_RUN=false
-VERBOSE=false
-DATASET_SCRIPT="$PROJECT_ROOT/plantvillage_ssl/scripts/download_dataset.sh"
+# ==============================================================================
+# YAML Parsing Functions
+# ==============================================================================
+
+# Check if yq is available, try different variants
+YQ_CMD=""
+detect_yq() {
+    if command -v yq &> /dev/null; then
+        # Check if it's the Go version (mikefarah) or Python version
+        if yq --version 2>&1 | grep -q "mikefarah"; then
+            YQ_CMD="yq_go"
+        else
+            YQ_CMD="yq_python"
+        fi
+    elif command -v python3 &> /dev/null && python3 -c "import yaml" 2>/dev/null; then
+        YQ_CMD="python"
+    else
+        YQ_CMD="grep"
+        echo -e "${YELLOW}Warning: yq not found. Using basic grep parsing (limited).${NC}"
+        echo -e "${YELLOW}Install yq for full YAML support: sudo pacman -S yq${NC}"
+    fi
+}
+
+# Read a value from YAML config
+# Usage: read_config ".path.to.key" "default_value"
+read_config() {
+    local key="$1"
+    local default="$2"
+    local value=""
+
+    if [ ! -f "$CONFIG_FILE" ]; then
+        echo "$default"
+        return
+    fi
+
+    case "$YQ_CMD" in
+        yq_go)
+            value=$(yq eval "$key // \"\"" "$CONFIG_FILE" 2>/dev/null)
+            ;;
+        yq_python)
+            value=$(yq -r "$key // \"\"" "$CONFIG_FILE" 2>/dev/null)
+            ;;
+        python)
+            value=$(python3 -c "
+import yaml
+import sys
+with open('$CONFIG_FILE', 'r') as f:
+    config = yaml.safe_load(f)
+keys = '$key'.strip('.').split('.')
+val = config
+try:
+    for k in keys:
+        val = val[k]
+    print(val if val is not None else '')
+except (KeyError, TypeError):
+    print('')
+" 2>/dev/null)
+            ;;
+        grep)
+            # Basic grep fallback - only works for simple keys
+            local simple_key=$(echo "$key" | sed 's/.*\.//')
+            value=$(grep -E "^\s*${simple_key}:" "$CONFIG_FILE" 2>/dev/null | head -1 | sed 's/.*:\s*//' | sed 's/#.*//' | xargs)
+            ;;
+    esac
+
+    # Return default if value is empty or null
+    if [ -z "$value" ] || [ "$value" = "null" ]; then
+        echo "$default"
+    else
+        echo "$value"
+    fi
+}
+
+# Read boolean from YAML (returns "true" or "false")
+read_config_bool() {
+    local key="$1"
+    local default="$2"
+    local value=$(read_config "$key" "$default")
+    
+    # Normalize to lowercase
+    value=$(echo "$value" | tr '[:upper:]' '[:lower:]')
+    
+    if [ "$value" = "true" ] || [ "$value" = "yes" ] || [ "$value" = "1" ]; then
+        echo "true"
+    else
+        echo "false"
+    fi
+}
 
 # ==============================================================================
 # Helper Functions
@@ -116,6 +219,160 @@ check_command() {
 }
 
 # ==============================================================================
+# Load Configuration from YAML
+# ==============================================================================
+
+load_config() {
+    detect_yq
+    
+    # Paths
+    DATA_DIR="$PROJECT_ROOT/$(read_config '.paths.data_dir' 'plantvillage_ssl/data/plantvillage/organized')"
+    OUTPUT_DIR="$(read_config '.paths.output_dir' 'output/research_pipeline')"
+    
+    # Dataset settings
+    NUM_CLASSES=$(read_config '.dataset.num_classes' '39')
+    IMAGE_SIZE=$(read_config '.dataset.image_size' '224')
+    LABELED_RATIO=$(read_config '.dataset.labeled_ratio' '0.30')
+    VALIDATION_SPLIT=$(read_config '.dataset.validation_split' '0.10')
+    TEST_SPLIT=$(read_config '.dataset.test_split' '0.10')
+    
+    # Training settings
+    EPOCHS=$(read_config '.training.epochs' '50')
+    BATCH_SIZE=$(read_config '.training.batch_size' '32')
+    LEARNING_RATE=$(read_config '.training.learning_rate' '0.001')
+    WEIGHT_DECAY=$(read_config '.training.weight_decay' '0.0001')
+    DROPOUT_RATE=$(read_config '.training.dropout_rate' '0.3')
+    
+    # SSL settings
+    SSL_ENABLED=$(read_config_bool '.ssl.enabled' 'true')
+    SSL_CONFIDENCE=$(read_config '.ssl.confidence_threshold' '0.90')
+    SSL_USE_ALL=$(read_config_bool '.ssl.use_all_unlabeled' 'true')
+    SSL_RETRAIN_THRESHOLD=$(read_config '.ssl.retrain_threshold' '500')
+    SSL_RETRAIN_EPOCHS=$(read_config '.ssl.retrain_epochs' '20')
+    
+    # Benchmarking settings
+    BENCHMARK_ENABLED=$(read_config_bool '.benchmarking.enabled' 'true')
+    ITERATIONS=$(read_config '.benchmarking.iterations' '100')
+    WARMUP=$(read_config '.benchmarking.warmup' '10')
+    COMPARE_FRAMEWORKS=$(read_config_bool '.benchmarking.compare_frameworks' 'true')
+    
+    # Pipeline stages (from YAML)
+    STAGE_DOWNLOAD=$(read_config_bool '.stages.download_dataset' 'true')
+    STAGE_TRAIN_BURN=$(read_config_bool '.stages.train_burn' 'true')
+    STAGE_TRAIN_PYTORCH=$(read_config_bool '.stages.train_pytorch' 'true')
+    STAGE_SSL=$(read_config_bool '.stages.ssl_simulation' 'true')
+    STAGE_BENCHMARK=$(read_config_bool '.stages.benchmark' 'true')
+    STAGE_COMPARE=$(read_config_bool '.stages.compare' 'true')
+    
+    # Python environment
+    CONDA_ENV=$(read_config '.python.conda_env' '')
+    
+    # Script paths
+    DATASET_SCRIPT="$PROJECT_ROOT/plantvillage_ssl/scripts/download_dataset.sh"
+}
+
+# ==============================================================================
+# Python Environment Functions
+# ==============================================================================
+
+# Get Python executable (from conda env if specified, otherwise system python3)
+get_python() {
+    if [ -n "$CONDA_ENV" ] && command -v conda &> /dev/null; then
+        # Use conda run to execute in the specified environment
+        echo "conda run -n $CONDA_ENV python"
+    else
+        echo "python3"
+    fi
+}
+
+# Get pip executable (from conda env if specified, otherwise system pip)
+get_pip() {
+    if [ -n "$CONDA_ENV" ] && command -v conda &> /dev/null; then
+        echo "conda run -n $CONDA_ENV pip"
+    else
+        echo "pip"
+    fi
+}
+
+# Check if conda environment exists
+check_conda_env() {
+    if [ -n "$CONDA_ENV" ]; then
+        if ! conda env list | grep -q "^${CONDA_ENV}\s"; then
+            print_error "Conda environment '$CONDA_ENV' not found!"
+            print_info "Available environments:"
+            conda env list | grep -v "^#" | awk '{print "  - " $1}'
+            return 1
+        fi
+        print_success "Using conda environment: $CONDA_ENV"
+    fi
+    return 0
+}
+
+# ==============================================================================
+# Show Configuration
+# ==============================================================================
+
+show_config() {
+    print_header "Current Pipeline Configuration"
+    
+    echo -e "${CYAN}Configuration file:${NC} $CONFIG_FILE"
+    echo ""
+    
+    echo -e "${YELLOW}Paths:${NC}"
+    echo "  Data directory:    $DATA_DIR"
+    echo "  Output directory:  $OUTPUT_DIR"
+    echo ""
+    
+    echo -e "${YELLOW}Dataset:${NC}"
+    echo "  Classes:           $NUM_CLASSES"
+    echo "  Image size:        ${IMAGE_SIZE}x${IMAGE_SIZE}"
+    echo "  Labeled ratio:     $LABELED_RATIO ($(echo "$LABELED_RATIO * 100" | bc)%)"
+    echo "  Validation split:  $VALIDATION_SPLIT ($(echo "$VALIDATION_SPLIT * 100" | bc)%)"
+    echo "  Test split:        $TEST_SPLIT ($(echo "$TEST_SPLIT * 100" | bc)%)"
+    echo ""
+    
+    echo -e "${YELLOW}Training:${NC}"
+    echo "  Epochs:            $EPOCHS"
+    echo "  Batch size:        $BATCH_SIZE"
+    echo "  Learning rate:     $LEARNING_RATE"
+    echo "  Weight decay:      $WEIGHT_DECAY"
+    echo "  Dropout rate:      $DROPOUT_RATE"
+    echo ""
+    
+    echo -e "${YELLOW}Semi-Supervised Learning:${NC}"
+    echo "  Enabled:           $SSL_ENABLED"
+    echo "  Confidence:        $SSL_CONFIDENCE"
+    echo "  Use all unlabeled: $SSL_USE_ALL"
+    echo "  Retrain threshold: $SSL_RETRAIN_THRESHOLD"
+    echo "  Retrain epochs:    $SSL_RETRAIN_EPOCHS"
+    echo ""
+    
+    echo -e "${YELLOW}Benchmarking:${NC}"
+    echo "  Enabled:           $BENCHMARK_ENABLED"
+    echo "  Iterations:        $ITERATIONS"
+    echo "  Warmup:            $WARMUP"
+    echo "  Compare frameworks: $COMPARE_FRAMEWORKS"
+    echo ""
+    
+    echo -e "${YELLOW}Python Environment:${NC}"
+    if [ -n "$CONDA_ENV" ]; then
+        echo "  Conda env:         $CONDA_ENV"
+        echo "  Python:            $(get_python)"
+    else
+        echo "  Using:             system python3"
+    fi
+    echo ""
+    
+    echo -e "${YELLOW}Pipeline Stages:${NC}"
+    echo "  Download dataset:  $STAGE_DOWNLOAD"
+    echo "  Train Burn:        $STAGE_TRAIN_BURN"
+    echo "  Train PyTorch:     $STAGE_TRAIN_PYTORCH"
+    echo "  SSL Simulation:    $STAGE_SSL"
+    echo "  Benchmark:         $STAGE_BENCHMARK"
+    echo "  Compare:           $STAGE_COMPARE"
+}
+
+# ==============================================================================
 # Stage 1: Dataset Download
 # ==============================================================================
 
@@ -162,9 +419,10 @@ train_burn() {
 
     BURN_BINARY="./target/release/plantvillage_ssl"
 
-    # Run training
+    # Run training with YAML config values
     print_info "Starting supervised training..."
-    print_command "$BURN_BINARY train --data-dir $DATA_DIR --epochs $EPOCHS --batch-size $BATCH_SIZE --output-dir $OUTPUT_DIR/burn"
+    print_info "  Epochs: $EPOCHS, Batch size: $BATCH_SIZE, Labeled ratio: $LABELED_RATIO"
+    print_command "$BURN_BINARY train --data-dir $DATA_DIR --epochs $EPOCHS --batch-size $BATCH_SIZE --labeled-ratio $LABELED_RATIO --learning-rate $LEARNING_RATE --output-dir $OUTPUT_DIR/burn"
 
     if [ "$DRY_RUN" = false ]; then
         START_TIME=$(date +%s)
@@ -173,12 +431,15 @@ train_burn() {
             --data-dir "$DATA_DIR" \
             --epochs "$EPOCHS" \
             --batch-size "$BATCH_SIZE" \
+            --labeled-ratio "$LABELED_RATIO" \
+            --learning-rate "$LEARNING_RATE" \
             --output-dir "$OUTPUT_DIR/burn"
 
         END_TIME=$(date +%s)
         TRAIN_TIME=$((END_TIME - START_TIME))
 
-        echo "{\"training_time_s\": $TRAIN_TIME}" > "$OUTPUT_DIR/burn/training_time.json"
+        mkdir -p "$OUTPUT_DIR/burn"
+        echo "{\"training_time_s\": $TRAIN_TIME, \"epochs\": $EPOCHS, \"batch_size\": $BATCH_SIZE, \"labeled_ratio\": $LABELED_RATIO}" > "$OUTPUT_DIR/burn/training_time.json"
         print_success "Burn training completed in ${TRAIN_TIME}s"
     fi
 
@@ -194,33 +455,44 @@ train_pytorch() {
 
     cd "$PROJECT_ROOT/pytorch_reference"
 
+    PYTHON_CMD=$(get_python)
+    PIP_CMD=$(get_pip)
+
     # Check dependencies
     print_info "Checking Python dependencies..."
-    if ! python3 -c "import torch" 2>/dev/null; then
+    if ! $PYTHON_CMD -c "import torch" 2>/dev/null; then
         print_info "Installing PyTorch dependencies..."
-        print_command "pip install -r requirements.txt"
+        print_command "$PIP_CMD install -r requirements.txt"
         if [ "$DRY_RUN" = false ]; then
-            pip install -r requirements.txt
+            $PIP_CMD install -r requirements.txt
         fi
+    else
+        print_success "PyTorch already available in environment"
     fi
 
-    # Run training
+    # Run training with YAML config values
     print_info "Starting PyTorch training..."
-    print_command "python3 trainer.py --data-dir $DATA_DIR --epochs $EPOCHS --batch-size $BATCH_SIZE --output-dir $OUTPUT_DIR/pytorch"
+    print_info "  Epochs: $EPOCHS, Batch size: $BATCH_SIZE, Labeled ratio: $LABELED_RATIO"
+    print_info "  Python: $PYTHON_CMD"
+    print_command "$PYTHON_CMD trainer.py --data-dir $DATA_DIR --epochs $EPOCHS --batch-size $BATCH_SIZE --labeled-ratio $LABELED_RATIO --lr $LEARNING_RATE --image-size $IMAGE_SIZE --output-dir $OUTPUT_DIR/pytorch"
 
     if [ "$DRY_RUN" = false ]; then
         START_TIME=$(date +%s)
 
-        python3 trainer.py \
+        $PYTHON_CMD trainer.py \
             --data-dir "$DATA_DIR" \
             --epochs "$EPOCHS" \
             --batch-size "$BATCH_SIZE" \
+            --labeled-ratio "$LABELED_RATIO" \
+            --lr "$LEARNING_RATE" \
+            --image-size "$IMAGE_SIZE" \
             --output-dir "$OUTPUT_DIR/pytorch"
 
         END_TIME=$(date +%s)
         TRAIN_TIME=$((END_TIME - START_TIME))
 
-        echo "{\"training_time_s\": $TRAIN_TIME}" > "$OUTPUT_DIR/pytorch/training_time.json"
+        mkdir -p "$OUTPUT_DIR/pytorch"
+        echo "{\"training_time_s\": $TRAIN_TIME, \"epochs\": $EPOCHS, \"batch_size\": $BATCH_SIZE, \"labeled_ratio\": $LABELED_RATIO}" > "$OUTPUT_DIR/pytorch/training_time.json"
         print_success "PyTorch training completed in ${TRAIN_TIME}s"
     fi
 
@@ -234,6 +506,11 @@ train_pytorch() {
 run_ssl_simulation() {
     print_stage "Semi-Supervised Simulation"
 
+    if [ "$SSL_ENABLED" != "true" ]; then
+        print_info "SSL simulation disabled in config"
+        return 0
+    fi
+
     cd "$PROJECT_ROOT/plantvillage_ssl"
 
     BURN_BINARY="./target/release/plantvillage_ssl"
@@ -243,15 +520,38 @@ run_ssl_simulation() {
         return 1
     fi
 
+    # Find the latest trained model
+    MODEL_PATH=$(find "$OUTPUT_DIR/burn" -name "*.mpk" -type f 2>/dev/null | head -1)
+    if [ -z "$MODEL_PATH" ]; then
+        MODEL_PATH="$OUTPUT_DIR/burn/model_final.mpk"
+    fi
+
+    # Calculate images per day to use ALL unlabeled data
+    # With use_all_unlabeled=true, we want to process all stream pool images
+    # Default: simulate 30 days, images_per_day calculated to use all data
+    DAYS=30
+    if [ "$SSL_USE_ALL" = "true" ]; then
+        # Use larger batch to process more images
+        IMAGES_PER_DAY=1000
+        print_info "Using ALL unlabeled images (50% of dataset) over $DAYS simulated days"
+    else
+        IMAGES_PER_DAY=500
+    fi
+
     print_info "Running semi-supervised simulation with pseudo-labeling..."
-    print_command "$BURN_BINARY simulate --data-dir $DATA_DIR --batch-size 500 --days 10 --confidence-threshold 0.90 --output-dir $OUTPUT_DIR/ssl"
+    print_info "  Confidence threshold: $SSL_CONFIDENCE"
+    print_info "  Retrain threshold: $SSL_RETRAIN_THRESHOLD pseudo-labels"
+    print_info "  Retrain epochs: $SSL_RETRAIN_EPOCHS"
+    print_command "$BURN_BINARY simulate --data-dir $DATA_DIR --model $MODEL_PATH --days $DAYS --images-per-day $IMAGES_PER_DAY --confidence-threshold $SSL_CONFIDENCE --retrain-threshold $SSL_RETRAIN_THRESHOLD --output-dir $OUTPUT_DIR/ssl"
 
     if [ "$DRY_RUN" = false ]; then
         $BURN_BINARY simulate \
             --data-dir "$DATA_DIR" \
-            --batch-size 500 \
-            --days 10 \
-            --confidence-threshold 0.90 \
+            --model "$MODEL_PATH" \
+            --days "$DAYS" \
+            --images-per-day "$IMAGES_PER_DAY" \
+            --confidence-threshold "$SSL_CONFIDENCE" \
+            --retrain-threshold "$SSL_RETRAIN_THRESHOLD" \
             --output-dir "$OUTPUT_DIR/ssl"
 
         print_success "Semi-supervised simulation completed"
@@ -267,19 +567,27 @@ run_ssl_simulation() {
 benchmark_inference() {
     print_stage "Inference Benchmarking"
 
+    if [ "$BENCHMARK_ENABLED" != "true" ]; then
+        print_info "Benchmarking disabled in config"
+        return 0
+    fi
+
+    mkdir -p "$OUTPUT_DIR/benchmark"
+
     # Burn benchmark
     print_info "Benchmarking Burn (Rust) inference..."
     cd "$PROJECT_ROOT/plantvillage_ssl"
 
     BURN_BINARY="./target/release/plantvillage_ssl"
     if [ -f "$BURN_BINARY" ]; then
-        print_command "$BURN_BINARY benchmark --iterations $ITERATIONS --warmup $WARMUP --batch-size $BATCH_SIZE --output $OUTPUT_DIR/benchmark/burn.json"
+        print_command "$BURN_BINARY benchmark --iterations $ITERATIONS --warmup $WARMUP --batch-size $BATCH_SIZE --image-size $IMAGE_SIZE --output $OUTPUT_DIR/benchmark/burn.json"
 
         if [ "$DRY_RUN" = false ]; then
             $BURN_BINARY benchmark \
                 --iterations "$ITERATIONS" \
                 --warmup "$WARMUP" \
                 --batch-size "$BATCH_SIZE" \
+                --image-size "$IMAGE_SIZE" \
                 --output "$OUTPUT_DIR/benchmark/burn.json" \
                 --verbose
         fi
@@ -292,14 +600,16 @@ benchmark_inference() {
     print_info "Benchmarking PyTorch inference..."
     cd "$PROJECT_ROOT/pytorch_reference"
 
-    print_command "python3 trainer.py --mode benchmark --data-dir $DATA_DIR --iterations $ITERATIONS --batch-size $BATCH_SIZE --output-dir $OUTPUT_DIR/benchmark"
+    PYTHON_CMD=$(get_python)
+    print_command "$PYTHON_CMD trainer.py --mode benchmark --data-dir $DATA_DIR --iterations $ITERATIONS --batch-size $BATCH_SIZE --image-size $IMAGE_SIZE --output-dir $OUTPUT_DIR/benchmark"
 
     if [ "$DRY_RUN" = false ]; then
-        python3 trainer.py \
+        $PYTHON_CMD trainer.py \
             --mode benchmark \
             --data-dir "$DATA_DIR" \
             --iterations "$ITERATIONS" \
             --batch-size "$BATCH_SIZE" \
+            --image-size "$IMAGE_SIZE" \
             --output-dir "$OUTPUT_DIR/benchmark"
     fi
     print_success "PyTorch benchmark completed"
@@ -323,6 +633,11 @@ benchmark_training() {
 compare_frameworks() {
     print_stage "Framework Comparison and Reporting"
 
+    if [ "$COMPARE_FRAMEWORKS" != "true" ]; then
+        print_info "Framework comparison disabled in config"
+        return 0
+    fi
+
     cd "$PROJECT_ROOT/benchmarks"
 
     # Determine device
@@ -332,15 +647,17 @@ compare_frameworks() {
         DEVICE="cpu"
     fi
 
+    PYTHON_CMD=$(get_python)
     print_info "Running comparison script..."
-    print_command "python3 compare_frameworks.py --data-dir $DATA_DIR --output-dir $OUTPUT_DIR --epochs $EPOCHS --batch-size $BATCH_SIZE --device $DEVICE --skip-burn --skip-pytorch --no-charts"
+    print_command "$PYTHON_CMD compare_frameworks.py --data-dir $DATA_DIR --output-dir $OUTPUT_DIR --epochs $EPOCHS --batch-size $BATCH_SIZE --image-size $IMAGE_SIZE --device $DEVICE --skip-burn --skip-pytorch"
 
     if [ "$DRY_RUN" = false ]; then
-        python3 compare_frameworks.py \
+        $PYTHON_CMD compare_frameworks.py \
             --data-dir "$DATA_DIR" \
             --output-dir "$OUTPUT_DIR" \
             --epochs "$EPOCHS" \
             --batch-size "$BATCH_SIZE" \
+            --image-size "$IMAGE_SIZE" \
             --device "$DEVICE" \
             --skip-burn \
             --skip-pytorch
@@ -354,6 +671,7 @@ compare_frameworks() {
 generate_summary_report() {
     print_stage "Generating Summary Report"
 
+    mkdir -p "$OUTPUT_DIR"
     REPORT_FILE="$OUTPUT_DIR/research_summary.txt"
 
     {
@@ -362,14 +680,26 @@ generate_summary_report() {
         echo "======================================="
         echo ""
         echo "Date: $(date)"
-        echo "Configuration:"
+        echo "Config: $CONFIG_FILE"
+        echo ""
+        echo "Configuration (from YAML):"
         echo "  - Epochs: $EPOCHS"
         echo "  - Batch Size: $BATCH_SIZE"
         echo "  - Image Size: ${IMAGE_SIZE}x${IMAGE_SIZE}"
+        echo "  - Labeled Ratio: $LABELED_RATIO ($(echo "$LABELED_RATIO * 100" | bc)%)"
+        echo "  - SSL Confidence Threshold: $SSL_CONFIDENCE"
         echo "  - Benchmark Iterations: $ITERATIONS"
         echo ""
         echo "Dataset: $DATA_DIR"
         echo "Output Directory: $OUTPUT_DIR"
+        echo ""
+        echo "======================================="
+        echo "  DATA SPLIT"
+        echo "======================================="
+        echo "  - Labeled Training: $(echo "$LABELED_RATIO * 100" | bc)%"
+        echo "  - Validation: $(echo "$VALIDATION_SPLIT * 100" | bc)%"
+        echo "  - Test: $(echo "$TEST_SPLIT * 100" | bc)%"
+        echo "  - SSL Stream Pool: $(echo "(1 - $LABELED_RATIO - $VALIDATION_SPLIT - $TEST_SPLIT) * 100" | bc)%"
         echo ""
         echo "======================================="
         echo "  OUTPUT FILES"
@@ -378,19 +708,25 @@ generate_summary_report() {
 
         if [ -d "$OUTPUT_DIR/burn" ]; then
             echo "Burn (Rust) Outputs:"
-            ls -lh "$OUTPUT_DIR/burn" | grep -v "^total" | awk '{print "  -", $9, "("$5")"}'
+            ls -lh "$OUTPUT_DIR/burn" 2>/dev/null | grep -v "^total" | awk '{print "  -", $9, "("$5")"}' || echo "  (empty)"
             echo ""
         fi
 
         if [ -d "$OUTPUT_DIR/pytorch" ]; then
             echo "PyTorch Outputs:"
-            ls -lh "$OUTPUT_DIR/pytorch" | grep -v "^total" | awk '{print "  -", $9, "("$5")"}'
+            ls -lh "$OUTPUT_DIR/pytorch" 2>/dev/null | grep -v "^total" | awk '{print "  -", $9, "("$5")"}' || echo "  (empty)"
+            echo ""
+        fi
+
+        if [ -d "$OUTPUT_DIR/ssl" ]; then
+            echo "SSL Simulation Outputs:"
+            ls -lh "$OUTPUT_DIR/ssl" 2>/dev/null | grep -v "^total" | awk '{print "  -", $9, "("$5")"}' || echo "  (empty)"
             echo ""
         fi
 
         if [ -d "$OUTPUT_DIR/benchmark" ]; then
             echo "Benchmark Results:"
-            ls -lh "$OUTPUT_DIR/benchmark" | grep -v "^total" | awk '{print "  -", $9, "("$5")"}'
+            ls -lh "$OUTPUT_DIR/benchmark" 2>/dev/null | grep -v "^total" | awk '{print "  -", $9, "("$5")"}' || echo "  (empty)"
             echo ""
         fi
 
@@ -398,7 +734,7 @@ generate_summary_report() {
         echo "  COMPARISON CHARTS"
         echo "======================================="
         echo ""
-        find "$OUTPUT_DIR" -name "*.png" -o -name "*.jpg" | while read chart; do
+        find "$OUTPUT_DIR" -name "*.png" -o -name "*.jpg" 2>/dev/null | while read chart; do
             echo "  - $chart"
         done
         echo ""
@@ -407,7 +743,7 @@ generate_summary_report() {
         echo "  DATA FILES (JSON)"
         echo "======================================="
         echo ""
-        find "$OUTPUT_DIR" -name "*.json" | while read json; do
+        find "$OUTPUT_DIR" -name "*.json" 2>/dev/null | while read json; do
             echo "  - $json"
         done
         echo ""
@@ -466,6 +802,9 @@ show_help() {
     cat << EOF
 Research Pipeline Script - Full Research Automation
 
+Configuration is read from: pipeline_config.yaml
+CLI arguments override YAML values.
+
 Usage: $0 [command] [options]
 
 Commands:
@@ -474,50 +813,51 @@ Commands:
   ssl           Run semi-supervised simulation
   benchmark     Run inference and training benchmarks
   compare       Compare frameworks and generate reports
+  config        Show current configuration from YAML
   clean         Clean all output directories and build artifacts
   help          Show this help message
 
-Options:
-  --epochs N                Number of training epochs (default: 50)
-  --batch-size N            Batch size (default: 32)
-  --iterations N            Benchmark iterations (default: 100)
-  --image-size N            Image size (default: 224)
-  --data-dir PATH           Dataset directory (default: data/plantvillage)
-  --output-dir PATH         Output directory (default: output/research_pipeline)
-  --skip-download           Skip dataset download
-  --skip-train-burn         Skip Burn training
-  --skip-train-pytorch      Skip PyTorch training
-  --skip-ssl                Skip semi-supervised simulation
-  --skip-benchmark          Skip benchmarking
-  --skip-compare            Skip comparison
+Options (override YAML config):
+  --epochs N                Number of training epochs
+  --batch-size N            Batch size
+  --iterations N            Benchmark iterations
+  --warmup N                Warmup iterations
+  --image-size N            Image size
+  --labeled-ratio N         Labeled data ratio (0.0-1.0)
+  --data-dir PATH           Dataset directory
+  --output-dir PATH         Output directory
+  --confidence N            SSL confidence threshold
   --dry-run                 Show commands without executing
   --verbose                 Show detailed command output
   -h, --help                Show this help message
 
 Examples:
-  # Run full pipeline
+  # Run full pipeline (uses YAML config)
   $0 all
 
-  # Run full pipeline with custom epochs
+  # Show current configuration
+  $0 config
+
+  # Override epochs from command line
   $0 all --epochs 20
 
   # Train only
-  $0 train --epochs 10
+  $0 train
 
   # Run benchmarks only
-  $0 benchmark --iterations 200
+  $0 benchmark
 
   # Clean everything
   $0 clean
 
-Pipeline Stages (when running 'all'):
+Pipeline Stages (controlled by YAML stages section):
   1. Download Dataset      - Download PlantVillage dataset if not present
-  2. Train Burn           - Train Rust/Burn model with supervised learning
-  3. Train PyTorch        - Train PyTorch model with supervised learning
-  4. SSL Simulation       - Run semi-supervised pseudo-labeling simulation
+  2. Train Burn            - Train Rust/Burn model with supervised learning
+  3. Train PyTorch         - Train PyTorch model with supervised learning
+  4. SSL Simulation        - Run semi-supervised pseudo-labeling simulation
   5. Benchmarking          - Run inference and training benchmarks
-  6. Compare              - Generate comparison charts and reports
-  7. Summary              - Generate final summary report
+  6. Compare               - Generate comparison charts and reports
+  7. Summary               - Generate final summary report
 
 EOF
 }
@@ -527,10 +867,16 @@ EOF
 # ==============================================================================
 
 COMMAND="all"
+DRY_RUN=false
+VERBOSE=false
 
+# First load config from YAML
+load_config
+
+# Then parse CLI args (these override YAML values)
 while [[ $# -gt 0 ]]; do
     case $1 in
-        all|train|ssl|benchmark|compare|clean|help)
+        all|train|ssl|benchmark|compare|clean|config|help)
             COMMAND="$1"
             shift
             ;;
@@ -554,6 +900,14 @@ while [[ $# -gt 0 ]]; do
             IMAGE_SIZE="$2"
             shift 2
             ;;
+        --labeled-ratio)
+            LABELED_RATIO="$2"
+            shift 2
+            ;;
+        --confidence)
+            SSL_CONFIDENCE="$2"
+            shift 2
+            ;;
         --data-dir)
             DATA_DIR="$2"
             shift 2
@@ -561,30 +915,6 @@ while [[ $# -gt 0 ]]; do
         --output-dir)
             OUTPUT_DIR="$2"
             shift 2
-            ;;
-        --skip-download)
-            SKIP_DOWNLOAD=true
-            shift
-            ;;
-        --skip-train-burn)
-            SKIP_TRAIN_BURN=true
-            shift
-            ;;
-        --skip-train-pytorch)
-            SKIP_TRAIN_PYTORCH=true
-            shift
-            ;;
-        --skip-ssl)
-            SKIP_SSL=true
-            shift
-            ;;
-        --skip-benchmark)
-            SKIP_BENCHMARK=true
-            shift
-            ;;
-        --skip-compare)
-            SKIP_COMPARE=true
-            shift
             ;;
         --dry-run)
             DRY_RUN=true
@@ -617,20 +947,34 @@ main() {
     mkdir -p "$OUTPUT_DIR"
 
     # Show configuration
-    print_info "Pipeline Configuration:"
-    echo "  Epochs:       $EPOCHS"
-    echo "  Batch size:   $BATCH_SIZE"
-    echo "  Image size:   ${IMAGE_SIZE}x${IMAGE_SIZE}"
-    echo "  Iterations:   $ITERATIONS"
-    echo "  Data dir:     $DATA_DIR"
-    echo "  Output dir:   $OUTPUT_DIR"
-    echo "  Dry run:      $DRY_RUN"
+    print_info "Pipeline Configuration (from $CONFIG_FILE):"
+    echo "  Epochs:         $EPOCHS"
+    echo "  Batch size:     $BATCH_SIZE"
+    echo "  Image size:     ${IMAGE_SIZE}x${IMAGE_SIZE}"
+    echo "  Labeled ratio:  $LABELED_RATIO"
+    echo "  Iterations:     $ITERATIONS"
+    echo "  Data dir:       $DATA_DIR"
+    echo "  Output dir:     $OUTPUT_DIR"
+    echo "  Dry run:        $DRY_RUN"
     echo ""
 
     # Check prerequisites
     print_info "Checking prerequisites..."
     check_command cargo || exit 1
-    check_command python3 || exit 1
+    
+    # Check Python environment
+    if [ -n "$CONDA_ENV" ]; then
+        check_conda_env || exit 1
+        PYTHON_CMD=$(get_python)
+        if ! $PYTHON_CMD --version &>/dev/null; then
+            print_error "Cannot execute Python from conda environment '$CONDA_ENV'"
+            exit 1
+        fi
+        print_success "Python: $($PYTHON_CMD --version 2>&1)"
+    else
+        check_command python3 || exit 1
+        print_success "Python: $(python3 --version 2>&1)"
+    fi
 
     if command -v nvidia-smi &> /dev/null; then
         print_success "CUDA available: $(nvidia-smi --query-gpu=name --format=csv,noheader | head -1)"
@@ -645,17 +989,13 @@ main() {
         all)
             print_info "Running full pipeline..."
 
-            [ "$SKIP_DOWNLOAD" = false ] && download_dataset
-
-            [ "$SKIP_TRAIN_BURN" = false ] && train_burn
-            [ "$SKIP_TRAIN_PYTORCH" = false ] && train_pytorch
-
-            [ "$SKIP_SSL" = false ] && run_ssl_simulation
-
-            [ "$SKIP_BENCHMARK" = false ] && benchmark_inference
-            [ "$SKIP_BENCHMARK" = false ] && benchmark_training
-
-            [ "$SKIP_COMPARE" = false ] && compare_frameworks
+            [ "$STAGE_DOWNLOAD" = "true" ] && download_dataset
+            [ "$STAGE_TRAIN_BURN" = "true" ] && train_burn
+            [ "$STAGE_TRAIN_PYTORCH" = "true" ] && train_pytorch
+            [ "$STAGE_SSL" = "true" ] && run_ssl_simulation
+            [ "$STAGE_BENCHMARK" = "true" ] && benchmark_inference
+            [ "$STAGE_BENCHMARK" = "true" ] && benchmark_training
+            [ "$STAGE_COMPARE" = "true" ] && compare_frameworks
             generate_summary_report
 
             print_success "Full pipeline completed!"
@@ -666,9 +1006,9 @@ main() {
         train)
             print_info "Running training stage..."
 
-            [ "$SKIP_DOWNLOAD" = false ] && download_dataset
-            [ "$SKIP_TRAIN_BURN" = false ] && train_burn
-            [ "$SKIP_TRAIN_PYTORCH" = false ] && train_pytorch
+            [ "$STAGE_DOWNLOAD" = "true" ] && download_dataset
+            [ "$STAGE_TRAIN_BURN" = "true" ] && train_burn
+            [ "$STAGE_TRAIN_PYTORCH" = "true" ] && train_pytorch
 
             print_success "Training completed!"
             ;;
@@ -676,7 +1016,7 @@ main() {
         ssl)
             print_info "Running SSL simulation..."
 
-            [ "$SKIP_SSL" = false ] && run_ssl_simulation
+            run_ssl_simulation
 
             print_success "SSL simulation completed!"
             ;;
@@ -684,10 +1024,9 @@ main() {
         benchmark)
             print_info "Running benchmarks..."
 
-            [ "$SKIP_BENCHMARK" = false ] && benchmark_inference
-            [ "$SKIP_BENCHMARK" = false ] && benchmark_training
-
-            [ "$SKIP_COMPARE" = false ] && compare_frameworks
+            benchmark_inference
+            benchmark_training
+            [ "$STAGE_COMPARE" = "true" ] && compare_frameworks
 
             print_success "Benchmarking completed!"
             ;;
@@ -695,10 +1034,14 @@ main() {
         compare)
             print_info "Running comparison..."
 
-            [ "$SKIP_COMPARE" = false ] && compare_frameworks
+            compare_frameworks
             generate_summary_report
 
             print_success "Comparison completed!"
+            ;;
+
+        config)
+            show_config
             ;;
 
         clean)
@@ -711,7 +1054,7 @@ main() {
     esac
 
     echo ""
-    print_success "Done! 🎉"
+    print_success "Done!"
 }
 
 main

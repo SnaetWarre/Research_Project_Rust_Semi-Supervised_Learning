@@ -4,192 +4,190 @@ This directory contains the complete research automation pipeline for the PlantV
 
 ## Quick Start
 
-Run the entire research pipeline with a single command:
+**Edit the config once, run everything:**
 
 ```bash
+# 1. Edit configuration (optional - defaults are sensible)
+vim pipeline_config.yaml
+
+# 2. Run the entire pipeline
 ./run_research_pipeline.sh all
 ```
 
-This will:
-1. Download the PlantVillage dataset (if needed)
-2. Train the Burn/Rust model
-3. Train the PyTorch model
-4. Run semi-supervised simulation
-5. Benchmark both frameworks
-6. Generate comparison reports and charts
+That's it! The script reads all settings from `pipeline_config.yaml`.
 
-## Pipeline Script
+## Configuration (pipeline_config.yaml)
 
-The `run_research_pipeline.sh` script is your main entry point.
-
-### Commands
-
-| Command | Description |
-|---------|-------------|
-| `all` | Run entire pipeline (default) |
-| `train` | Train both Burn and PyTorch models |
-| `ssl` | Run semi-supervised simulation |
-| `benchmark` | Run benchmarks and comparisons |
-| `compare` | Compare frameworks and generate reports |
-| `clean` | Clean all outputs and build artifacts |
-| `help` | Show help message |
-
-### Examples
-
-```bash
-# Run full pipeline with 20 epochs
-./run_research_pipeline.sh all --epochs 20
-
-# Train only with batch size 64
-./run_research_pipeline.sh train --batch-size 64 --epochs 10
-
-# Run benchmarks with 500 iterations
-./run_research_pipeline.sh benchmark --iterations 500
-
-# Clean everything
-./run_research_pipeline.sh clean
-```
-
-### Options
-
-| Option | Description | Default |
-|--------|-------------|---------|
-| `--epochs N` | Number of training epochs | 50 |
-| `--batch-size N` | Batch size | 32 |
-| `--iterations N` | Benchmark iterations | 100 |
-| `--image-size N` | Image size | 224 |
-| `--data-dir PATH` | Dataset directory | data/plantvillage |
-| `--output-dir PATH` | Output directory | output/research_pipeline |
-| `--skip-*` | Skip specific stages | false |
-| `--dry-run` | Show commands without executing | false |
-| `--verbose` | Show detailed output | false |
-
-## Configuration
-
-Edit `pipeline_config.yaml` to change default settings:
+The YAML file is the **single source of truth** for all pipeline settings:
 
 ```yaml
+# Key sections:
+
+paths:
+  data_dir: "plantvillage_ssl/data/plantvillage/organized"
+  output_dir: "output/research_pipeline"
+
+dataset:
+  labeled_ratio: 0.30      # 30% for supervised training
+  validation_split: 0.10   # 10% for validation
+  test_split: 0.10         # 10% for final testing
+  # Remaining 50% → SSL stream pool (uses ALL unlabeled images)
+
 training:
   epochs: 50
   batch_size: 32
   learning_rate: 0.001
 
-semi_supervised:
+ssl:
   enabled: true
   confidence_threshold: 0.90
+  use_all_unlabeled: true  # Process ALL remaining images
 
-benchmarking:
-  iterations: 100
-  compare_with_pytorch: true
+stages:
+  download_dataset: true
+  train_burn: true
+  train_pytorch: true
+  ssl_simulation: true
+  benchmark: true
+  compare: true
+```
+
+### Data Split Strategy
+
+| Split | Percentage | Purpose |
+|-------|------------|---------|
+| Labeled Training | 30% | Initial supervised learning (Burn + PyTorch) |
+| Validation | 10% | Monitor training progress |
+| Test | 10% | Final evaluation only |
+| **SSL Stream Pool** | **50%** | All remaining images for semi-supervised learning |
+
+With ~61,486 PlantVillage images:
+- ~18,446 labeled training images
+- ~30,742 images for SSL (maximized!)
+
+## Pipeline Commands
+
+| Command | Description |
+|---------|-------------|
+| `./run_research_pipeline.sh all` | Run entire pipeline |
+| `./run_research_pipeline.sh train` | Train Burn and PyTorch models |
+| `./run_research_pipeline.sh ssl` | Run SSL simulation only |
+| `./run_research_pipeline.sh benchmark` | Run benchmarks |
+| `./run_research_pipeline.sh compare` | Generate comparison reports |
+| `./run_research_pipeline.sh config` | Show current configuration |
+| `./run_research_pipeline.sh clean` | Clean all outputs |
+| `./run_research_pipeline.sh help` | Show help |
+
+### Override Config from CLI
+
+CLI arguments override YAML values:
+
+```bash
+# Override epochs
+./run_research_pipeline.sh all --epochs 20
+
+# Override multiple settings
+./run_research_pipeline.sh train --epochs 10 --batch-size 64
+
+# Dry run (show commands without executing)
+./run_research_pipeline.sh all --dry-run --verbose
 ```
 
 ## Pipeline Stages
 
-When running `all`, the following stages are executed in order:
+When running `all`, stages execute in order:
 
-1. **Download Dataset** - Downloads PlantVillage dataset if not present
-2. **Train Burn** - Trains Rust/Burn model with supervised learning
-3. **Train PyTorch** - Trains PyTorch model with supervised learning
-4. **SSL Simulation** - Runs semi-supervised pseudo-labeling simulation
-5. **Benchmarking** - Runs inference and training benchmarks
-6. **Compare** - Generates comparison charts and reports
-7. **Summary** - Generates final summary report
+```
+1. Download Dataset  → Download PlantVillage if not present
+         ↓
+2. Train Burn       → Train Rust/Burn model (30% labeled data)
+         ↓
+3. Train PyTorch    → Train PyTorch model (30% labeled data)
+         ↓
+4. SSL Simulation   → Pseudo-labeling on ALL unlabeled data (50%)
+         ↓
+5. Benchmark        → Inference benchmarks for both frameworks
+         ↓
+6. Compare          → Generate comparison charts and reports
+         ↓
+7. Summary          → Final summary report
+```
+
+Toggle stages on/off in `pipeline_config.yaml`:
+
+```yaml
+stages:
+  download_dataset: true
+  train_burn: true
+  train_pytorch: false   # Skip PyTorch training
+  ssl_simulation: true
+  benchmark: true
+  compare: true
+```
 
 ## Output Structure
 
-After running the pipeline, you'll find:
-
 ```
 output/research_pipeline/
-├── burn/                    # Burn model outputs
-│   ├── plant_classifier_*.mpk  # Trained model (timestamped)
-│   ├── training_time.json   # Training metrics
-│   └── metrics.json        # Performance metrics
-├── pytorch/                # PyTorch model outputs
-│   ├── model.pth           # Trained model
-│   ├── training_time.json   # Training metrics
-│   └── metrics.json        # Performance metrics
-├── ssl/                    # Semi-supervised simulation results
-│   ├── pseudo_labels.json   # Pseudo-label history
-│   └── accuracy_progress.json
-├── benchmark/              # Benchmark results
-│   ├── burn_benchmark.json  # Burn metrics
-│   ├── pytorch_benchmark.json
-│   └── benchmark_comparison.json
-├── *.png                   # Comparison charts
-└── research_summary.txt    # Final summary report
+├── burn/                       # Burn (Rust) outputs
+│   ├── model_*.mpk             # Trained model
+│   └── training_time.json      # Training metrics
+├── pytorch/                    # PyTorch outputs
+│   ├── *.pth                   # Trained model
+│   └── training_time.json      # Training metrics
+├── ssl/                        # SSL simulation results
+│   ├── pseudo_labels.json      # Pseudo-label history
+│   └── accuracy_progress.json  # Accuracy over time
+├── benchmark/                  # Benchmark results
+│   ├── burn.json               # Burn latency/throughput
+│   └── pytorch.json            # PyTorch latency/throughput
+├── *.png                       # Comparison charts
+└── research_summary.txt        # Final summary report
 ```
-
-## Individual Scripts
-
-### run_benchmarks.sh
-
-Legacy benchmarking script. Use `run_research_pipeline.sh benchmark` instead.
-
-### run_research_pipeline.sh
-
-Main pipeline script that orchestrates everything.
-
-### download_dataset.py
-
-Located in `plantvillage_ssl/scripts/`. Downloads the PlantVillage dataset.
 
 ## Prerequisites
 
-- Rust 1.70+ with cargo
-- Python 3.10+
-- NVIDIA GPU with CUDA 12.x (optional, for GPU acceleration)
+- **Rust** 1.70+ with cargo
+- **Python** 3.10+ with pip
+- **yq** (YAML parser) - optional but recommended
+  ```bash
+  # Arch Linux
+  sudo pacman -S yq
+  
+  # Or via pip
+  pip install yq
+  ```
+- **NVIDIA GPU** with CUDA 12.x (optional, for GPU acceleration)
 - ~5GB disk space for dataset
 
-## Examples
+## Troubleshooting
 
-### Quick Test Run
+### Check Configuration
 
 ```bash
-# Run a quick test with 5 epochs
-./run_research_pipeline.sh all --epochs 5 --batch-size 16
+# View current config values
+./run_research_pipeline.sh config
 ```
 
-### Production Training
+### Dry Run
 
 ```bash
-# Full training with 50 epochs
-./run_research_pipeline.sh all --epochs 50 --batch-size 32 --verbose
+# See what would be executed without running
+./run_research_pipeline.sh all --dry-run --verbose
 ```
 
-### Benchmarking Only
+### Start Fresh
 
 ```bash
-# Run extensive benchmarks
-./run_research_pipeline.sh benchmark --iterations 1000 --warmup 50
-```
-
-### Troubleshooting
-
-```bash
-# Run with verbose output to see all commands
-./run_research_pipeline.sh all --verbose
-
-# Dry run to see what will be executed
-./run_research_pipeline.sh all --dry-run
-
-# Clean everything and start fresh
+# Clean everything and start over
 ./run_research_pipeline.sh clean
+./run_research_pipeline.sh all
 ```
 
-## Integration with Existing Workflows
+### YAML Parser Not Found
 
-The pipeline scripts are designed to work with your existing code:
+If `yq` is not installed, the script falls back to basic grep parsing (limited). Install `yq` for full YAML support:
 
-- Uses `plantvillage_ssl/` CLI commands for Burn
-- Uses `pytorch_reference/trainer.py` for PyTorch
-- Uses `benchmarks/compare_frameworks.py` for comparisons
-- Outputs are organized in `output/` directory
-
-## Next Steps
-
-1. Run `./run_research_pipeline.sh help` to see all options
-2. Try a test run: `./run_research_pipeline.sh all --epochs 2`
-3. Check outputs in `output/research_pipeline/`
-4. Review charts and summary report
-5. Adjust `pipeline_config.yaml` as needed
+```bash
+sudo pacman -S yq
+```

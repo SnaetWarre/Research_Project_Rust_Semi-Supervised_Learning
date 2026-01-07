@@ -120,9 +120,9 @@ where
     let model_config = PlantClassifierConfig {
         num_classes: 38,
         input_size: 128,
-        dropout_rate: 0.6,  // High dropout = weaker model, more SSL headroom
+        dropout_rate: 0.3,  // Moderate dropout
         in_channels: 3,
-        base_filters: 8,    // Small backbone = ~70-80% baseline accuracy
+        base_filters: 32,   // Proper sized model
     };
 
     let mut model: PlantClassifier<B> = PlantClassifier::new(&model_config, &device);

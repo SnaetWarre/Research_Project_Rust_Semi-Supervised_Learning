@@ -42,10 +42,29 @@ enum Commands {
         output_dir: String,
     },
 
+    /// Prepare a balanced dataset from raw PlantVillage data
+    Prepare {
+        /// Source directory containing raw data (will auto-detect nested structure)
+        #[arg(short, long, default_value = "data/plantvillage/raw")]
+        source_dir: String,
+
+        /// Output directory for balanced dataset
+        #[arg(short, long, default_value = "data/plantvillage/balanced")]
+        output_dir: String,
+
+        /// Samples per class (default: use minimum class size for perfect balance)
+        #[arg(short, long)]
+        samples_per_class: Option<usize>,
+
+        /// Random seed for reproducibility
+        #[arg(long, default_value = "42")]
+        seed: u64,
+    },
+
     /// Train the model with semi-supervised learning
     Train {
         /// Path to the dataset directory
-        #[arg(short, long, default_value = "data/plantvillage")]
+        #[arg(short, long, default_value = "data/plantvillage/balanced")]
         data_dir: String,
 
         /// Number of training epochs
@@ -61,7 +80,7 @@ enum Commands {
         learning_rate: f64,
 
         /// Percentage of labeled data (0.0-1.0)
-        #[arg(long, default_value = "0.2")]
+        #[arg(long, default_value = "0.8")]
         labeled_ratio: f64,
 
         /// Confidence threshold for pseudo-labeling (0.0-1.0)
@@ -83,6 +102,10 @@ enum Commands {
         /// Quick test mode - use only 500 samples for fast verification
         #[arg(long, default_value = "false")]
         quick: bool,
+
+        /// Use class-weighted loss (inverse frequency weighting for imbalanced data)
+        #[arg(long, default_value = "false")]
+        class_weighted: bool,
     },
 
     /// Run inference on a single image or directory
@@ -211,6 +234,15 @@ fn main() -> Result<()> {
             cmd_download(&output_dir)?;
         }
 
+        Commands::Prepare {
+            source_dir,
+            output_dir,
+            samples_per_class,
+            seed,
+        } => {
+            cmd_prepare(&source_dir, &output_dir, samples_per_class, seed)?;
+        }
+
         Commands::Train {
             data_dir,
             epochs,
@@ -222,6 +254,7 @@ fn main() -> Result<()> {
             cuda,
             seed,
             quick,
+            class_weighted,
         } => {
             // Always use CUDA - this project targets GPU (Jetson Orin Nano)
             let _ = cuda; // Ignore flag, always GPU
@@ -243,6 +276,7 @@ fn main() -> Result<()> {
                 &output_dir,
                 seed,
                 max_samples,
+                class_weighted,
             )?;
         }
 
@@ -330,10 +364,48 @@ fn cmd_download(output_dir: &str) -> Result<()> {
     println!("{}", "Steps to download manually:".cyan());
     println!("  1. Visit the Kaggle URL above");
     println!("  2. Download and extract the dataset");
-    println!("  3. Organize into: {}/{{class_name}}/*.jpg", output_dir);
+    println!("  3. Run: plantvillage_ssl prepare --source-dir {}/raw --output-dir {}/balanced", output_dir, output_dir);
+
+    Ok(())
+}
+
+fn cmd_prepare(source_dir: &str, output_dir: &str, samples_per_class: Option<usize>, seed: u64) -> Result<()> {
+    use plantvillage_ssl::dataset::prepare::{prepare_balanced_dataset, PrepareConfig};
+    use std::path::Path;
+
+    info!("Preparing balanced dataset");
+    info!("  Source: {}", source_dir);
+    info!("  Output: {}", output_dir);
+
+    println!("{}", "Dataset Preparation".cyan().bold());
+    println!("  📁 Source: {}", source_dir);
+    println!("  📁 Output: {}", output_dir);
+    println!("  🎲 Seed: {}", seed);
+    if let Some(n) = samples_per_class {
+        println!("  📊 Samples per class: {}", n);
+    } else {
+        println!("  📊 Samples per class: auto (minimum class size)");
+    }
     println!();
-    println!("{}", "Or use the Python script:".cyan());
-    println!("  python scripts/download_dataset.py --output {}", output_dir);
+
+    let config = PrepareConfig {
+        seed,
+        samples_per_class,
+    };
+
+    let stats = prepare_balanced_dataset(
+        Path::new(source_dir),
+        Path::new(output_dir),
+        &config,
+    )?;
+
+    println!();
+    println!("{}", "Next steps:".cyan().bold());
+    println!("  • Train with balanced data:");
+    println!("    plantvillage_ssl train --data-dir {} --epochs 50", output_dir);
+    println!();
+    println!("  • Or use class-weighted loss with original data:");
+    println!("    plantvillage_ssl train --data-dir data/plantvillage/raw --class-weighted");
 
     Ok(())
 }
@@ -397,6 +469,15 @@ fn cmd_stats(data_dir: &str, show_splits: bool) -> Result<()> {
 }
 
 fn cmd_infer(input: &str, model: &str, _cuda: bool) -> Result<()> {
+    use burn::module::Module;
+    use burn::record::CompactRecorder;
+    use burn::tensor::Tensor;
+    use burn::tensor::activation::softmax;
+    use burn_cuda::Cuda;
+    use image::imageops::FilterType;
+    use plantvillage_ssl::model::cnn::{PlantClassifier, PlantClassifierConfig};
+    use plantvillage_ssl::dataset::CLASS_NAMES;
+
     info!("Running inference");
     info!("  Input: {}", input);
     info!("  Model: {}", model);
@@ -417,7 +498,103 @@ fn cmd_infer(input: &str, model: &str, _cuda: bool) -> Result<()> {
         return Ok(());
     }
 
-    println!("{} Inference implementation pending - see src/inference/predictor.rs", "Note:".yellow());
+    // Load model
+    println!("{}", "Loading model...".cyan());
+    let device = <Cuda as burn::tensor::backend::Backend>::Device::default();
+    let config = PlantClassifierConfig {
+        num_classes: 38,
+        input_size: 128,
+        dropout_rate: 0.3,
+        in_channels: 3,
+        base_filters: 32,
+    };
+    let model_instance: PlantClassifier<Cuda> = PlantClassifier::new(&config, &device);
+    let recorder = CompactRecorder::new();
+    let model_instance = model_instance
+        .load_file(model, &recorder, &device)
+        .map_err(|e| anyhow::anyhow!("Failed to load model: {:?}", e))?;
+
+    // Process input (single file or directory)
+    let input_path = Path::new(input);
+    let files: Vec<_> = if input_path.is_dir() {
+        std::fs::read_dir(input_path)?
+            .filter_map(|e| e.ok())
+            .map(|e| e.path())
+            .filter(|p| {
+                p.extension()
+                    .and_then(|e| e.to_str())
+                    .map(|e| ["jpg", "jpeg", "png"].contains(&e.to_lowercase().as_str()))
+                    .unwrap_or(false)
+            })
+            .take(10) // Limit to 10 images
+            .collect()
+    } else {
+        vec![input_path.to_path_buf()]
+    };
+
+    println!("{}", "Running inference...".cyan());
+    println!();
+
+    for file_path in &files {
+        // Load and preprocess image
+        let img = image::open(file_path)?;
+        let img = img.resize_exact(128, 128, FilterType::Lanczos3);
+        let rgb = img.to_rgb8();
+        
+        // Normalize to tensor (CHW format)
+        let mut data = vec![0.0f32; 3 * 128 * 128];
+        let mean = [0.485f32, 0.456, 0.406];
+        let std = [0.229f32, 0.224, 0.225];
+        
+        for (i, pixel) in rgb.pixels().enumerate() {
+            data[i] = (pixel[0] as f32 / 255.0 - mean[0]) / std[0];
+            data[128 * 128 + i] = (pixel[1] as f32 / 255.0 - mean[1]) / std[1];
+            data[2 * 128 * 128 + i] = (pixel[2] as f32 / 255.0 - mean[2]) / std[2];
+        }
+        
+        // Create tensor [1, 3, 128, 128]
+        let tensor: Tensor<Cuda, 1> = Tensor::from_floats(&data[..], &device);
+        let tensor: Tensor<Cuda, 4> = tensor.reshape([1, 3, 128, 128]);
+        
+        // Run inference
+        let start = std::time::Instant::now();
+        let output = model_instance.forward(tensor);
+        let probs = softmax(output, 1);
+        let inference_time = start.elapsed();
+        
+        // Get predictions
+        let probs_vec: Vec<f32> = probs.into_data().to_vec().unwrap();
+        
+        // Find top-5
+        let mut indexed: Vec<(usize, f32)> = probs_vec.iter().enumerate().map(|(i, &p)| (i, p)).collect();
+        indexed.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap());
+        
+        // Get actual class from filename
+        let actual_class = file_path
+            .parent()
+            .and_then(|p| p.file_name())
+            .and_then(|n| n.to_str())
+            .unwrap_or("Unknown");
+        
+        let predicted_class = CLASS_NAMES.get(indexed[0].0).unwrap_or(&"Unknown");
+        let is_correct = actual_class == *predicted_class;
+        
+        println!("📷 {}", file_path.file_name().unwrap_or_default().to_string_lossy());
+        println!("  Actual:    {}", actual_class.yellow());
+        println!("  Predicted: {} {}", 
+            predicted_class,
+            if is_correct { "✅".green() } else { "❌".red() }
+        );
+        println!("  Confidence: {:.1}%", indexed[0].1 * 100.0);
+        println!("  Time: {:.2}ms", inference_time.as_secs_f64() * 1000.0);
+        println!("  Top-5:");
+        for (i, (idx, prob)) in indexed.iter().take(5).enumerate() {
+            let name = CLASS_NAMES.get(*idx).unwrap_or(&"Unknown");
+            println!("    {}. {} ({:.1}%)", i + 1, name, prob * 100.0);
+        }
+        println!();
+    }
+
     Ok(())
 }
 

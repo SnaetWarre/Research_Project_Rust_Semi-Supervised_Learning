@@ -21,18 +21,22 @@ pub struct TrainingParams {
     pub labeled_ratio: f64,
     pub confidence_threshold: f64,
     pub output_dir: String,
+    /// Use class-weighted loss for imbalanced data
+    #[serde(default)]
+    pub class_weighted: bool,
 }
 
 impl Default for TrainingParams {
     fn default() -> Self {
         Self {
-            data_dir: "data/plantvillage".to_string(),
+            data_dir: "data/plantvillage/balanced".to_string(),
             epochs: 50,
             batch_size: 32,
             learning_rate: 0.0001,
             labeled_ratio: 0.2,
             confidence_threshold: 0.9,
             output_dir: "output/models".to_string(),
+            class_weighted: false, // Not needed with balanced dataset
         }
     }
 }
@@ -183,6 +187,31 @@ where
         .map(|&i| samples[i].clone())
         .collect();
     
+    // Compute class weights if enabled
+    let class_weights: Option<Vec<f32>> = if params.class_weighted {
+        let mut class_counts = vec![0usize; 38];
+        for (_, label) in &train_samples {
+            if *label < 38 {
+                class_counts[*label] += 1;
+            }
+        }
+        let total = train_samples.len() as f32;
+        let num_classes = 38.0f32;
+        let weights: Vec<f32> = class_counts
+            .iter()
+            .map(|&count| {
+                if count > 0 {
+                    total / (num_classes * count as f32)
+                } else {
+                    1.0
+                }
+            })
+            .collect();
+        Some(weights)
+    } else {
+        None
+    };
+    
     let train_dataset = PlantVillageBurnDataset::new_cached(train_samples, 128)
         .map_err(|e| format!("Failed to create train dataset: {:?}", e))?;
     let val_dataset = PlantVillageBurnDataset::new_cached(val_samples, 128)
@@ -234,9 +263,14 @@ where
             let batch = batcher.batch(items, &device);
             let output = model.forward(batch.images.clone());
             
-            let loss = CrossEntropyLossConfig::new()
-                .init(&output.device())
-                .forward(output, batch.targets);
+            // Compute loss (with optional class weights)
+            let loss = if let Some(ref weights) = class_weights {
+                weighted_cross_entropy(&output, &batch.targets, weights, &device)
+            } else {
+                CrossEntropyLossConfig::new()
+                    .init(&output.device())
+                    .forward(output, batch.targets)
+            };
             
             use burn::tensor::ElementConversion;
             let loss_value: f64 = loss.clone().into_scalar().elem();
@@ -353,4 +387,41 @@ pub async fn stop_training(
         *status = TrainingStatus::Idle;
     }
     Ok(())
+}
+
+/// Compute weighted cross entropy loss
+/// 
+/// Manually implements class-weighted cross entropy since Burn 0.20
+/// doesn't provide built-in support for it.
+fn weighted_cross_entropy<B: burn::tensor::backend::AutodiffBackend>(
+    output: &burn::tensor::Tensor<B, 2>,
+    targets: &burn::tensor::Tensor<B, 1, burn::tensor::Int>,
+    weights: &[f32],
+    device: &B::Device,
+) -> burn::tensor::Tensor<B, 1> {
+    use burn::tensor::Tensor;
+    use burn::tensor::activation::softmax;
+    
+    // Compute softmax probabilities
+    let probs = softmax(output.clone(), 1);
+    
+    // Add small epsilon for numerical stability before log
+    let epsilon = 1e-7f32;
+    let log_probs = (probs + epsilon).log();
+    
+    // Get the log probability of the correct class for each sample
+    let targets_expanded = targets.clone().unsqueeze_dim::<2>(1);
+    let target_log_probs = log_probs.gather(1, targets_expanded).squeeze::<1>();
+    
+    // Create weight tensor for each sample based on its class
+    let weights_tensor: Tensor<B, 1> = Tensor::from_floats(weights, device);
+    
+    // Gather weights for each target class
+    let sample_weights = weights_tensor.gather(0, targets.clone());
+    
+    // Weighted negative log likelihood
+    let weighted_nll = target_log_probs.neg().mul(sample_weights.clone());
+    
+    // Return mean weighted loss
+    weighted_nll.sum() / sample_weights.sum()
 }

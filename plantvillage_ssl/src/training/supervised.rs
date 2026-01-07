@@ -40,6 +40,8 @@ use crate::model::cnn::PlantClassifierConfig;
 /// * `_confidence_threshold` - Threshold for pseudo-labeling (not used in supervised training)
 /// * `output_dir` - Directory to save model checkpoints
 /// * `seed` - Random seed for reproducibility
+/// * `max_samples` - Maximum samples to use (for quick testing)
+/// * `class_weighted` - Use inverse-frequency class weights for imbalanced data
 pub fn run_training<B>(
     data_dir: &str,
     epochs: usize,
@@ -50,6 +52,7 @@ pub fn run_training<B>(
     output_dir: &str,
     seed: u64,
     max_samples: Option<usize>,
+    class_weighted: bool,
 ) -> Result<()>
 where
     B: AutodiffBackend,
@@ -179,6 +182,46 @@ where
         .with_weight_decay(Some(burn::optim::decay::WeightDecayConfig::new(1e-4f32)))
         .init();
 
+    // Compute class weights if needed
+    let class_weights: Option<Vec<f32>> = if class_weighted {
+        println!();
+        println!("{}", "Computing Class Weights...".cyan());
+        
+        // Count samples per class in training set
+        let mut class_counts = vec![0usize; 38];
+        for (_, label) in &train_samples {
+            if *label < 38 {
+                class_counts[*label] += 1;
+            }
+        }
+        
+        let total = train_samples.len() as f32;
+        let num_classes = 38.0f32;
+        
+        // Inverse frequency weighting: weight = N / (C * n_c)
+        let weights: Vec<f32> = class_counts
+            .iter()
+            .map(|&count| {
+                if count > 0 {
+                    total / (num_classes * count as f32)
+                } else {
+                    1.0 // Default weight for empty classes
+                }
+            })
+            .collect();
+        
+        // Find min/max for display
+        let min_weight = weights.iter().cloned().fold(f32::INFINITY, f32::min);
+        let max_weight = weights.iter().cloned().fold(0.0f32, f32::max);
+        
+        println!("  ⚖️  Class weight range: {:.2} - {:.2}", min_weight, max_weight);
+        println!("  ⚖️  Using inverse-frequency weighting for imbalanced data");
+        
+        Some(weights)
+    } else {
+        None
+    };
+
     // Print training config
     let total_samples = train_samples.len() + val_samples.len();
     println!();
@@ -189,6 +232,7 @@ where
     println!("  🔄 Epochs:            {}", epochs);
     println!("  📦 Batch size:        {}", batch_size);
     println!("  📈 Learning rate:     {}", learning_rate);
+    println!("  ⚖️  Class weighted:    {}", if class_weighted { "yes" } else { "no" });
     println!("  🧠 Device:            {:?}", device);
     println!();
 
@@ -239,10 +283,15 @@ where
             // Forward pass
             let output = model.forward(batch.images.clone());
 
-            // Compute loss
-            let loss = CrossEntropyLossConfig::new()
-                .init(&output.device())
-                .forward(output.clone(), batch.targets.clone());
+            // Compute loss (with optional class weights)
+            let loss = if let Some(ref weights) = class_weights {
+                // Manual weighted cross entropy: weight each sample by its class weight
+                weighted_cross_entropy(&output, &batch.targets, weights, &device)
+            } else {
+                CrossEntropyLossConfig::new()
+                    .init(&output.device())
+                    .forward(output.clone(), batch.targets.clone())
+            };
 
             let loss_value: f64 = loss.clone().into_scalar().elem();
             epoch_loss += loss_value;
@@ -406,6 +455,46 @@ fn evaluate<B: AutodiffBackend>(
     } else {
         100.0 * correct as f64 / total as f64
     }
+}
+
+/// Compute weighted cross entropy loss
+/// 
+/// This manually implements class-weighted cross entropy since Burn 0.20
+/// doesn't provide built-in support for it.
+/// 
+/// Formula: L = -sum(weight[class] * log(softmax(output)[class])) / sum(weights)
+fn weighted_cross_entropy<B: AutodiffBackend>(
+    output: &burn::tensor::Tensor<B, 2>,
+    targets: &burn::tensor::Tensor<B, 1, burn::tensor::Int>,
+    weights: &[f32],
+    device: &B::Device,
+) -> burn::tensor::Tensor<B, 1> {
+    use burn::tensor::Tensor;
+    use burn::tensor::activation::softmax;
+    
+    // Compute softmax probabilities
+    let probs = softmax(output.clone(), 1);
+    
+    // Add small epsilon for numerical stability before log
+    let epsilon = 1e-7f32;
+    let log_probs = (probs + epsilon).log();
+    
+    // Get the log probability of the correct class for each sample
+    // We need to gather the log probabilities at the target indices
+    let targets_expanded = targets.clone().unsqueeze_dim::<2>(1);
+    let target_log_probs = log_probs.gather(1, targets_expanded).squeeze::<1>();
+    
+    // Create weight tensor for each sample based on its class
+    let weights_tensor: Tensor<B, 1> = Tensor::from_floats(weights, device);
+    
+    // Gather weights for each target class
+    let sample_weights = weights_tensor.gather(0, targets.clone());
+    
+    // Weighted negative log likelihood
+    let weighted_nll = target_log_probs.neg().mul(sample_weights.clone());
+    
+    // Return mean weighted loss
+    weighted_nll.sum() / sample_weights.sum()
 }
 
 #[cfg(test)]

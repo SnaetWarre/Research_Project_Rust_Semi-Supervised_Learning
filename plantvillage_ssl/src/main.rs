@@ -42,10 +42,29 @@ enum Commands {
         output_dir: String,
     },
 
+    /// Prepare a balanced dataset from raw PlantVillage data
+    Prepare {
+        /// Source directory containing raw data (will auto-detect nested structure)
+        #[arg(short, long, default_value = "data/plantvillage/raw")]
+        source_dir: String,
+
+        /// Output directory for balanced dataset
+        #[arg(short, long, default_value = "data/plantvillage/balanced")]
+        output_dir: String,
+
+        /// Samples per class (default: use minimum class size for perfect balance)
+        #[arg(short, long)]
+        samples_per_class: Option<usize>,
+
+        /// Random seed for reproducibility
+        #[arg(long, default_value = "42")]
+        seed: u64,
+    },
+
     /// Train the model with semi-supervised learning
     Train {
         /// Path to the dataset directory
-        #[arg(short, long, default_value = "data/plantvillage")]
+        #[arg(short, long, default_value = "data/plantvillage/balanced")]
         data_dir: String,
 
         /// Number of training epochs
@@ -83,6 +102,10 @@ enum Commands {
         /// Quick test mode - use only 500 samples for fast verification
         #[arg(long, default_value = "false")]
         quick: bool,
+
+        /// Use class-weighted loss (inverse frequency weighting for imbalanced data)
+        #[arg(long, default_value = "false")]
+        class_weighted: bool,
     },
 
     /// Run inference on a single image or directory
@@ -211,6 +234,15 @@ fn main() -> Result<()> {
             cmd_download(&output_dir)?;
         }
 
+        Commands::Prepare {
+            source_dir,
+            output_dir,
+            samples_per_class,
+            seed,
+        } => {
+            cmd_prepare(&source_dir, &output_dir, samples_per_class, seed)?;
+        }
+
         Commands::Train {
             data_dir,
             epochs,
@@ -222,6 +254,7 @@ fn main() -> Result<()> {
             cuda,
             seed,
             quick,
+            class_weighted,
         } => {
             // Always use CUDA - this project targets GPU (Jetson Orin Nano)
             let _ = cuda; // Ignore flag, always GPU
@@ -243,6 +276,7 @@ fn main() -> Result<()> {
                 &output_dir,
                 seed,
                 max_samples,
+                class_weighted,
             )?;
         }
 
@@ -330,10 +364,48 @@ fn cmd_download(output_dir: &str) -> Result<()> {
     println!("{}", "Steps to download manually:".cyan());
     println!("  1. Visit the Kaggle URL above");
     println!("  2. Download and extract the dataset");
-    println!("  3. Organize into: {}/{{class_name}}/*.jpg", output_dir);
+    println!("  3. Run: plantvillage_ssl prepare --source-dir {}/raw --output-dir {}/balanced", output_dir, output_dir);
+
+    Ok(())
+}
+
+fn cmd_prepare(source_dir: &str, output_dir: &str, samples_per_class: Option<usize>, seed: u64) -> Result<()> {
+    use plantvillage_ssl::dataset::prepare::{prepare_balanced_dataset, PrepareConfig};
+    use std::path::Path;
+
+    info!("Preparing balanced dataset");
+    info!("  Source: {}", source_dir);
+    info!("  Output: {}", output_dir);
+
+    println!("{}", "Dataset Preparation".cyan().bold());
+    println!("  📁 Source: {}", source_dir);
+    println!("  📁 Output: {}", output_dir);
+    println!("  🎲 Seed: {}", seed);
+    if let Some(n) = samples_per_class {
+        println!("  📊 Samples per class: {}", n);
+    } else {
+        println!("  📊 Samples per class: auto (minimum class size)");
+    }
     println!();
-    println!("{}", "Or use the Python script:".cyan());
-    println!("  python scripts/download_dataset.py --output {}", output_dir);
+
+    let config = PrepareConfig {
+        seed,
+        samples_per_class,
+    };
+
+    let stats = prepare_balanced_dataset(
+        Path::new(source_dir),
+        Path::new(output_dir),
+        &config,
+    )?;
+
+    println!();
+    println!("{}", "Next steps:".cyan().bold());
+    println!("  • Train with balanced data:");
+    println!("    plantvillage_ssl train --data-dir {} --epochs 50", output_dir);
+    println!();
+    println!("  • Or use class-weighted loss with original data:");
+    println!("    plantvillage_ssl train --data-dir data/plantvillage/raw --class-weighted");
 
     Ok(())
 }

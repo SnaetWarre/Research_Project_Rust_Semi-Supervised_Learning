@@ -154,7 +154,7 @@ where
 
     // Create optimizer
     let mut optimizer = AdamConfig::new()
-        .with_weight_decay(Some(burn::optim::decay::WeightDecayConfig::new(1e-4)))
+        .with_weight_decay(Some(burn::optim::decay::WeightDecayConfig::new(1e-4f32)))
         .init();
 
     // Create stream simulator with combined unlabeled pool
@@ -344,6 +344,8 @@ where
 }
 
 /// Run inference on a batch of hidden-label images
+/// 
+/// Note: Processes in smaller batches to avoid cubecl-runtime memory management issues
 fn run_inference_batch<B: AutodiffBackend>(
     model: &PlantClassifier<B>,
     images: &[HiddenLabelImage],
@@ -351,53 +353,67 @@ fn run_inference_batch<B: AutodiffBackend>(
     _device: &B::Device,
     image_size: usize,
 ) -> Vec<Prediction> {
+    const INFERENCE_BATCH_SIZE: usize = 32;
     let inner_model = model.clone().valid();
+    let inner_device = <B::InnerBackend as burn::tensor::backend::Backend>::Device::default();
     let mut predictions = Vec::new();
-
-    // Load images
-    let items: Vec<PlantVillageItem> = images
-        .iter()
-        .filter_map(|hidden| {
-            PlantVillageItem::from_path(&hidden.image_path, hidden.hidden_label, image_size).ok()
-        })
-        .collect();
-
-    if items.is_empty() {
-        return predictions;
-    }
-
-    // Create batch
-    let batch = batcher.batch(items.clone());
-
-    // Run inference with softmax
-    let output = inner_model.forward_softmax(batch.images);
-    let output_data = output.clone().into_data();
-    let probs: Vec<f32> = output_data.to_vec().unwrap();
-
     let num_classes = 38;
 
-    // Extract predictions
-    for (i, (_item, hidden)) in items.iter().zip(images.iter()).enumerate() {
-        let start = i * num_classes;
-        let end = start + num_classes;
-        let item_probs: Vec<f32> = probs[start..end].to_vec();
+    // Process in smaller batches to avoid memory issues in cubecl-runtime
+    for chunk_start in (0..images.len()).step_by(INFERENCE_BATCH_SIZE) {
+        let chunk_end = (chunk_start + INFERENCE_BATCH_SIZE).min(images.len());
+        let chunk_images = &images[chunk_start..chunk_end];
 
-        // Find max
-        let (predicted_label, confidence) = item_probs
-            .iter()
-            .enumerate()
-            .max_by(|(_, a), (_, b)| a.partial_cmp(b).unwrap())
-            .map(|(idx, &conf)| (idx, conf))
-            .unwrap_or((0, 0.0));
+        // Load images for this chunk, keeping track of which ones succeeded
+        let mut loaded_items: Vec<(usize, PlantVillageItem)> = Vec::new();
+        for (idx, hidden) in chunk_images.iter().enumerate() {
+            if let Ok(item) = PlantVillageItem::from_path(&hidden.image_path, hidden.hidden_label, image_size) {
+                loaded_items.push((idx, item));
+            }
+        }
 
-        predictions.push(Prediction {
-            image_path: hidden.image_path.clone(),
-            predicted_label,
-            confidence,
-            probabilities: item_probs,
-            image_id: hidden.image_id,
-            ground_truth: Some(hidden.hidden_label),
-        });
+        if loaded_items.is_empty() {
+            continue;
+        }
+
+        let items: Vec<PlantVillageItem> = loaded_items.iter().map(|(_, item)| item.clone()).collect();
+
+        // Create batch and run inference
+        let batch = batcher.batch(items, &inner_device);
+        let output = inner_model.forward_softmax(batch.images);
+        let output_data = output.into_data();
+        let probs: Vec<f32> = output_data.to_vec().unwrap();
+
+        // Extract predictions for this chunk
+        for (i, (chunk_idx, _)) in loaded_items.iter().enumerate() {
+            let hidden = &chunk_images[*chunk_idx];
+            
+            let start = i * num_classes;
+            let end = start + num_classes;
+            
+            if end > probs.len() {
+                break;
+            }
+            
+            let item_probs: Vec<f32> = probs[start..end].to_vec();
+
+            // Find max
+            let (predicted_label, confidence) = item_probs
+                .iter()
+                .enumerate()
+                .max_by(|(_, a), (_, b)| a.partial_cmp(b).unwrap())
+                .map(|(idx, &conf)| (idx, conf))
+                .unwrap_or((0, 0.0));
+
+            predictions.push(Prediction {
+                image_path: hidden.image_path.clone(),
+                predicted_label,
+                confidence,
+                probabilities: item_probs,
+                image_id: hidden.image_id,
+                ground_truth: Some(hidden.hidden_label),
+            });
+        }
     }
 
     predictions
@@ -413,6 +429,7 @@ fn evaluate_model<B: AutodiffBackend>(
     use burn::data::dataset::Dataset;
 
     let inner_model = model.clone().valid();
+    let inner_device = <B::InnerBackend as burn::tensor::backend::Backend>::Device::default();
     let len = dataset.len();
     let mut correct = 0usize;
     let mut total = 0usize;
@@ -425,9 +442,9 @@ fn evaluate_model<B: AutodiffBackend>(
             continue;
         }
 
-        let batch = batcher.batch(items);
+        let batch = batcher.batch(items, &inner_device);
         let output = inner_model.forward(batch.images);
-        let predictions = output.argmax(1).squeeze::<1>(1);
+        let predictions = output.argmax(1).squeeze::<1>();
 
         let batch_correct: i64 = predictions
             .equal(batch.targets)
@@ -450,7 +467,7 @@ fn evaluate_model<B: AutodiffBackend>(
 /// Retrain model with combined labeled and pseudo-labeled data
 fn retrain_model<B: AutodiffBackend>(
     mut model: PlantClassifier<B>,
-    optimizer: &mut burn::optim::adaptor::OptimizerAdaptor<burn::optim::Adam<B::InnerBackend>, PlantClassifier<B>, B>,
+    optimizer: &mut burn::optim::adaptor::OptimizerAdaptor<burn::optim::Adam, PlantClassifier<B>, B>,
     dataset: &PlantVillageBurnDataset,
     epochs: usize,
     batch_size: usize,
@@ -483,7 +500,7 @@ fn retrain_model<B: AutodiffBackend>(
                 continue;
             }
 
-            let batch = batcher.batch(items);
+            let batch = batcher.batch(items, &device);
 
             // Forward pass
             let output = model.forward(batch.images.clone());

@@ -8,20 +8,21 @@ license = "MIT"
 
 [dependencies]
 # ML Framework - Burn with multiple backends
-burn = { version = "0.15", features = ["train", "tui"] }
-burn-cuda = { version = "0.15", optional = true }       # CUDA backend for GPU training
-burn-ndarray = { version = "0.15", optional = true }    # CPU backend fallback
-burn-tch = { version = "0.15", optional = true }        # LibTorch backend (optional, for comparison)
+# Note: 0.20-pre has latest cubecl with CUDA 13 support
+burn = { version = "0.20.0-pre", features = ["train", "metrics"] }
+burn-cuda = { version = "0.20.0-pre", optional = true }       # CUDA backend for GPU training
+burn-ndarray = { version = "0.20.0-pre", optional = true }    # CPU backend fallback
+burn-tch = { version = "0.20.0-pre", optional = true }        # LibTorch backend (optional, for comparison)
 
 # Data handling
 image = "0.25"
 ndarray = "0.16"
 walkdir = "2.5"                                          # Directory traversal for dataset loading
 
-# Serialization - bincode 2.0.0-rc.3 is required for Burn 0.15 compatibility
+# Serialization
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
-bincode = "=2.0.0-rc.3"                                  # Exact version required for Burn 0.15
+bincode = "2.0"                                          # Burn 0.18 uses bincode 2.0.1+
 
 # Logging & Monitoring
 tracing = "0.1"

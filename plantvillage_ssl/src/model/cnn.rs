@@ -47,7 +47,7 @@ pub struct PlantClassifierConfig {
 #[derive(Module, Debug)]
 pub struct ConvBlock<B: Backend> {
     conv: Conv2d<B>,
-    bn: BatchNorm<B, 2>,
+    bn: BatchNorm<B>,
     relu: Relu,
     pool: Option<MaxPool2d>,
 }
@@ -200,15 +200,15 @@ impl<B: Backend> PlantClassifier<B> {
 #[derive(Module, Debug)]
 pub struct PlantClassifierLite<B: Backend> {
     conv1: Conv2d<B>,
-    bn1: BatchNorm<B, 2>,
+    bn1: BatchNorm<B>,
     pool1: MaxPool2d,
 
     conv2: Conv2d<B>,
-    bn2: BatchNorm<B, 2>,
+    bn2: BatchNorm<B>,
     pool2: MaxPool2d,
 
     conv3: Conv2d<B>,
-    bn3: BatchNorm<B, 2>,
+    bn3: BatchNorm<B>,
 
     global_pool: AdaptiveAvgPool2d,
 

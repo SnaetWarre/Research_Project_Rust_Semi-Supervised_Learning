@@ -65,15 +65,19 @@ class TrainingConfig:
 class PseudoLabelConfig:
     """Pseudo-labeling configuration for semi-supervised learning."""
 
-    confidence_threshold: float = 0.9
+    confidence_threshold: float = 0.85
     max_per_class: Optional[int] = 500
     retrain_threshold: int = 200
 
-    # Curriculum learning settings
-    curriculum_learning: bool = False
-    curriculum_initial_threshold: float = 0.95
-    curriculum_final_threshold: float = 0.8
-    curriculum_epochs: int = 20
+    # Warm-up and generation schedule
+    warmup_epochs: int = 3  # Train on labeled data only for first N epochs
+    generation_interval: int = 3  # Generate new pseudo-labels every N epochs
+
+    # Curriculum learning: start with lower threshold, increase over time
+    curriculum_learning: bool = True
+    curriculum_initial_threshold: float = 0.7
+    curriculum_final_threshold: float = 0.9
+    curriculum_epochs: int = 15
 
     def get_threshold(self, current_epoch: int) -> float:
         """Get effective threshold based on curriculum learning."""
@@ -83,10 +87,10 @@ class PseudoLabelConfig:
         if current_epoch >= self.curriculum_epochs:
             return self.curriculum_final_threshold
 
-        # Linear interpolation
+        # Linear interpolation from low to high (easier to harder)
         progress = current_epoch / self.curriculum_epochs
-        threshold = self.curriculum_initial_threshold - progress * (
-            self.curriculum_initial_threshold - self.curriculum_final_threshold
+        threshold = self.curriculum_initial_threshold + progress * (
+            self.curriculum_final_threshold - self.curriculum_initial_threshold
         )
         return threshold
 
@@ -740,16 +744,36 @@ class SemiSupervisedTrainer:
         self.optimizer = self._create_optimizer(self.model)
         self.scheduler = self._create_scheduler(self.optimizer, self.config.epochs)
 
-        # Initial training on labeled data
+        # Training transforms
         train_transform = self._create_transforms(training=True)
 
         best_val_acc = 0.0
+        warmup_epochs = self.pseudo_config.warmup_epochs
+        generation_interval = self.pseudo_config.generation_interval
 
         for epoch in range(self.config.epochs):
             start_time = time.time()
             self.pseudo_labeler.set_epoch(epoch)
 
-            # Combine labeled + pseudo-labeled data
+            # Generate pseudo-labels after warm-up, then periodically
+            # This happens BEFORE training so the pseudo-labels are used in this epoch
+            if epoch == warmup_epochs:
+                # First pseudo-label generation after warm-up
+                print(f"\n>>> Initial pseudo-label generation (after {warmup_epochs} warm-up epochs)...")
+                self.pseudo_labeler.process_predictions(
+                    self.model, unlabeled_loader, self.device
+                )
+            elif epoch > warmup_epochs and (epoch - warmup_epochs) % generation_interval == 0:
+                # Periodic refresh of pseudo-labels
+                print(f"\n>>> Refreshing pseudo-labels (epoch {epoch + 1})...")
+                # Clear old pseudo-labels and regenerate with updated model
+                self.pseudo_labeler.clear()
+                self.pseudo_labeler.set_epoch(epoch)
+                self.pseudo_labeler.process_predictions(
+                    self.model, unlabeled_loader, self.device
+                )
+
+            # Get current pseudo-labels (may have just been updated above)
             current_pseudo_labels = self.pseudo_labeler.get_pseudo_labels()
 
             combined_dataset = PseudoLabeledDataset(
@@ -771,13 +795,6 @@ class SemiSupervisedTrainer:
             train_loss, train_acc = self._train_epoch(
                 self.model, train_loader, self.optimizer, epoch
             )
-
-            # Generate new pseudo-labels every 5 epochs
-            if (epoch + 1) % 5 == 0 and epoch < self.config.epochs - 1:
-                print(f"\n>>> Generating pseudo-labels (epoch {epoch + 1})...")
-                self.pseudo_labeler.process_predictions(
-                    self.model, unlabeled_loader, self.device
-                )
 
             # Evaluate
             val_acc = self._evaluate(self.model, val_loader)
@@ -803,11 +820,18 @@ class SemiSupervisedTrainer:
                 best_val_acc = val_acc
                 self._save_checkpoint("best_model_ssl.pth")
 
+            # Show phase info
+            if epoch < warmup_epochs:
+                phase = "warm-up"
+            else:
+                phase = "SSL"
+            
             print(
-                f"Epoch {epoch + 1}/{self.config.epochs}: "
+                f"Epoch {epoch + 1}/{self.config.epochs} [{phase}]: "
                 f"Loss={train_loss:.4f}, Train Acc={train_acc:.2f}%, "
                 f"Val Acc={val_acc:.2f}%{' ★' if is_best else ''}, "
                 f"Pseudo-labels={len(current_pseudo_labels)} "
+                f"(thresh={self.pseudo_labeler.current_threshold():.2f}) "
                 f"({epoch_time:.1f}s)"
             )
 
@@ -973,13 +997,19 @@ def main():
     parser.add_argument(
         "--confidence-threshold",
         type=float,
-        default=0.9,
-        help="Confidence threshold for pseudo-labeling",
+        default=0.85,
+        help="Confidence threshold for pseudo-labeling (default: 0.85)",
     )
     parser.add_argument(
-        "--curriculum",
+        "--no-curriculum",
         action="store_true",
-        help="Use curriculum learning for pseudo-labeling",
+        help="Disable curriculum learning (enabled by default)",
+    )
+    parser.add_argument(
+        "--warmup-epochs",
+        type=int,
+        default=3,
+        help="Number of warm-up epochs before pseudo-labeling (default: 3)",
     )
 
     args = parser.parse_args()
@@ -999,7 +1029,8 @@ def main():
 
     pseudo_config = PseudoLabelConfig(
         confidence_threshold=args.confidence_threshold,
-        curriculum_learning=args.curriculum,
+        curriculum_learning=not args.no_curriculum,
+        warmup_epochs=args.warmup_epochs,
     )
 
     # Print configuration
@@ -1015,6 +1046,14 @@ def main():
     print(f"Labeled ratio: {training_config.labeled_ratio:.0%}")
     print(f"Model: {'Lite' if training_config.use_lite_model else 'Full'}")
     print(f"Mode: {args.mode}")
+    if args.mode in ["semi", "both"]:
+        print(f"\nSSL Settings:")
+        print(f"  Warm-up epochs: {pseudo_config.warmup_epochs}")
+        print(f"  Curriculum learning: {pseudo_config.curriculum_learning}")
+        if pseudo_config.curriculum_learning:
+            print(f"  Threshold: {pseudo_config.curriculum_initial_threshold:.2f} → {pseudo_config.curriculum_final_threshold:.2f}")
+        else:
+            print(f"  Confidence threshold: {pseudo_config.confidence_threshold:.2f}")
     print()
 
     # Create trainer

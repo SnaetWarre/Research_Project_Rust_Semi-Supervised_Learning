@@ -225,8 +225,8 @@ impl<B: Backend> PlantVillageBatcher<B> {
     }
 }
 
-impl<B: Backend> Batcher<PlantVillageItem, PlantVillageBatch<B>> for PlantVillageBatcher<B> {
-    fn batch(&self, items: Vec<PlantVillageItem>) -> PlantVillageBatch<B> {
+impl<B: Backend> Batcher<B, PlantVillageItem, PlantVillageBatch<B>> for PlantVillageBatcher<B> {
+    fn batch(&self, items: Vec<PlantVillageItem>, device: &B::Device) -> PlantVillageBatch<B> {
         let batch_size = items.len();
         let channels = 3;
         let height = self.image_size;
@@ -238,7 +238,7 @@ impl<B: Backend> Batcher<PlantVillageItem, PlantVillageBatch<B>> for PlantVillag
         // Create image tensor with shape [batch_size, channels, height, width]
         let images = Tensor::<B, 4>::from_floats(
             TensorData::new(images_data, [batch_size, channels, height, width]),
-            &self.device,
+            device,
         );
 
         // Apply ImageNet normalization: (x - mean) / std
@@ -249,14 +249,14 @@ impl<B: Backend> Batcher<PlantVillageItem, PlantVillageBatch<B>> for PlantVillag
                 vec![0.485f32, 0.456, 0.406],
                 [1, 3, 1, 1],
             ),
-            &self.device,
+            device,
         );
         let std = Tensor::<B, 4>::from_floats(
             TensorData::new(
                 vec![0.229f32, 0.224, 0.225],
                 [1, 3, 1, 1],
             ),
-            &self.device,
+            device,
         );
 
         let images = (images - mean) / std;
@@ -265,7 +265,7 @@ impl<B: Backend> Batcher<PlantVillageItem, PlantVillageBatch<B>> for PlantVillag
         let targets_data: Vec<i64> = items.iter().map(|item| item.label as i64).collect();
         let targets = Tensor::<B, 1, Int>::from_data(
             TensorData::new(targets_data, [batch_size]),
-            &self.device,
+            device,
         );
 
         PlantVillageBatch { images, targets }
@@ -327,8 +327,8 @@ impl<B: Backend> PseudoLabelBatcher<B> {
     }
 }
 
-impl<B: Backend> Batcher<PseudoLabeledItem, PseudoLabelBatch<B>> for PseudoLabelBatcher<B> {
-    fn batch(&self, items: Vec<PseudoLabeledItem>) -> PseudoLabelBatch<B> {
+impl<B: Backend> Batcher<B, PseudoLabeledItem, PseudoLabelBatch<B>> for PseudoLabelBatcher<B> {
+    fn batch(&self, items: Vec<PseudoLabeledItem>, device: &B::Device) -> PseudoLabelBatch<B> {
         let batch_size = items.len();
         let channels = 3;
         let height = self.image_size;
@@ -343,17 +343,17 @@ impl<B: Backend> Batcher<PseudoLabeledItem, PseudoLabelBatch<B>> for PseudoLabel
         // Create image tensor
         let images = Tensor::<B, 4>::from_floats(
             TensorData::new(images_data, [batch_size, channels, height, width]),
-            &self.device,
+            device,
         );
 
         // Apply normalization
         let mean = Tensor::<B, 4>::from_floats(
             TensorData::new(vec![0.485f32, 0.456, 0.406], [1, 3, 1, 1]),
-            &self.device,
+            device,
         );
         let std = Tensor::<B, 4>::from_floats(
             TensorData::new(vec![0.229f32, 0.224, 0.225], [1, 3, 1, 1]),
-            &self.device,
+            device,
         );
         let images = (images - mean) / std;
 
@@ -361,14 +361,14 @@ impl<B: Backend> Batcher<PseudoLabeledItem, PseudoLabelBatch<B>> for PseudoLabel
         let targets_data: Vec<i64> = items.iter().map(|item| item.item.label as i64).collect();
         let targets = Tensor::<B, 1, Int>::from_data(
             TensorData::new(targets_data, [batch_size]),
-            &self.device,
+            device,
         );
 
         // Create weights tensor (confidence scores)
         let weights_data: Vec<f32> = items.iter().map(|item| item.confidence).collect();
         let weights = Tensor::<B, 1>::from_floats(
             TensorData::new(weights_data, [batch_size]),
-            &self.device,
+            device,
         );
 
         PseudoLabelBatch {

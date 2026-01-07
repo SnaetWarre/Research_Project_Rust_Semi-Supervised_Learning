@@ -176,7 +176,7 @@ where
 
     // Create optimizer
     let mut optimizer = AdamConfig::new()
-        .with_weight_decay(Some(burn::optim::decay::WeightDecayConfig::new(1e-4)))
+        .with_weight_decay(Some(burn::optim::decay::WeightDecayConfig::new(1e-4f32)))
         .init();
 
     // Print training config
@@ -234,7 +234,7 @@ where
                 continue;
             }
             
-            let batch = batcher.batch(items);
+            let batch = batcher.batch(items, &device);
 
             // Forward pass
             let output = model.forward(batch.images.clone());
@@ -248,7 +248,7 @@ where
             epoch_loss += loss_value;
 
             // Calculate batch accuracy
-            let predictions = output.argmax(1).squeeze::<1>(1);
+            let predictions = output.argmax(1).squeeze::<1>();
             let batch_correct: i64 = predictions
                 .equal(batch.targets.clone())
                 .int()
@@ -371,7 +371,7 @@ fn evaluate<B: AutodiffBackend>(
     let device = <B::InnerBackend as Backend>::Device::default();
 
     // Create a batcher for the inner backend with correct image size
-    let inner_batcher = PlantVillageBatcher::<B::InnerBackend>::with_image_size(device, image_size);
+    let inner_batcher = PlantVillageBatcher::<B::InnerBackend>::with_image_size(device.clone(), image_size);
 
     let inner_model = model.clone().valid();
     let len = dataset.len();
@@ -386,9 +386,9 @@ fn evaluate<B: AutodiffBackend>(
             continue;
         }
 
-        let batch = inner_batcher.batch(items);
+        let batch = inner_batcher.batch(items, &device);
         let output = inner_model.forward(batch.images);
-        let predictions = output.argmax(1).squeeze::<1>(1);
+        let predictions = output.argmax(1).squeeze::<1>();
 
         let batch_correct: i64 = predictions
             .equal(batch.targets)

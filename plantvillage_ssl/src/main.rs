@@ -226,7 +226,6 @@ fn main() -> Result<()> {
             // Always use CUDA - this project targets GPU (Jetson Orin Nano)
             let _ = cuda; // Ignore flag, always GPU
 
-            // Quick mode uses fewer samples for fast testing
             let max_samples = if quick {
                 println!("{}", "🚀 Quick test mode: using only 500 samples".yellow().bold());
                 Some(500usize)

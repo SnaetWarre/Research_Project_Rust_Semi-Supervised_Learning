@@ -94,7 +94,7 @@ pub struct Trainer<B: AutodiffBackend> {
     /// Model being trained
     pub model: PlantClassifier<B>,
     /// Adam optimizer
-    optimizer: burn::optim::adaptor::OptimizerAdaptor<burn::optim::Adam<B::InnerBackend>, PlantClassifier<B>, B>,
+    optimizer: burn::optim::adaptor::OptimizerAdaptor<burn::optim::Adam, PlantClassifier<B>, B>,
     /// Training configuration
     pub config: TrainingConfig,
     /// Semi-supervised learning configuration
@@ -118,7 +118,7 @@ impl<B: AutodiffBackend> Trainer<B> {
     ) -> Self {
         let optimizer = AdamConfig::new()
             .with_weight_decay(Some(burn::optim::decay::WeightDecayConfig::new(
-                config.weight_decay,
+                config.weight_decay as f32,
             )))
             .init();
 
@@ -169,7 +169,7 @@ impl<B: AutodiffBackend> Trainer<B> {
             total_loss += loss_value;
 
             // Calculate accuracy
-            let predictions = output.argmax(1).squeeze::<1>(1);
+            let predictions = output.argmax(1).squeeze::<1>();
             let batch_correct_tensor = predictions
                 .equal(batch.targets.clone())
                 .int()
@@ -258,7 +258,7 @@ impl<B: AutodiffBackend> Trainer<B> {
             labeled_loss_total += loss_value;
 
             // Calculate accuracy
-            let predictions = output.argmax(1).squeeze::<1>(1);
+            let predictions = output.argmax(1).squeeze::<1>();
             let batch_correct_tensor = predictions
                 .equal(batch.targets.clone())
                 .int()
@@ -353,7 +353,7 @@ impl<B: AutodiffBackend> Trainer<B> {
         // Gather the log probabilities for the target classes
         let targets_2d = targets.clone().reshape([batch_size, 1]);
         let gathered = log_probs.gather(1, targets_2d);
-        let nll = gathered.squeeze::<1>(1).neg(); // Negative log likelihood
+        let nll = gathered.squeeze::<1>().neg(); // Negative log likelihood
 
         // Apply confidence weights
         let weighted_nll = nll * weights.clone();
@@ -402,7 +402,7 @@ impl<B: AutodiffBackend> Trainer<B> {
             total_loss += loss_value;
 
             // Get predictions
-            let predictions = output.argmax(1).squeeze::<1>(1);
+            let predictions = output.argmax(1).squeeze::<1>();
 
             // Count correct predictions
             let batch_correct_tensor = predictions
@@ -660,7 +660,7 @@ pub fn accuracy<B: burn::tensor::backend::Backend>(
     output: Tensor<B, 2>,
     targets: Tensor<B, 1, Int>,
 ) -> f64 {
-    let predictions = output.argmax(1).squeeze::<1>(1);
+    let predictions = output.argmax(1).squeeze::<1>();
     let correct_tensor = predictions.equal(targets.clone()).int().sum();
     let correct: i64 = correct_tensor.into_scalar().elem();
     let total = targets.dims()[0];

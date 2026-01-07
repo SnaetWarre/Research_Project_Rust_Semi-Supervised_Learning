@@ -8,48 +8,13 @@
     Database, 
     Brain, 
     Activity, 
-    FolderOpen, 
     Upload,
     CheckCircle,
     AlertCircle,
     Info
   } from 'lucide-svelte';
 
-  let isLoadingDataset = $state(false);
   let isLoadingModel = $state(false);
-
-  async function loadDataset() {
-    const selected = await open({
-      directory: true,
-      title: 'Select PlantVillage Dataset Directory',
-    });
-
-    if (selected) {
-      isLoadingDataset = true;
-      try {
-        const result = await invoke<{
-          path: string;
-          total_samples: number;
-          num_classes: number;
-          class_names: string[];
-          class_counts: number[];
-        }>('get_dataset_stats', { dataDir: selected });
-
-        datasetInfo.set({
-          path: result.path,
-          totalSamples: result.total_samples,
-          numClasses: result.num_classes,
-          classNames: result.class_names,
-          classCounts: result.class_counts,
-        });
-        addActivity('success', `Dataset loaded: ${result.total_samples} samples, ${result.num_classes} classes`);
-      } catch (e) {
-        addActivity('error', `Failed to load dataset: ${e}`);
-      } finally {
-        isLoadingDataset = false;
-      }
-    }
-  }
 
   async function loadModel() {
     const selected = await open({
@@ -110,14 +75,6 @@
   <div class="flex items-center justify-between">
     <h2 class="text-2xl font-bold text-white">Dashboard</h2>
     <div class="flex gap-3">
-      <button
-        class="btn-secondary flex items-center gap-2"
-        onclick={loadDataset}
-        disabled={isLoadingDataset}
-      >
-        <FolderOpen class="w-4 h-4" />
-        {isLoadingDataset ? 'Loading...' : 'Load Dataset'}
-      </button>
       <button
         class="btn-primary flex items-center gap-2"
         onclick={loadModel}

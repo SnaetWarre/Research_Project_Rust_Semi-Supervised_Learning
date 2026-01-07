@@ -14,7 +14,7 @@
   let learningRate = $state(0.0001);
   let labeledRatio = $state(0.2);
   let confidenceThreshold = $state(0.9);
-  let dataDir = $state('data/plantvillage');
+  let dataDir = $derived($datasetInfo?.path || 'data/plantvillage/balanced');
   let outputDir = $state('output/models');
 
   let showSettings = $state(false);
@@ -70,10 +70,7 @@
     });
     unlisteners.push(completeUnlisten);
 
-    // Update data dir from dataset info if available
-    if ($datasetInfo) {
-      dataDir = $datasetInfo.path;
-    }
+    // Data dir is automatically derived from dataset info
   });
 
   onDestroy(() => {
@@ -193,7 +190,8 @@
         </div>
         <div>
           <label class="block text-sm text-slate-400 mb-1">Data Directory</label>
-          <input type="text" class="input w-full" bind:value={dataDir} />
+          <input type="text" class="input w-full bg-slate-800/50 text-slate-500" value={dataDir} readonly />
+          <p class="text-xs text-slate-500 mt-1">Auto-loaded from balanced dataset</p>
         </div>
       </div>
     </Card>

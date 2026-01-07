@@ -13,7 +13,7 @@
   let imagesPerDay = $state(50);
   let confidenceThreshold = $state(0.9);
   let retrainThreshold = $state(200);
-  let dataDir = $state('data/plantvillage');
+  let dataDir = $derived($datasetInfo?.path || 'data/plantvillage/balanced');
   let modelPath = $state('output/models/plant_classifier');
   let outputDir = $state('output/simulation');
 
@@ -45,10 +45,7 @@
     });
     unlisteners.push(completeUnlisten);
 
-    // Update paths from loaded data
-    if ($datasetInfo) {
-      dataDir = $datasetInfo.path;
-    }
+    // Update model path from loaded model
     if ($modelInfo.path) {
       modelPath = $modelInfo.path.replace(/\.mpk$/, '');
     }
@@ -168,7 +165,8 @@
         </div>
         <div>
           <label class="block text-sm text-slate-400 mb-1">Data Directory</label>
-          <input type="text" class="input w-full" bind:value={dataDir} />
+          <input type="text" class="input w-full bg-slate-800/50 text-slate-500" value={dataDir} readonly />
+          <p class="text-xs text-slate-500 mt-1">Auto-loaded from balanced dataset</p>
         </div>
       </div>
     </Card>

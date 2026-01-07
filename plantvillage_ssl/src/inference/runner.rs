@@ -92,9 +92,9 @@ pub fn run_benchmark<B: Backend>(
     let model_config = PlantClassifierConfig {
         num_classes: 38,
         input_size: image_size,
-        dropout_rate: 0.6,  // Must match training config
+        dropout_rate: 0.3,  // Must match training config
         in_channels: 3,
-        base_filters: 8,    // Must match training config
+        base_filters: 32,   // Must match training config
     };
 
     let model: PlantClassifier<B> = if let Some(path) = model_path {

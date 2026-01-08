@@ -7,17 +7,23 @@ mod commands;
 mod state;
 
 use std::sync::Arc;
+use tokio::sync::Mutex;
 use state::AppState;
+use commands::incremental::IncrementalProgress;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     // Initialize application state
     let app_state = Arc::new(AppState::new());
 
+    // Initialize incremental learning progress state
+    let incremental_progress_state: Arc<Mutex<Option<IncrementalProgress>>> = Arc::new(Mutex::new(None));
+
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_dialog::init())
         .manage(app_state)
+        .manage(incremental_progress_state)
         .invoke_handler(tauri::generate_handler![
             // Dataset commands
             commands::get_dataset_stats,
@@ -41,6 +47,14 @@ pub fn run() {
             // Benchmark commands
             commands::run_benchmark,
             commands::load_benchmark_results,
+            // Incremental learning commands
+            commands::train_incremental,
+            commands::get_incremental_progress,
+            commands::stop_incremental_training,
+            commands::run_experiment,
+            commands::get_incremental_methods,
+            // Diagnostics commands
+            commands::run_model_diagnostics,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

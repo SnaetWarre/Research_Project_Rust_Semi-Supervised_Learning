@@ -1,221 +1,63 @@
-# Semi-Supervised Plant Disease Classification with Burn
+# Plant Disease Detection - Research Project
 
-A semi-supervised neural network for plant disease classification implemented in Rust using the [Burn](https://burn.dev/) framework, designed for deployment on NVIDIA Jetson Orin Nano edge devices.
+**Student:** Warre Snaet | **Institution:** Howest MCT
 
-## Research Project
+Semi-supervised learning for plant disease classification on edge devices (Jetson) using Rust.
 
-**Goal:** Implement and compare semi-supervised learning approaches for plant disease classification on edge devices.
+---
 
-**Research Question:** How can a semi-supervised neural network be efficiently implemented in Rust for automatic labeling of partially labeled datasets on an edge device?
-
-## Dataset
-
-- **PlantVillage Dataset**: 61,486 images of plant leaves
-- **39 Classes**: Various plant diseases across 15 crop types
-- **Resolution**: 256x256 RGB images
-- **Semi-Supervised Setup**: 20-30% labeled data, 70-80% unlabeled for pseudo-labeling
-
-## Features
-
-- **GPU Acceleration**: CUDA backend for training and inference
-- **Semi-Supervised Learning**: Pseudo-labeling with confidence thresholds
-- **Stream Simulation**: Simulates real-time camera input from edge devices
-- **Edge Deployment**: Optimized for NVIDIA Jetson Orin Nano
-- **Benchmarking**: Full comparison with PyTorch reference implementation
-
-## Project Structure
+## 📁 Structure
 
 ```
-plantvillage_ssl/          # Main Rust/Burn implementation
-├── src/
-│   ├── dataset/           # Data loading and augmentation
-│   ├── model/             # CNN architecture
-│   ├── training/          # Training loop & pseudo-labeling
-│   ├── inference/         # Inference & benchmarking
-│   └── utils/             # Logging & metrics
-├── scripts/               # Setup & dataset download scripts
-└── output/                # Model weights and results
-
-pytorch_reference/         # PyTorch comparison implementation
-benchmarks/                 # Performance comparison results
-docs/                      # Documentation (installation, user guide)
-archive/                   # Old CIFAR-10 implementation (archived)
+Source/
+├── plantvillage_ssl/      # SSL implementation (pseudo-labeling) ✅ WORKS
+├── incremental_learning/  # Add new classes (5→6, 30→31 experiments)
+├── pytorch_reference/     # Python reference for comparison
+├── benchmarks/            # Framework comparison scripts
+└── research/              # Literature study, contract, meeting notes
 ```
 
-## Requirements
+---
 
-### Desktop (Training)
-- Rust 1.70+
-- NVIDIA GPU with CUDA 12.x drivers
-- Python 3.10+ (for PyTorch reference)
+## 🚀 Quick Start
 
-### Jetson Orin Nano (Inference)
-- NVIDIA Jetson Orin Nano 8GB
-- JetPack SDK
-- CUDA 12.x + cuDNN 9.x
-
-## Installation
-
-### Desktop Setup
-
+### 1. Download Dataset (Once)
 ```bash
-# Clone repository
-git clone <repository-url>
-cd Source
+./download_plantvillage.sh
+```
 
-# Install Rust dependencies
+### 2. SSL Training
+```bash
 cd plantvillage_ssl
-cargo build --release --features cuda
-
-# Download PlantVillage dataset
-python scripts/download_dataset.py
-```
-
-### Jetson Setup
-
-```bash
-# Run setup script on Jetson device
-./scripts/setup_jetson.sh
-```
-
-See [docs/installation.md](docs/installation.md) for detailed instructions.
-
-## 🚀 Quick Start - Run Full Research Pipeline
-
-The easiest way to run the entire research project is with the pipeline script:
-
-```bash
-# Run everything with one command
-./run_research_pipeline.sh all
-
-# Run with custom configuration
-./run_research_pipeline.sh all --epochs 20 --batch-size 32
-```
-
-This will:
-1. Download PlantVillage dataset
-2. Train Burn (Rust) model
-3. Train PyTorch model
-4. Run semi-supervised simulation
-5. Benchmark both frameworks
-6. Generate comparison reports
-
-See [scripts/PIPELINE_README.md](scripts/PIPELINE_README.md) for complete pipeline documentation.
-
-## Usage
-
-### Quick Start (Recommended)
-
-```bash
-# Run full research pipeline
-./run_research_pipeline.sh all
-
-# Or run specific stages
-./run_research_pipeline.sh train --epochs 50    # Train only
-./run_research_pipeline.sh benchmark            # Benchmark only
-./run_research_pipeline.sh ssl                 # SSL simulation only
-```
-
-### Individual Commands (Desktop)
-
-#### Training
-
-```bash
-# Train with semi-supervised learning
-cd plantvillage_ssl
-cargo run --release -- train \
-    --data-dir data/plantvillage \
-    --epochs 50 \
-    --batch-size 32 \
+cargo build --release
+./target/release/plantvillage_ssl ssl-train \
+    --data-dir data/plantvillage/organized \
     --labeled-ratio 0.3 \
-    --pseudo-threshold 0.9
+    --epochs 30 --cuda
 ```
 
-#### Inference
-
+### 3. Incremental Learning
 ```bash
-# Run single image prediction
-cargo run --release -- predict \
-    --model output/models/plant_classifier_YYYYMMDD_HHMMSS.mpk \
-    --image path/to/image.jpg
-
-# Benchmark inference performance
-cargo run --release -- benchmark \
-    --iterations 100
+cd incremental_learning
+cargo build --release
+./target/release/plant-incremental experiment \
+    --method lwf \
+    --base-classes 5 \
+    --new-classes 1 \
+    --data-dir ../plantvillage_ssl/data/plantvillage/organized
 ```
 
-#### Semi-Supervised Simulation
+---
 
-```bash
-# Simulate camera stream with pseudo-labeling
-cargo run --release -- simulate \
-    --data-dir data/plantvillage \
-    --batch-size 500 \
-    --days 10
-```
+## 🎯 Research Questions
 
-See [docs/user_guide.md](docs/user_guide.md) for complete usage instructions.
+1. **SSL:** How efficient is pseudo-labeling on edge devices?
+2. **Incremental:** Is 5→6 harder than 30→31 classes?
+3. **Data efficiency:** How many images needed per new class?
 
-## Performance Targets
+---
 
-- **Primary Metric**: Inference latency < 200ms per image on Jetson Orin Nano
-- **Secondary Metric**: Accuracy ≥ 85% on test set
-- **Semi-Supervised Impact**: ≥ 5% accuracy improvement over labeled-only baseline
+## 📖 Documentation
 
-## Architecture
-
-**CNN Model (ResNet-18 lite)**
-- Input: 224x224x3
-- 4 Convolutional blocks with BatchNorm and ReLU
-- AdaptiveAvgPool + Dropout(0.3)
-- Output: 39 classes (Softmax)
-
-## Research Deliverables
-
-- [ ] Working Rust/Burn codebase
-- [ ] Trained model weights on PlantVillage
-- [ ] Benchmark comparison (Burn vs PyTorch)
-- [ ] Jetson Orin Nano deployment
-- [ ] Demo-ready application with real-time predictions
-- [ ] Complete documentation
-
-## Documentation
-
-- [Installation Guide](docs/installation.md) - Setup for desktop and Jetson
-- [User Guide](docs/user_guide.md) - Usage and troubleshooting
-- [Research Contract](ResearchProject_Contractplan_Warre_Snaet%20(1).md) - Full research plan
-- [Implementation Plan](STAPPENPLAN_UPDATE_TO_PLANTVILLAGE.md) - Technical details
-
-## Comparison: Burn vs PyTorch
-
-### Using Pipeline Script (Recommended)
-
-```bash
-# Run full benchmark comparison
-./run_research_pipeline.sh benchmark --iterations 100
-
-# Or use the full pipeline which includes comparison
-./run_research_pipeline.sh all
-```
-
-### Manual Comparison
-
-```bash
-# Train PyTorch baseline
-cd pytorch_reference
-python trainer.py --data-dir ../plantvillage_ssl/data/plantvillage --epochs 50
-
-# Run comparison benchmarks
-cd ../benchmarks
-python compare_frameworks.py
-```
-
-## License
-
-Research Project - Howest University
-
-## Acknowledgments
-
-- PlantVillage Dataset: [PSU PlantVillage](https://plantvillage.psu.edu/)
-- Burn Framework: [Tracel AI](https://github.com/tracel-ai/burn)
-- Research Supervisor: Gilles Depypere
+- [plantvillage_ssl/docs/](plantvillage_ssl/docs/) - Installation & user guide
+- [research/literatuurstudie.md](research/literatuurstudie.md) - Literature review

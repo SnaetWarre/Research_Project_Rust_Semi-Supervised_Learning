@@ -1,0 +1,90 @@
+[workspace]
+resolver = "2"
+members = [
+    "crates/plant-core",
+    "crates/plant-dataset",
+    "crates/plant-training",
+    "crates/plant-incremental",
+    "crates/plant-mobile",
+    "tools/preprocess",
+    "tools/train",
+    "tools/evaluate",
+    "tools/experiment-runner",
+]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+authors = ["Research Project Team"]
+license = "MIT"
+repository = "https://github.com/yourusername/plant-incremental-learning"
+
+[workspace.dependencies]
+# Burn framework - core
+burn = { version = "0.14", features = ["train", "std"] }
+burn-import = { version = "0.14" }
+
+# Burn backends (CPU default, CUDA optional)
+burn-ndarray = { version = "0.14" }
+burn-wgpu = { version = "0.14" }
+
+# Image processing
+image = { version = "0.25", features = ["jpeg", "png"] }
+imageproc = "0.25"
+
+# Serialization
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+toml = "0.8"
+
+# Async runtime
+tokio = { version = "1.35", features = ["full"] }
+
+# Parallelism
+rayon = "1.8"
+
+# Error handling
+anyhow = "1.0"
+thiserror = "1.0"
+
+# CLI
+clap = { version = "4.4", features = ["derive"] }
+
+# Data handling
+csv = "1.3"
+ndarray = "0.15"
+ndarray-stats = "0.5"
+
+# Progress bars
+indicatif = "0.17"
+
+# Logging
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+
+# Time/Date
+chrono = "0.4"
+
+# Testing
+rand = "0.8"
+tempfile = "3.8"
+
+[profile.release]
+opt-level = 3
+lto = true
+codegen-units = 1
+panic = "abort"
+
+[profile.dev]
+opt-level = 0
+debug = true
+
+[profile.bench]
+inherits = "release"
+
+# Optional features for GPU acceleration
+[workspace.metadata.cuda]
+# CUDA support via burn-tch backend
+# Install: CUDA Toolkit 11.8+ and libtorch with CUDA support
+# Usage: cargo build --features cuda
+enabled = false

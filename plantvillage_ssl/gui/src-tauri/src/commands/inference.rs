@@ -89,18 +89,18 @@ fn get_class_name(class_id: usize) -> String {
 /// Helper to load model from path
 fn load_model_from_path(model_path: &Path) -> Result<PlantClassifier<AppBackend>, String> {
     let device = <AppBackend as burn::tensor::backend::Backend>::Device::default();
-    
+
     let config = PlantClassifierConfig {
         num_classes: 38,
         input_size: 128,
-        dropout_rate: 0.6,
+        dropout_rate: 0.3,
         in_channels: 3,
-        base_filters: 8,
+        base_filters: 32,
     };
-    
+
     let model: PlantClassifier<AppBackend> = PlantClassifier::new(&config, &device);
     let recorder = CompactRecorder::new();
-    
+
     model
         .load_file(model_path, &recorder, &device)
         .map_err(|e| format!("Failed to load model: {:?}", e))
@@ -130,14 +130,14 @@ pub async fn run_inference(
     // Load and preprocess image
     let img = image::open(path)
         .map_err(|e| format!("Failed to load image: {:?}", e))?;
-    
+
     let img = img.resize_exact(input_size as u32, input_size as u32, FilterType::Triangle);
     let img = img.to_rgb8();
 
     // Convert to tensor [1, 3, H, W]
     let device = <AppBackend as burn::tensor::backend::Backend>::Device::default();
     let mut pixels: Vec<f32> = Vec::with_capacity(3 * input_size * input_size);
-    
+
     // Normalize to [0, 1] and arrange as CHW
     for c in 0..3 {
         for y in 0..input_size {
@@ -172,7 +172,7 @@ pub async fn run_inference(
     // Get top 5 predictions
     let mut indexed_probs: Vec<(usize, f32)> = probs.iter().cloned().enumerate().collect();
     indexed_probs.sort_by(|(_, a), (_, b)| b.partial_cmp(a).unwrap());
-    
+
     let top_5: Vec<ClassPrediction> = indexed_probs
         .iter()
         .take(5)
@@ -212,14 +212,14 @@ pub async fn run_inference_bytes(
     // Load image from bytes
     let img = image::load_from_memory(&image_bytes)
         .map_err(|e| format!("Failed to load image: {:?}", e))?;
-    
+
     let img = img.resize_exact(input_size as u32, input_size as u32, FilterType::Triangle);
     let img = img.to_rgb8();
 
     // Convert to tensor [1, 3, H, W]
     let device = <AppBackend as burn::tensor::backend::Backend>::Device::default();
     let mut pixels: Vec<f32> = Vec::with_capacity(3 * input_size * input_size);
-    
+
     for c in 0..3 {
         for y in 0..input_size {
             for x in 0..input_size {
@@ -251,7 +251,7 @@ pub async fn run_inference_bytes(
 
     let mut indexed_probs: Vec<(usize, f32)> = probs.iter().cloned().enumerate().collect();
     indexed_probs.sort_by(|(_, a), (_, b)| b.partial_cmp(a).unwrap());
-    
+
     let top_5: Vec<ClassPrediction> = indexed_probs
         .iter()
         .take(5)

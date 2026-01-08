@@ -22,8 +22,11 @@ tokio = { version = "1", features = ["full"] }
 anyhow = "1.0"
 tracing = "0.1"
 
-# Reference to the main plantvillage_ssl crate
-plantvillage_ssl = { path = "../..", features = ["cuda"] }
+# Reference to the unified workspace crates
+plantvillage-core = { path = "../../../plantvillage_unified/crates/plantvillage-core", features = ["cuda"] }
+plantvillage-ssl = { path = "../../../plantvillage_unified/crates/plantvillage-ssl", features = ["cuda"] }
+plantvillage-incremental = { path = "../../../plantvillage_unified/crates/plantvillage-incremental", features = ["cuda"] }
+
 burn = { version = "0.20.0-pre" }
 burn-cuda = { version = "0.20.0-pre" }
 
@@ -43,4 +46,3 @@ walkdir = "2.5"
 [features]
 default = ["custom-protocol"]
 custom-protocol = ["tauri/custom-protocol"]
-

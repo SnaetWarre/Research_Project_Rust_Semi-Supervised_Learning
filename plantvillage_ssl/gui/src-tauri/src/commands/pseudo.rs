@@ -60,18 +60,18 @@ fn get_class_name(class_id: usize) -> String {
 /// Helper to load model from path
 fn load_model_from_path(model_path: &std::path::Path) -> Result<PlantClassifier<AppBackend>, String> {
     let device = <AppBackend as burn::tensor::backend::Backend>::Device::default();
-    
+
     let config = PlantClassifierConfig {
         num_classes: 38,
         input_size: 128,
-        dropout_rate: 0.6,
+        dropout_rate: 0.3,
         in_channels: 3,
-        base_filters: 8,
+        base_filters: 32,
     };
-    
+
     let model: PlantClassifier<AppBackend> = PlantClassifier::new(&config, &device);
     let recorder = CompactRecorder::new();
-    
+
     model
         .load_file(model_path, &recorder, &device)
         .map_err(|e| format!("Failed to load model: {:?}", e))
@@ -95,12 +95,12 @@ pub async fn run_pseudo_label_demo(
 
     let device = <AppBackend as burn::tensor::backend::Backend>::Device::default();
     let input_size = 128usize;
-    
+
     let mut samples = Vec::new();
     let mut class_counts = std::collections::HashMap::new();
     let mut correct_count = 0usize;
     let mut accepted_count = 0usize;
-    
+
     for image_path in &image_paths {
         let path = std::path::Path::new(image_path);
         if !path.exists() {
@@ -121,7 +121,7 @@ pub async fn run_pseudo_label_demo(
             Ok(img) => img,
             Err(_) => continue,
         };
-        
+
         let img = img.resize_exact(input_size as u32, input_size as u32, FilterType::Triangle);
         let img = img.to_rgb8();
 
@@ -154,11 +154,11 @@ pub async fn run_pseudo_label_demo(
 
         let accepted = confidence >= confidence_threshold as f32;
         let is_correct = ground_truth.map(|gt| gt == predicted_class);
-        
+
         if accepted {
             accepted_count += 1;
             *class_counts.entry(predicted_class).or_insert(0) += 1;
-            
+
             if is_correct == Some(true) {
                 correct_count += 1;
             }
@@ -178,7 +178,7 @@ pub async fn run_pseudo_label_demo(
 
     let total_processed = samples.len();
     let total_rejected = total_processed - accepted_count;
-    
+
     // Calculate precision (only on accepted samples with known ground truth)
     let accepted_with_gt: Vec<_> = samples.iter()
         .filter(|s| s.accepted && s.is_correct.is_some())
@@ -188,7 +188,7 @@ pub async fn run_pseudo_label_demo(
     } else {
         0.0
     };
-    
+
     let acceptance_rate = if total_processed > 0 {
         accepted_count as f64 / total_processed as f64
     } else {
@@ -234,7 +234,7 @@ pub async fn get_sample_images(
     }
 
     let mut image_paths: Vec<String> = Vec::new();
-    
+
     for entry in WalkDir::new(&data_dir).into_iter().filter_map(|e| e.ok()) {
         let path = entry.path();
         if let Some(ext) = path.extension() {
@@ -247,6 +247,6 @@ pub async fn get_sample_images(
 
     let mut rng = ChaCha8Rng::seed_from_u64(42);
     image_paths.shuffle(&mut rng);
-    
+
     Ok(image_paths.into_iter().take(count).collect())
 }

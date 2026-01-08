@@ -9,7 +9,9 @@
     "preview": "vite preview",
     "check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
     "check:watch": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --watch",
-    "tauri": "tauri"
+    "tauri": "tauri",
+    "tauri:dev": "bun tauri dev",
+    "tauri:build": "bun tauri build"
   },
   "license": "MIT",
   "dependencies": {
@@ -18,8 +20,10 @@
     "@tauri-apps/plugin-opener": "^2",
     "autoprefixer": "^10.4.23",
     "chart.js": "^4.5.1",
+    "chartjs-chart-matrix": "^3.0.0",
     "lucide-svelte": "^0.562.0",
     "postcss": "^8.5.6",
+    "svelte-chartjs": "^3.1.5",
     "tailwindcss": "^3.4.17"
   },
   "devDependencies": {

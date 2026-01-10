@@ -13,6 +13,7 @@ use burn::module::Module;
 use burn::record::CompactRecorder;
 use burn::tensor::Tensor;
 use image::imageops::FilterType;
+use rand::seq::SliceRandom;
 
 use plantvillage_ssl::model::cnn::{PlantClassifier, PlantClassifierConfig};
 use plantvillage_ssl::dataset::loader::PlantVillageDataset;
@@ -144,8 +145,14 @@ pub async fn run_model_diagnostics(
 
     // Sample a subset for diagnostics
     let samples_to_test = num_samples.min(dataset.samples.len());
-    let step = dataset.samples.len() / samples_to_test;
-    let step = step.max(1);
+    
+    // Create random indices to ensure balanced sampling across classes
+    let mut indices: Vec<usize> = (0..dataset.samples.len()).collect();
+    let mut rng = rand::thread_rng();
+    indices.shuffle(&mut rng);
+    
+    // Take the first N random indices
+    let selected_indices = &indices[0..samples_to_test];
 
     let mut class_predictions: HashMap<usize, usize> = HashMap::new();
     let mut class_confidences: HashMap<usize, Vec<f32>> = HashMap::new();
@@ -155,7 +162,7 @@ pub async fn run_model_diagnostics(
     let device = <AppBackend as burn::tensor::backend::Backend>::Device::default();
 
     // Run predictions on sampled images
-    for i in (0..dataset.samples.len()).step_by(step).take(samples_to_test) {
+    for &i in selected_indices {
         let sample = &dataset.samples[i];
         let path = &sample.path;
 

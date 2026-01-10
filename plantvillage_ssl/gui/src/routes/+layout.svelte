@@ -1,7 +1,8 @@
 <script lang="ts">
     import "../app.css";
     import Sidebar from "$lib/components/Sidebar.svelte";
-    import { currentPage, datasetInfo, addActivity } from "$lib/stores/app";
+    import TitleBar from "$lib/components/TitleBar.svelte";
+    import { currentPage, datasetInfo, modelInfo, addActivity } from "$lib/stores/app";
     import { invoke } from "@tauri-apps/api/core";
     import { onMount } from "svelte";
 
@@ -67,7 +68,7 @@
                     });
                     addActivity(
                         "success",
-                        `Dataset auto-loaded: ${result.total_samples} samples, ${result.num_classes} classes`,
+                        `Dataset loaded: ${result.total_samples} samples, ${result.num_classes} classes`,
                     );
                 } catch (e) {
                     // Try fallback to regular data directory
@@ -90,14 +91,30 @@
                         });
                         addActivity(
                             "warning",
-                            `Dataset loaded from fallback location: ${result.total_samples} samples`,
+                            `Dataset loaded from fallback: ${result.total_samples} samples`,
                         );
                     } catch (e2) {
                         addActivity(
                             "info",
-                            `No dataset auto-loaded. You can load one from the Dashboard.`,
+                            `No dataset auto-loaded. Load one from Dashboard.`,
                         );
                     }
+                }
+            }
+
+            // Auto-load model if not loaded
+            if (!$modelInfo.loaded) {
+                try {
+                    const result = await invoke<any>("load_model", { modelPath: "best_model.mpk" });
+                    modelInfo.set({
+                        loaded: result.loaded,
+                        path: result.path,
+                        numClasses: result.num_classes,
+                        inputSize: result.input_size,
+                    });
+                    addActivity("success", `Auto-loaded model: ${result.path}`);
+                } catch (e) {
+                    // Silent fail for model
                 }
             }
         }, 100);
@@ -105,28 +122,19 @@
 </script>
 
 {#if appReady}
-    <div
-        class="flex h-screen overflow-hidden bg-background"
-        style="background-color: #0F172A;"
-    >
+    <TitleBar />
+    <div class="app-container">
         <Sidebar />
-
-        <main class="flex-1 overflow-y-auto">
+        <main class="main-content">
             <CurrentPage />
         </main>
     </div>
 {:else}
-    <div
-        class="flex h-screen items-center justify-center"
-        style="background-color: #0F172A; display: flex; height: 100vh; align-items: center; justify-content: center;"
-    >
-        <div style="text-align: center;">
-            <div
-                style="width: 64px; height: 64px; border: 4px solid #10B981; border-top-color: transparent; border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto 16px;"
-            ></div>
-            <p style="color: #94A3B8; font-family: sans-serif;">
-                Loading PlantVillage SSL Dashboard...
-            </p>
+    <TitleBar />
+    <div class="loading-screen">
+        <div class="loading-content">
+            <div class="loading-spinner"></div>
+            <p class="loading-text">Loading PlantVillage SSL...</p>
         </div>
     </div>
 {/if}
@@ -135,6 +143,49 @@
 {@render children?.()}
 
 <style>
+    .app-container {
+        display: flex;
+        height: calc(100vh - 32px);
+        margin-top: 32px;
+        overflow: hidden;
+        background-color: #f9fafb;
+    }
+
+    .main-content {
+        flex: 1;
+        overflow-y: auto;
+        padding: 24px;
+    }
+
+    .loading-screen {
+        display: flex;
+        height: calc(100vh - 32px);
+        margin-top: 32px;
+        align-items: center;
+        justify-content: center;
+        background-color: #f9fafb;
+    }
+
+    .loading-content {
+        text-align: center;
+    }
+
+    .loading-spinner {
+        width: 48px;
+        height: 48px;
+        border: 3px solid #e5e7eb;
+        border-top-color: #2142f1;
+        border-radius: 50%;
+        animation: spin 0.8s linear infinite;
+        margin: 0 auto 16px;
+    }
+
+    .loading-text {
+        color: #6b7280;
+        font-family: "Inter", sans-serif;
+        font-size: 14px;
+    }
+
     @keyframes spin {
         to {
             transform: rotate(360deg);

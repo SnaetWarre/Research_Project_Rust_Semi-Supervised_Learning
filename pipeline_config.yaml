@@ -13,7 +13,7 @@
 # Paths - where data and outputs are stored
 # ------------------------------------------------------------------------------
 paths:
-  data_dir: "plantvillage_ssl/data/plantvillage/organized"
+  data_dir: "plantvillage_ssl/data/plantvillage/balanced"
   output_dir: "output/research_pipeline"
 
 # ------------------------------------------------------------------------------
@@ -85,7 +85,7 @@ benchmarking:
 stages:
   download_dataset: true             # Download PlantVillage dataset if not present
   train_burn: true                   # Train model using Burn (Rust)
-  train_pytorch: true                # Train model using PyTorch
+  train_pytorch: false               # Train model using PyTorch
   ssl_simulation: true               # Run semi-supervised learning simulation
-  benchmark: true                    # Run inference benchmarks
-  compare: true                      # Generate comparison reports and charts
+  benchmark: false                   # Run inference benchmarks
+  compare: false                     # Generate comparison reports and charts

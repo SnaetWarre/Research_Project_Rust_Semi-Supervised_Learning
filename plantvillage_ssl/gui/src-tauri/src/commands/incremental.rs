@@ -3,12 +3,6 @@
 //! This module provides Tauri commands for incremental/continual learning,
 //! including training with different methods and running experiments.
 
-use plantvillage_incremental::{
-    IncrementalConfig, IncrementalResult, IncrementalMethod,
-};
-use plantvillage_core::{
-    PlantVillageDataset, ModelConfig, TrainingConfig, PlantClassifier,
-};
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 use tokio::sync::Mutex;

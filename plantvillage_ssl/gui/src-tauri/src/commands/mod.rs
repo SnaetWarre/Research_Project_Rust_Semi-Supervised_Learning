@@ -11,6 +11,7 @@ pub mod simulation;
 pub mod benchmark;
 pub mod incremental;
 pub mod diagnostics;
+pub mod experiments;
 
 // Re-export all commands for registration
 pub use dataset::*;
@@ -21,3 +22,4 @@ pub use simulation::*;
 pub use benchmark::*;
 pub use incremental::*;
 pub use diagnostics::*;
+pub use experiments::*;

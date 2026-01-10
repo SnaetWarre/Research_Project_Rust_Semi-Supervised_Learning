@@ -438,6 +438,21 @@ train_burn() {
         END_TIME=$(date +%s)
         TRAIN_TIME=$((END_TIME - START_TIME))
 
+        # Post-processing: Find latest model and copy to best_model.mpk
+        # We are in plantvillage_ssl directory here, so path is relative
+        # OUTPUT_DIR in config is "output/research_pipeline", so "$OUTPUT_DIR/burn" is correct relative path
+        LATEST_MODEL=$(ls -t "$OUTPUT_DIR/burn"/plant_classifier_*.mpk 2>/dev/null | head -n 1)
+        
+        if [ -n "$LATEST_MODEL" ]; then
+            cp "$LATEST_MODEL" "best_model.mpk"
+            print_success "Latest model copied to plantvillage_ssl/best_model.mpk"
+            
+            # Also keep a reference in output dir
+            cp "$LATEST_MODEL" "$OUTPUT_DIR/burn/model_final.mpk"
+        else
+            print_error "No model file found in $OUTPUT_DIR/burn"
+        fi
+
         mkdir -p "$OUTPUT_DIR/burn"
         echo "{\"training_time_s\": $TRAIN_TIME, \"epochs\": $EPOCHS, \"batch_size\": $BATCH_SIZE, \"labeled_ratio\": $LABELED_RATIO}" > "$OUTPUT_DIR/burn/training_time.json"
         print_success "Burn training completed in ${TRAIN_TIME}s"
@@ -520,11 +535,26 @@ run_ssl_simulation() {
         return 1
     fi
 
-    # Find the latest trained model
-    MODEL_PATH=$(find "$OUTPUT_DIR/burn" -name "*.mpk" -type f 2>/dev/null | head -1)
+    # Find the latest trained model (most recent timestamp)
+    # We look for files matching "plant_classifier_*.mpk" or "model_final.mpk" in the burn output directory
+    MODEL_PATH=$(ls -t "$OUTPUT_DIR/burn"/plant_classifier_*.mpk 2>/dev/null | head -n 1)
+    
     if [ -z "$MODEL_PATH" ]; then
-        MODEL_PATH="$OUTPUT_DIR/burn/model_final.mpk"
+        # Fallback to model_final.mpk if timestamped one not found
+        MODEL_PATH=$(find "$OUTPUT_DIR/burn" -name "model_final.mpk" -type f 2>/dev/null | head -1)
     fi
+    
+    if [ -z "$MODEL_PATH" ]; then
+        # Fallback to just any mpk file
+        MODEL_PATH=$(find "$OUTPUT_DIR/burn" -name "*.mpk" -type f 2>/dev/null | head -1)
+    fi
+
+    if [ -z "$MODEL_PATH" ]; then
+        print_error "No model found in $OUTPUT_DIR/burn. Run train_burn first."
+        return 1
+    fi
+    
+    print_info "Using model: $MODEL_PATH"
 
     # Calculate images per day to use ALL unlabeled data
     # With use_all_unlabeled=true, we want to process all stream pool images

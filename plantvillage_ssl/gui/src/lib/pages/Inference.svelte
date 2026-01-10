@@ -33,7 +33,6 @@
 
     isLoading = true;
     try {
-      // Convert data URL to bytes
       const base64 = dataUrl.split(',')[1];
       const bytes = atob(base64);
       const arrayBuffer = new Uint8Array(bytes.length);
@@ -68,9 +67,9 @@
 
 <div class="p-6 space-y-6">
   <div class="flex items-center justify-between">
-    <h2 class="text-2xl font-bold text-white">Live Inference</h2>
+    <h2 class="text-2xl font-bold text-gray-800">Live Inference</h2>
     {#if !$modelInfo.loaded}
-      <span class="text-yellow-400 text-sm flex items-center gap-2">
+      <span class="text-yellow-600 text-sm flex items-center gap-2">
         <AlertTriangle class="w-4 h-4" />
         No model loaded
       </span>
@@ -83,14 +82,14 @@
       <ImageUpload {previewUrl} onImageSelected={handleImageSelected} />
       
       {#if isLoading}
-        <div class="mt-4 flex items-center justify-center gap-2 text-primary">
-          <div class="w-5 h-5 border-2 border-primary border-t-transparent rounded-full animate-spin"></div>
+        <div class="mt-4 flex items-center justify-center gap-2 text-blue-600">
+          <div class="w-5 h-5 border-2 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
           <span>Processing...</span>
         </div>
       {/if}
 
       {#if errorMessage}
-        <div class="mt-4 p-3 bg-red-500/20 border border-red-500/50 rounded-lg text-red-400 text-sm">
+        <div class="mt-4 p-3 bg-red-50 border border-red-200 rounded-lg text-red-600 text-sm">
           {errorMessage}
         </div>
       {/if}
@@ -102,28 +101,28 @@
         <div class="space-y-6">
           <!-- Main Prediction -->
           <div class="text-center">
-            <div class="inline-flex items-center gap-2 px-4 py-2 rounded-full {confidenceLevel() === 'high' ? 'bg-emerald-500/20 text-emerald-400' : confidenceLevel() === 'medium' ? 'bg-yellow-500/20 text-yellow-400' : 'bg-red-500/20 text-red-400'}">
+            <div class="inline-flex items-center gap-2 px-4 py-2 rounded-full {confidenceLevel() === 'high' ? 'bg-emerald-100 text-emerald-700' : confidenceLevel() === 'medium' ? 'bg-yellow-100 text-yellow-700' : 'bg-red-100 text-red-700'}">
               <CheckCircle class="w-5 h-5" />
               <span class="font-medium">{formatClassName(prediction.predicted_class_name)}</span>
             </div>
             
             <div class="mt-4">
-              <p class="text-5xl font-bold text-white">
+              <p class="text-5xl font-bold text-gray-800">
                 {(prediction.confidence * 100).toFixed(1)}%
               </p>
-              <p class="text-slate-400 mt-1">Confidence</p>
+              <p class="text-gray-500 mt-1">Confidence</p>
             </div>
           </div>
 
           <!-- Inference Time -->
-          <div class="flex items-center justify-center gap-2 text-slate-400">
+          <div class="flex items-center justify-center gap-2 text-gray-500">
             <Clock class="w-4 h-4" />
             <span class="text-sm">{prediction.inference_time_ms.toFixed(2)} ms</span>
           </div>
 
           <!-- Top 5 Predictions -->
           <div>
-            <h4 class="text-sm font-medium text-slate-300 mb-3">Top 5 Predictions</h4>
+            <h4 class="text-sm font-medium text-gray-600 mb-3">Top 5 Predictions</h4>
             <div class="space-y-3">
               {#each prediction.top_5 as pred, i}
                 <ConfidenceBar 
@@ -135,7 +134,7 @@
           </div>
         </div>
       {:else}
-        <div class="h-64 flex items-center justify-center text-slate-400">
+        <div class="h-64 flex items-center justify-center text-gray-400">
           <p>Upload an image to see predictions</p>
         </div>
       {/if}
@@ -150,7 +149,7 @@
           data={prediction.top_5.map(p => p.probability * 100)}
           labels={prediction.top_5.map(p => formatClassName(p.class_name).substring(0, 20))}
           label="Probability (%)"
-          color="#10B981"
+          color="#2142f1"
         />
       </div>
     </Card>

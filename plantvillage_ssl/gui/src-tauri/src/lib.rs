@@ -55,6 +55,13 @@ pub fn run() {
             commands::get_incremental_methods,
             // Diagnostics commands
             commands::run_model_diagnostics,
+            // Experiment results commands
+            commands::load_label_efficiency_results,
+            commands::load_class_scaling_results,
+            commands::load_ssl_incremental_results,
+            commands::load_all_experiment_results,
+            commands::load_experiment_conclusions,
+            commands::get_available_experiments,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

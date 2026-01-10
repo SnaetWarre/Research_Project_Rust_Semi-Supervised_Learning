@@ -136,20 +136,20 @@ struct Args {
 fn main() -> Result<()> {
     let args = Args::parse();
 
-    // Initialize logging
-    setup_logging(args.verbose)?;
-
-    info!("Incremental Learning Experiment Runner");
-    info!("======================================");
-
-    // Load configuration
+    // Load configuration first (needed for logging setup)
     let mut config = load_config(&args.config)
         .context("Failed to load experiment configuration")?;
 
-    // Apply overrides
+    // Apply output directory override early
     if let Some(ref output) = args.output {
         config.output.output_dir = output.clone();
     }
+
+    // Initialize logging with experiment name for log file
+    setup_logging(args.verbose, &config.experiment.name, &config.output.output_dir)?;
+
+    info!("Incremental Learning Experiment Runner");
+    info!("======================================");
 
     // Validate configuration
     validate_config(&config)?;
@@ -222,7 +222,7 @@ fn main() -> Result<()> {
     Ok(())
 }
 
-fn setup_logging(verbose: bool) -> Result<()> {
+fn setup_logging(verbose: bool, experiment_name: &str, output_base: &PathBuf) -> Result<()> {
     use tracing_subscriber::{fmt, prelude::*, EnvFilter};
 
     let filter = if verbose {
@@ -231,9 +231,30 @@ fn setup_logging(verbose: bool) -> Result<()> {
         EnvFilter::new("info")
     };
 
+    // Create the global latest output directory (parent of experiment-specific dir)
+    // e.g., if output_base is "./output/experiment_full", latest_dir is "./output/latest"
+    let latest_dir = output_base
+        .parent()
+        .map(|p| p.join("latest"))
+        .unwrap_or_else(|| PathBuf::from("./output/latest"));
+    std::fs::create_dir_all(&latest_dir)
+        .context("Failed to create output/latest directory")?;
+
+    // Sanitize experiment name for filename (replace spaces and special chars)
+    let safe_name: String = experiment_name
+        .chars()
+        .map(|c| if c.is_alphanumeric() || c == '_' || c == '-' { c } else { '_' })
+        .collect();
+    let log_filename = format!("{}.log", safe_name);
+
+    // Create a non-rolling file appender that overwrites the log file
+    let file_appender = tracing_appender::rolling::never(&latest_dir, &log_filename);
+
+    // Set up dual logging: console + file
     tracing_subscriber::registry()
-        .with(fmt::layer())
         .with(filter)
+        .with(fmt::layer().with_writer(std::io::stdout))
+        .with(fmt::layer().with_writer(file_appender).with_ansi(false))
         .init();
 
     Ok(())

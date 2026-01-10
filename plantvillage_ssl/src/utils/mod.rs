@@ -13,6 +13,7 @@
 //! - Confusion matrix visualization
 //! - Accuracy tracking over time
 
+pub mod charts;
 pub mod error;
 pub mod logging;
 pub mod metrics;

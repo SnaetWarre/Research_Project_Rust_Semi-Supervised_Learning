@@ -64,7 +64,7 @@
 
 <div class="p-6 space-y-6">
   <div class="flex items-center justify-between">
-    <h2 class="text-2xl font-bold text-white">Benchmark</h2>
+    <h2 class="text-2xl font-bold text-gray-800">Benchmark</h2>
     <div class="flex gap-3">
       <button
         class="btn-secondary flex items-center gap-2"
@@ -94,19 +94,19 @@
     <Card title="Benchmark Configuration">
       <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
         <div>
-          <label class="block text-sm text-slate-400 mb-1">Iterations</label>
+          <label class="block text-sm text-gray-500 mb-1">Iterations</label>
           <input type="number" class="input w-full" bind:value={iterations} min="10" max="1000" />
         </div>
         <div>
-          <label class="block text-sm text-slate-400 mb-1">Warmup</label>
+          <label class="block text-sm text-gray-500 mb-1">Warmup</label>
           <input type="number" class="input w-full" bind:value={warmup} min="0" max="50" />
         </div>
         <div>
-          <label class="block text-sm text-slate-400 mb-1">Batch Size</label>
+          <label class="block text-sm text-gray-500 mb-1">Batch Size</label>
           <input type="number" class="input w-full" bind:value={batchSize} min="1" max="32" />
         </div>
         <div>
-          <label class="block text-sm text-slate-400 mb-1">Image Size</label>
+          <label class="block text-sm text-gray-500 mb-1">Image Size</label>
           <input type="number" class="input w-full" bind:value={imageSize} min="64" max="512" />
         </div>
       </div>
@@ -117,12 +117,12 @@
     <!-- Device Info -->
     <Card>
       <div class="flex items-center gap-3">
-        <div class="w-10 h-10 rounded-lg bg-blue-500/20 flex items-center justify-center">
-          <Cpu class="w-5 h-5 text-blue-400" />
+        <div class="w-10 h-10 rounded-lg bg-blue-100 flex items-center justify-center">
+          <Cpu class="w-5 h-5 text-blue-600" />
         </div>
         <div>
-          <p class="text-white font-medium">{results.device_name}</p>
-          <p class="text-sm text-slate-400">
+          <p class="text-gray-800 font-medium">{results.device_name}</p>
+          <p class="text-sm text-gray-500">
             {results.iterations} iterations @ batch size {results.batch_size}
           </p>
         </div>
@@ -133,40 +133,40 @@
     <div class="grid grid-cols-2 md:grid-cols-4 gap-6">
       <Card>
         <div class="flex items-center gap-3 mb-2">
-          <Clock class="w-5 h-5 text-yellow-400" />
-          <p class="text-slate-400 text-sm">Mean Latency</p>
+          <Clock class="w-5 h-5 text-yellow-600" />
+          <p class="text-gray-500 text-sm">Mean Latency</p>
         </div>
-        <p class="text-3xl font-bold text-white">{results.mean_latency_ms.toFixed(2)}<span class="text-lg text-slate-400">ms</span></p>
-        <p class="text-sm text-slate-400 mt-1">&#177; {results.std_latency_ms.toFixed(2)}ms</p>
+        <p class="text-3xl font-bold text-gray-800">{results.mean_latency_ms.toFixed(2)}<span class="text-lg text-gray-500">ms</span></p>
+        <p class="text-sm text-gray-500 mt-1">&#177; {results.std_latency_ms.toFixed(2)}ms</p>
       </Card>
 
       <Card>
         <div class="flex items-center gap-3 mb-2">
-          <Zap class="w-5 h-5 text-emerald-400" />
-          <p class="text-slate-400 text-sm">Throughput</p>
+          <Zap class="w-5 h-5 text-emerald-600" />
+          <p class="text-gray-500 text-sm">Throughput</p>
         </div>
-        <p class="text-3xl font-bold text-primary">{results.throughput_fps.toFixed(1)}<span class="text-lg text-slate-400">fps</span></p>
-        <p class="text-sm text-slate-400 mt-1">Images per second</p>
+        <p class="text-3xl font-bold text-blue-600">{results.throughput_fps.toFixed(1)}<span class="text-lg text-gray-500">fps</span></p>
+        <p class="text-sm text-gray-500 mt-1">Images per second</p>
       </Card>
 
       <Card>
         <div class="flex items-center gap-3 mb-2">
-          <Clock class="w-5 h-5 text-blue-400" />
-          <p class="text-slate-400 text-sm">P95 Latency</p>
+          <Clock class="w-5 h-5 text-blue-600" />
+          <p class="text-gray-500 text-sm">P95 Latency</p>
         </div>
-        <p class="text-3xl font-bold text-white">{results.p95_latency_ms.toFixed(2)}<span class="text-lg text-slate-400">ms</span></p>
-        <p class="text-sm text-slate-400 mt-1">95th percentile</p>
+        <p class="text-3xl font-bold text-gray-800">{results.p95_latency_ms.toFixed(2)}<span class="text-lg text-gray-500">ms</span></p>
+        <p class="text-sm text-gray-500 mt-1">95th percentile</p>
       </Card>
 
       <Card>
         <div class="flex items-center gap-3 mb-2">
-          <HardDrive class="w-5 h-5 text-purple-400" />
-          <p class="text-slate-400 text-sm">GPU Memory</p>
+          <HardDrive class="w-5 h-5 text-purple-600" />
+          <p class="text-gray-500 text-sm">GPU Memory</p>
         </div>
-        <p class="text-3xl font-bold text-white">
-          {results.gpu_memory_mb ? `${results.gpu_memory_mb.toFixed(0)}` : '—'}<span class="text-lg text-slate-400">MB</span>
+        <p class="text-3xl font-bold text-gray-800">
+          {results.gpu_memory_mb ? `${results.gpu_memory_mb.toFixed(0)}` : '—'}<span class="text-lg text-gray-500">MB</span>
         </p>
-        <p class="text-sm text-slate-400 mt-1">Used memory</p>
+        <p class="text-sm text-gray-500 mt-1">Used memory</p>
       </Card>
     </div>
 
@@ -177,7 +177,7 @@
           data={latencyData}
           labels={latencyLabels}
           label="Latency (ms)"
-          color="#10B981"
+          color="#2142f1"
         />
       </div>
     </Card>
@@ -187,43 +187,43 @@
       <div class="overflow-x-auto">
         <table class="w-full text-sm">
           <thead>
-            <tr class="border-b border-slate-700">
-              <th class="text-left py-2 text-slate-400">Metric</th>
-              <th class="text-right py-2 text-slate-400">Value</th>
+            <tr class="border-b border-gray-200">
+              <th class="text-left py-2 text-gray-500">Metric</th>
+              <th class="text-right py-2 text-gray-500">Value</th>
             </tr>
           </thead>
           <tbody>
-            <tr class="border-b border-slate-700/50">
-              <td class="py-2 text-white">Minimum Latency</td>
-              <td class="py-2 text-right text-slate-300">{results.min_latency_ms.toFixed(3)} ms</td>
+            <tr class="border-b border-gray-100">
+              <td class="py-2 text-gray-800">Minimum Latency</td>
+              <td class="py-2 text-right text-gray-600">{results.min_latency_ms.toFixed(3)} ms</td>
             </tr>
-            <tr class="border-b border-slate-700/50">
-              <td class="py-2 text-white">Maximum Latency</td>
-              <td class="py-2 text-right text-slate-300">{results.max_latency_ms.toFixed(3)} ms</td>
+            <tr class="border-b border-gray-100">
+              <td class="py-2 text-gray-800">Maximum Latency</td>
+              <td class="py-2 text-right text-gray-600">{results.max_latency_ms.toFixed(3)} ms</td>
             </tr>
-            <tr class="border-b border-slate-700/50">
-              <td class="py-2 text-white">Mean Latency</td>
-              <td class="py-2 text-right text-slate-300">{results.mean_latency_ms.toFixed(3)} ms</td>
+            <tr class="border-b border-gray-100">
+              <td class="py-2 text-gray-800">Mean Latency</td>
+              <td class="py-2 text-right text-gray-600">{results.mean_latency_ms.toFixed(3)} ms</td>
             </tr>
-            <tr class="border-b border-slate-700/50">
-              <td class="py-2 text-white">Standard Deviation</td>
-              <td class="py-2 text-right text-slate-300">{results.std_latency_ms.toFixed(3)} ms</td>
+            <tr class="border-b border-gray-100">
+              <td class="py-2 text-gray-800">Standard Deviation</td>
+              <td class="py-2 text-right text-gray-600">{results.std_latency_ms.toFixed(3)} ms</td>
             </tr>
-            <tr class="border-b border-slate-700/50">
-              <td class="py-2 text-white">P50 (Median)</td>
-              <td class="py-2 text-right text-slate-300">{results.p50_latency_ms.toFixed(3)} ms</td>
+            <tr class="border-b border-gray-100">
+              <td class="py-2 text-gray-800">P50 (Median)</td>
+              <td class="py-2 text-right text-gray-600">{results.p50_latency_ms.toFixed(3)} ms</td>
             </tr>
-            <tr class="border-b border-slate-700/50">
-              <td class="py-2 text-white">P95</td>
-              <td class="py-2 text-right text-slate-300">{results.p95_latency_ms.toFixed(3)} ms</td>
+            <tr class="border-b border-gray-100">
+              <td class="py-2 text-gray-800">P95</td>
+              <td class="py-2 text-right text-gray-600">{results.p95_latency_ms.toFixed(3)} ms</td>
             </tr>
-            <tr class="border-b border-slate-700/50">
-              <td class="py-2 text-white">P99</td>
-              <td class="py-2 text-right text-slate-300">{results.p99_latency_ms.toFixed(3)} ms</td>
+            <tr class="border-b border-gray-100">
+              <td class="py-2 text-gray-800">P99</td>
+              <td class="py-2 text-right text-gray-600">{results.p99_latency_ms.toFixed(3)} ms</td>
             </tr>
             <tr>
-              <td class="py-2 text-white">Throughput</td>
-              <td class="py-2 text-right text-slate-300">{results.throughput_fps.toFixed(2)} images/sec</td>
+              <td class="py-2 text-gray-800">Throughput</td>
+              <td class="py-2 text-right text-gray-600">{results.throughput_fps.toFixed(2)} images/sec</td>
             </tr>
           </tbody>
         </table>
@@ -231,8 +231,8 @@
     </Card>
   {:else}
     <Card>
-      <div class="h-64 flex flex-col items-center justify-center text-slate-400">
-        <Cpu class="w-16 h-16 text-slate-600 mb-4" />
+      <div class="h-64 flex flex-col items-center justify-center text-gray-400">
+        <Cpu class="w-16 h-16 text-gray-300 mb-4" />
         <p class="mb-2">Run a benchmark to measure inference performance</p>
         <p class="text-sm">Results include latency statistics and throughput metrics</p>
       </div>

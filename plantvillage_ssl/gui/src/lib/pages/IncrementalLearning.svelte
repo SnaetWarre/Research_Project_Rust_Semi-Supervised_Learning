@@ -3,37 +3,38 @@
     import { open } from "@tauri-apps/plugin-dialog";
     import { onMount, onDestroy } from "svelte";
     import LineChart from "$lib/components/LineChart.svelte";
+    import Card from "$lib/components/Card.svelte";
+    import { Settings, Play, Square, Folder, CheckCircle, AlertTriangle, TrendingUp, Layers } from "lucide-svelte";
 
     // Training parameters
-    let method = "finetuning";
-    let numTasks = 5;
-    let epochsPerTask = 20;
-    let batchSize = 32;
-    let learningRate = 0.001;
-    let datasetPath = "";
+    let method = $state("finetuning");
+    let numTasks = $state(5);
+    let epochsPerTask = $state(20);
+    let batchSize = $state(32);
+    let learningRate = $state(0.001);
+    let datasetPath = $state("");
 
     // Method-specific parameters
-    let ewcLambda = 1000.0;
-    let memorySize = 500;
-    let distillationTemperature = 2.0;
-    let freezeLayers = true;
+    let ewcLambda = $state(1000.0);
+    let memorySize = $state(500);
+    let distillationTemperature = $state(2.0);
+    let freezeLayers = $state(true);
 
     // Training state
-    let isTraining = false;
-    let progress: any = null;
+    let isTraining = $state(false);
+    let progress = $state<any>(null);
     let progressInterval: any = null;
-    let result: any = null;
+    let result = $state<any>(null);
 
     // Chart data
-    let accuracyHistory: number[] = [];
-    let bwtHistory: number[] = [];
-    let lossHistory: number[] = [];
+    let accuracyHistory = $state<number[]>([]);
+    let bwtHistory = $state<number[]>([]);
+    let lossHistory = $state<number[]>([]);
 
     // Available methods
-    let methods: any[] = [];
+    let methods = $state<any[]>([]);
 
     onMount(async () => {
-        // Load available methods
         try {
             methods = await invoke("get_incremental_methods");
         } catch (error) {
@@ -66,7 +67,6 @@
         result = null;
 
         try {
-            // Start training (runs in background)
             const trainingPromise = invoke("train_incremental", {
                 params: {
                     method,
@@ -83,13 +83,8 @@
                 },
             });
 
-            // Start polling for progress
             startProgressPolling();
-
-            // Wait for completion
             result = await trainingPromise;
-
-            console.log("Training completed:", result);
         } catch (error) {
             console.error("Training failed:", error);
             alert(`Training failed: ${error}`);
@@ -102,17 +97,10 @@
     function startProgressPolling() {
         progressInterval = setInterval(async () => {
             try {
-                const currentProgress = await invoke(
-                    "get_incremental_progress",
-                );
+                const currentProgress = await invoke<any>("get_incremental_progress");
                 if (currentProgress) {
                     progress = currentProgress;
-
-                    // Update charts
-                    accuracyHistory = [
-                        ...accuracyHistory,
-                        progress.taskAccuracy,
-                    ];
+                    accuracyHistory = [...accuracyHistory, progress.taskAccuracy];
                     bwtHistory = [...bwtHistory, progress.bwt];
                     lossHistory = [...lossHistory, progress.loss];
                 }
@@ -143,525 +131,277 @@
         stopProgressPolling();
     });
 
-    $: selectedMethod = methods.find((m) => m.id === method);
+    const selectedMethod = $derived(methods.find((m) => m.id === method));
 </script>
 
-<div class="container mx-auto p-6 max-w-7xl">
-    <div class="mb-8">
-        <h1 class="text-4xl font-bold mb-2">Incremental Learning</h1>
-        <p class="text-gray-400">
-            Train models incrementally to learn new tasks without forgetting old
-            ones
-        </p>
+<div class="p-6 space-y-6">
+    <div class="flex items-center justify-between">
+        <div>
+            <h2 class="text-3xl font-bold text-gray-800">Incremental Learning</h2>
+            <p class="text-gray-500 mt-2">Train models sequentially on new tasks</p>
+        </div>
     </div>
 
     <!-- Configuration Card -->
-    <div class="card bg-base-300 shadow-xl mb-6">
-        <div class="card-body">
-            <h2 class="card-title text-2xl mb-4">Configuration</h2>
+    <Card title="Configuration">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <!-- Method Selection -->
+            <div>
+                <label class="block text-sm text-gray-500 mb-2">Method</label>
+                <select
+                    class="input w-full"
+                    bind:value={method}
+                    disabled={isTraining}
+                >
+                    <option value="finetuning">Fine-Tuning</option>
+                    <option value="lwf">Learning without Forgetting (LwF)</option>
+                    <option value="ewc">Elastic Weight Consolidation (EWC)</option>
+                    <option value="rehearsal">Rehearsal (Memory Replay)</option>
+                </select>
+                {#if selectedMethod}
+                    <p class="text-xs text-gray-400 mt-1">{selectedMethod.description}</p>
+                {/if}
+            </div>
 
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <!-- Method Selection -->
-                <div class="form-control">
-                    <label class="label">
-                        <span class="label-text font-semibold">Method</span>
-                    </label>
-                    <select
-                        class="select select-bordered w-full"
-                        bind:value={method}
+            <!-- Dataset Path -->
+            <div>
+                <label class="block text-sm text-gray-500 mb-2">Dataset</label>
+                <div class="flex gap-2">
+                    <input
+                        type="text"
+                        placeholder="Select dataset directory..."
+                        class="input flex-1 bg-gray-50"
+                        bind:value={datasetPath}
+                        disabled={isTraining}
+                        readonly
+                    />
+                    <button
+                        class="btn-secondary px-3"
+                        onclick={selectDataset}
                         disabled={isTraining}
                     >
-                        <option value="finetuning">Fine-Tuning</option>
-                        <option value="lwf"
-                            >Learning without Forgetting (LwF)</option
-                        >
-                        <option value="ewc"
-                            >Elastic Weight Consolidation (EWC)</option
-                        >
-                        <option value="rehearsal"
-                            >Rehearsal (Memory Replay)</option
-                        >
-                    </select>
-                    {#if selectedMethod}
-                        <label class="label">
-                            <span class="label-text-alt text-gray-400"
-                                >{selectedMethod.description}</span
-                            >
-                        </label>
-                    {/if}
+                        <Folder class="w-4 h-4" />
+                    </button>
                 </div>
+            </div>
 
-                <!-- Dataset Path -->
-                <div class="form-control">
-                    <label class="label">
-                        <span class="label-text font-semibold">Dataset</span>
-                    </label>
-                    <div class="join w-full">
-                        <input
-                            type="text"
-                            placeholder="Select dataset directory..."
-                            class="input input-bordered join-item flex-1"
-                            bind:value={datasetPath}
-                            disabled={isTraining}
-                            readonly
-                        />
-                        <button
-                            class="btn join-item"
-                            on:click={selectDataset}
-                            disabled={isTraining}
-                        >
-                            Browse
-                        </button>
-                    </div>
-                </div>
-
-                <!-- Number of Tasks -->
-                <div class="form-control">
-                    <label class="label">
-                        <span class="label-text font-semibold"
-                            >Number of Tasks</span
-                        >
-                    </label>
+            <!-- Basic Parameters -->
+            <div class="grid grid-cols-3 gap-4 md:col-span-2">
+                <div>
+                    <label class="block text-sm text-gray-500 mb-2">Tasks</label>
                     <input
                         type="number"
-                        class="input input-bordered"
+                        class="input w-full"
                         bind:value={numTasks}
-                        min="2"
-                        max="10"
+                        min="2" max="10"
                         disabled={isTraining}
                     />
-                    <label class="label">
-                        <span class="label-text-alt"
-                            >Dataset will be split into {numTasks} sequential tasks</span
-                        >
-                    </label>
                 </div>
-
-                <!-- Epochs per Task -->
-                <div class="form-control">
-                    <label class="label">
-                        <span class="label-text font-semibold"
-                            >Epochs per Task</span
-                        >
-                    </label>
+                <div>
+                    <label class="block text-sm text-gray-500 mb-2">Epochs/Task</label>
                     <input
                         type="number"
-                        class="input input-bordered"
+                        class="input w-full"
                         bind:value={epochsPerTask}
-                        min="5"
-                        max="100"
+                        min="5" max="100"
                         disabled={isTraining}
                     />
                 </div>
-
-                <!-- Batch Size -->
-                <div class="form-control">
-                    <label class="label">
-                        <span class="label-text font-semibold">Batch Size</span>
-                    </label>
+                <div>
+                    <label class="block text-sm text-gray-500 mb-2">Batch Size</label>
                     <input
                         type="number"
-                        class="input input-bordered"
+                        class="input w-full"
                         bind:value={batchSize}
-                        min="8"
-                        max="128"
-                        step="8"
-                        disabled={isTraining}
-                    />
-                </div>
-
-                <!-- Learning Rate -->
-                <div class="form-control">
-                    <label class="label">
-                        <span class="label-text font-semibold"
-                            >Learning Rate</span
-                        >
-                    </label>
-                    <input
-                        type="number"
-                        class="input input-bordered"
-                        bind:value={learningRate}
-                        min="0.0001"
-                        max="0.1"
-                        step="0.0001"
+                        min="8" max="128" step="8"
                         disabled={isTraining}
                     />
                 </div>
             </div>
 
-            <!-- Method-specific parameters -->
+            <!-- Method Specific Params -->
             {#if method === "ewc"}
-                <div class="divider">EWC Parameters</div>
-                <div class="form-control">
-                    <label class="label">
-                        <span class="label-text font-semibold"
-                            >Lambda (Importance Weight)</span
-                        >
-                    </label>
-                    <input
-                        type="number"
-                        class="input input-bordered"
-                        bind:value={ewcLambda}
-                        min="100"
-                        max="10000"
-                        step="100"
-                        disabled={isTraining}
-                    />
-                    <label class="label">
-                        <span class="label-text-alt"
-                            >Higher values = more protection of old knowledge</span
-                        >
-                    </label>
-                </div>
-            {:else if method === "rehearsal"}
-                <div class="divider">Rehearsal Parameters</div>
-                <div class="form-control">
-                    <label class="label">
-                        <span class="label-text font-semibold">Memory Size</span
-                        >
-                    </label>
-                    <input
-                        type="number"
-                        class="input input-bordered"
-                        bind:value={memorySize}
-                        min="100"
-                        max="2000"
-                        step="100"
-                        disabled={isTraining}
-                    />
-                    <label class="label">
-                        <span class="label-text-alt"
-                            >Number of exemplars to store per task</span
-                        >
-                    </label>
-                </div>
-            {:else if method === "lwf"}
-                <div class="divider">LwF Parameters</div>
-                <div class="form-control">
-                    <label class="label">
-                        <span class="label-text font-semibold"
-                            >Distillation Temperature</span
-                        >
-                    </label>
-                    <input
-                        type="number"
-                        class="input input-bordered"
-                        bind:value={distillationTemperature}
-                        min="1"
-                        max="5"
-                        step="0.5"
-                        disabled={isTraining}
-                    />
-                    <label class="label">
-                        <span class="label-text-alt"
-                            >Higher temperature = softer probability
-                            distribution</span
-                        >
-                    </label>
-                </div>
-            {:else if method === "finetuning"}
-                <div class="divider">Fine-Tuning Parameters</div>
-                <div class="form-control">
-                    <label class="label cursor-pointer">
-                        <span class="label-text">Freeze Early Layers</span>
+                <div class="md:col-span-2 border-t pt-4 border-gray-100">
+                    <label class="block text-sm font-semibold text-gray-700 mb-3">EWC Settings</label>
+                    <div>
+                        <label class="block text-sm text-gray-500 mb-2">Lambda (Importance Weight)</label>
                         <input
-                            type="checkbox"
-                            class="toggle"
-                            bind:checked={freezeLayers}
+                            type="number"
+                            class="input w-full"
+                            bind:value={ewcLambda}
+                            min="100" max="10000" step="100"
                             disabled={isTraining}
                         />
-                    </label>
+                        <p class="text-xs text-gray-400 mt-1">Higher = more protection of old knowledge</p>
+                    </div>
+                </div>
+            {:else if method === "rehearsal"}
+                <div class="md:col-span-2 border-t pt-4 border-gray-100">
+                    <label class="block text-sm font-semibold text-gray-700 mb-3">Rehearsal Settings</label>
+                    <div>
+                        <label class="block text-sm text-gray-500 mb-2">Memory Size</label>
+                        <input
+                            type="number"
+                            class="input w-full"
+                            bind:value={memorySize}
+                            min="100" max="2000" step="100"
+                            disabled={isTraining}
+                        />
+                        <p class="text-xs text-gray-400 mt-1">Total exemplars stored</p>
+                    </div>
+                </div>
+            {:else if method === "lwf"}
+                <div class="md:col-span-2 border-t pt-4 border-gray-100">
+                    <label class="block text-sm font-semibold text-gray-700 mb-3">LwF Settings</label>
+                    <div>
+                        <label class="block text-sm text-gray-500 mb-2">Temperature</label>
+                        <input
+                            type="number"
+                            class="input w-full"
+                            bind:value={distillationTemperature}
+                            min="1" max="5" step="0.5"
+                            disabled={isTraining}
+                        />
+                        <p class="text-xs text-gray-400 mt-1">Softens probability distribution</p>
+                    </div>
                 </div>
             {/if}
 
-            <!-- Action Buttons -->
-            <div class="card-actions justify-end mt-6">
+            <div class="md:col-span-2 flex justify-end mt-4">
                 {#if !isTraining}
                     <button
-                        class="btn btn-primary btn-lg"
-                        on:click={startTraining}
+                        class="btn-primary flex items-center gap-2"
+                        onclick={startTraining}
                         disabled={!datasetPath}
                     >
-                        <svg
-                            xmlns="http://www.w3.org/2000/svg"
-                            fill="none"
-                            viewBox="0 0 24 24"
-                            stroke-width="1.5"
-                            stroke="currentColor"
-                            class="w-6 h-6"
-                        >
-                            <path
-                                stroke-linecap="round"
-                                stroke-linejoin="round"
-                                d="M5.25 5.653c0-.856.917-1.398 1.667-.986l11.54 6.347a1.125 1.125 0 0 1 0 1.972l-11.54 6.347c-.75.412-1.667-.13-1.667-.986V5.653Z"
-                            />
-                        </svg>
+                        <Play class="w-4 h-4" />
                         Start Training
                     </button>
                 {:else}
                     <button
-                        class="btn btn-error btn-lg"
-                        on:click={stopTraining}
+                        class="btn-danger flex items-center gap-2"
+                        onclick={stopTraining}
                     >
-                        <svg
-                            xmlns="http://www.w3.org/2000/svg"
-                            fill="none"
-                            viewBox="0 0 24 24"
-                            stroke-width="1.5"
-                            stroke="currentColor"
-                            class="w-6 h-6"
-                        >
-                            <path
-                                stroke-linecap="round"
-                                stroke-linejoin="round"
-                                d="M5.25 7.5A2.25 2.25 0 0 1 7.5 5.25h9a2.25 2.25 0 0 1 2.25 2.25v9a2.25 2.25 0 0 1-2.25 2.25h-9a2.25 2.25 0 0 1-2.25-2.25v-9Z"
-                            />
-                        </svg>
+                        <Square class="w-4 h-4" />
                         Stop Training
                     </button>
                 {/if}
             </div>
         </div>
-    </div>
+    </Card>
 
     <!-- Progress Card -->
     {#if progress}
-        <div class="card bg-base-300 shadow-xl mb-6">
-            <div class="card-body">
-                <h2 class="card-title text-2xl mb-4">Training Progress</h2>
-
-                <!-- Status Message -->
-                <div class="alert alert-info mb-4">
-                    <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        fill="none"
-                        viewBox="0 0 24 24"
-                        class="stroke-current shrink-0 w-6 h-6"
-                    >
-                        <path
-                            stroke-linecap="round"
-                            stroke-linejoin="round"
-                            stroke-width="2"
-                            d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-                        ></path>
-                    </svg>
-                    <span>{progress.status}</span>
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
+            <Card>
+                <div class="flex items-center gap-3 mb-2">
+                    <Layers class="w-5 h-5 text-blue-600" />
+                    <p class="text-gray-500 text-sm">Current Task</p>
                 </div>
+                <p class="text-3xl font-bold text-gray-800">
+                    {progress.currentTask + 1}<span class="text-lg text-gray-400">/{progress.totalTasks}</span>
+                </p>
+                <p class="text-sm text-gray-500 mt-1">Epoch {progress.currentEpoch + 1}</p>
+            </Card>
 
-                <!-- Stats Grid -->
-                <div
-                    class="stats stats-vertical lg:stats-horizontal shadow w-full mb-6"
-                >
-                    <div class="stat">
-                        <div class="stat-title">Current Task</div>
-                        <div class="stat-value text-primary">
-                            {progress.currentTask + 1}/{progress.totalTasks}
-                        </div>
-                        <div class="stat-desc">
-                            Epoch {progress.currentEpoch + 1}
-                        </div>
-                    </div>
-
-                    <div class="stat">
-                        <div class="stat-title">Task Accuracy</div>
-                        <div class="stat-value">
-                            {progress.taskAccuracy.toFixed(2)}%
-                        </div>
-                        <div class="stat-desc">Current task performance</div>
-                    </div>
-
-                    <div class="stat">
-                        <div class="stat-title">Average Accuracy</div>
-                        <div class="stat-value">
-                            {progress.averageAccuracy.toFixed(2)}%
-                        </div>
-                        <div class="stat-desc">Across all tasks</div>
-                    </div>
-
-                    <div class="stat">
-                        <div class="stat-title">Training Loss</div>
-                        <div class="stat-value text-sm">
-                            {progress.loss.toFixed(4)}
-                        </div>
-                        <div class="stat-desc">Cross-entropy</div>
-                    </div>
+            <Card>
+                <div class="flex items-center gap-3 mb-2">
+                    <TrendingUp class="w-5 h-5 text-emerald-600" />
+                    <p class="text-gray-500 text-sm">Task Accuracy</p>
                 </div>
+                <p class="text-3xl font-bold text-emerald-600">
+                    {progress.taskAccuracy.toFixed(2)}%
+                </p>
+            </Card>
 
-                <!-- Continual Learning Metrics -->
-                <div
-                    class="stats stats-vertical lg:stats-horizontal shadow w-full"
-                >
-                    <div class="stat">
-                        <div class="stat-title">Backward Transfer</div>
-                        <div
-                            class="stat-value text-sm"
-                            class:text-success={progress.bwt > 0}
-                            class:text-error={progress.bwt < 0}
-                        >
-                            {progress.bwt.toFixed(3)}
-                        </div>
-                        <div class="stat-desc">
-                            {progress.bwt > 0
-                                ? "Positive 👍"
-                                : "Negative (forgetting) 👎"}
-                        </div>
-                    </div>
-
-                    <div class="stat">
-                        <div class="stat-title">Forward Transfer</div>
-                        <div
-                            class="stat-value text-sm"
-                            class:text-success={progress.fwt > 0}
-                            class:text-error={progress.fwt < 0}
-                        >
-                            {progress.fwt.toFixed(3)}
-                        </div>
-                        <div class="stat-desc">
-                            {progress.fwt > 0
-                                ? "Good generalization 👍"
-                                : "Poor transfer 👎"}
-                        </div>
-                    </div>
-
-                    <div class="stat">
-                        <div class="stat-title">Forgetting</div>
-                        <div
-                            class="stat-value text-sm"
-                            class:text-success={progress.forgetting < 0.1}
-                            class:text-warning={progress.forgetting >= 0.1 &&
-                                progress.forgetting < 0.2}
-                            class:text-error={progress.forgetting >= 0.2}
-                        >
-                            {progress.forgetting.toFixed(3)}
-                        </div>
-                        <div class="stat-desc">
-                            {progress.forgetting < 0.1
-                                ? "Low 👍"
-                                : progress.forgetting < 0.2
-                                  ? "Medium ⚠️"
-                                  : "High 👎"}
-                        </div>
-                    </div>
+            <Card>
+                <div class="flex items-center gap-3 mb-2">
+                    <CheckCircle class="w-5 h-5 text-blue-600" />
+                    <p class="text-gray-500 text-sm">Avg Accuracy</p>
                 </div>
+                <p class="text-3xl font-bold text-blue-600">
+                    {progress.averageAccuracy.toFixed(2)}%
+                </p>
+            </Card>
 
-                <!-- Charts -->
-                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
-                    <div class="bg-base-100 p-4 rounded-lg">
-                        <h3 class="text-lg font-semibold mb-2">
-                            Accuracy Over Time
-                        </h3>
-                        <div class="h-64">
-                            <LineChart
-                                data={accuracyHistory}
-                                label="Task Accuracy"
-                                color="#10B981"
-                            />
-                        </div>
-                    </div>
-
-                    <div class="bg-base-100 p-4 rounded-lg">
-                        <h3 class="text-lg font-semibold mb-2">
-                            Backward Transfer
-                        </h3>
-                        <div class="h-64">
-                            <LineChart
-                                data={bwtHistory}
-                                label="Backward Transfer"
-                                color="#EF4444"
-                            />
-                        </div>
-                    </div>
+            <Card>
+                <div class="flex items-center gap-3 mb-2">
+                    <AlertTriangle class="w-5 h-5 text-yellow-600" />
+                    <p class="text-gray-500 text-sm">Forgetting</p>
                 </div>
-            </div>
+                <p class="text-3xl font-bold {progress.forgetting < 0.1 ? 'text-emerald-600' : 'text-yellow-600'}">
+                    {progress.forgetting.toFixed(3)}
+                </p>
+            </Card>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <Card title="Accuracy History">
+                <div class="h-64">
+                    <LineChart
+                        data={accuracyHistory}
+                        label="Task Accuracy"
+                        color="#10B981"
+                        yAxisLabel="Accuracy (%)"
+                    />
+                </div>
+            </Card>
+
+            <Card title="Backward Transfer">
+                <div class="h-64">
+                    <LineChart
+                        data={bwtHistory}
+                        label="Backward Transfer"
+                        color="#EF4444"
+                        yAxisLabel="BWT"
+                    />
+                </div>
+            </Card>
         </div>
     {/if}
 
-    <!-- Results Card -->
+    <!-- Final Results -->
     {#if result}
-        <div class="card bg-base-300 shadow-xl">
-            <div class="card-body">
-                <h2 class="card-title text-2xl mb-4">Training Completed! 🎉</h2>
-
-                <div
-                    class="stats stats-vertical lg:stats-horizontal shadow w-full mb-4"
-                >
-                    <div class="stat">
-                        <div class="stat-title">Method</div>
-                        <div class="stat-value text-sm">
-                            {result.method.toUpperCase()}
-                        </div>
-                    </div>
-
-                    <div class="stat">
-                        <div class="stat-title">Final Accuracy</div>
-                        <div class="stat-value">
-                            {result.finalAccuracy.toFixed(2)}%
-                        </div>
-                    </div>
-
-                    <div class="stat">
-                        <div class="stat-title">Average Accuracy</div>
-                        <div class="stat-value">
-                            {result.averageAccuracy.toFixed(2)}%
-                        </div>
-                    </div>
-
-                    <div class="stat">
-                        <div class="stat-title">Duration</div>
-                        <div class="stat-value text-sm">
-                            {result.durationSeconds.toFixed(1)}s
-                        </div>
-                    </div>
+        <Card title="Training Completed! 🎉">
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
+                <div class="p-4 bg-gray-50 rounded-lg">
+                    <p class="text-sm text-gray-500 mb-1">Final Accuracy</p>
+                    <p class="text-2xl font-bold text-gray-800">{result.finalAccuracy.toFixed(2)}%</p>
                 </div>
-
-                <!-- Per-task accuracies -->
-                <div class="overflow-x-auto">
-                    <table class="table">
-                        <thead>
-                            <tr>
-                                <th>Task</th>
-                                {#each result.taskAccuracies as _, i}
-                                    <th>Task {i + 1}</th>
-                                {/each}
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <tr>
-                                <td class="font-semibold">Accuracy</td>
-                                {#each result.taskAccuracies as acc}
-                                    <td>{acc.toFixed(2)}%</td>
-                                {/each}
-                            </tr>
-                        </tbody>
-                    </table>
+                <div class="p-4 bg-gray-50 rounded-lg">
+                    <p class="text-sm text-gray-500 mb-1">Avg Accuracy</p>
+                    <p class="text-2xl font-bold text-gray-800">{result.averageAccuracy.toFixed(2)}%</p>
                 </div>
-
-                <!-- Final metrics summary -->
-                <div class="alert alert-success mt-4">
-                    <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        class="stroke-current shrink-0 h-6 w-6"
-                        fill="none"
-                        viewBox="0 0 24 24"
-                    >
-                        <path
-                            stroke-linecap="round"
-                            stroke-linejoin="round"
-                            stroke-width="2"
-                            d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
-                        />
-                    </svg>
-                    <div>
-                        <h3 class="font-bold">Summary</h3>
-                        <div class="text-xs">
-                            BWT: {result.bwt.toFixed(3)} | FWT: {result.fwt.toFixed(
-                                3,
-                            )} | Forgetting: {result.forgetting.toFixed(3)} | Intransigence:
-                            {result.intransigence.toFixed(3)}
-                        </div>
-                    </div>
+                <div class="p-4 bg-gray-50 rounded-lg">
+                    <p class="text-sm text-gray-500 mb-1">Backward Transfer</p>
+                    <p class="text-2xl font-bold text-gray-800">{result.bwt.toFixed(3)}</p>
+                </div>
+                <div class="p-4 bg-gray-50 rounded-lg">
+                    <p class="text-sm text-gray-500 mb-1">Duration</p>
+                    <p class="text-2xl font-bold text-gray-800">{result.durationSeconds.toFixed(1)}s</p>
                 </div>
             </div>
-        </div>
+
+            <div class="overflow-x-auto">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Task</th>
+                            {#each result.taskAccuracies as _, i}
+                                <th>Task {i + 1}</th>
+                            {/each}
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td class="font-semibold">Accuracy</td>
+                            {#each result.taskAccuracies as acc}
+                                <td>{acc.toFixed(2)}%</td>
+                            {/each}
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </Card>
     {/if}
 </div>

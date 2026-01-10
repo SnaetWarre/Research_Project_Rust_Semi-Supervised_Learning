@@ -8,7 +8,6 @@
   import { trainingState, datasetInfo, addActivity } from '$lib/stores/app';
   import { Play, Square, Settings } from 'lucide-svelte';
 
-  // Training parameters
   let epochs = $state(50);
   let batchSize = $state(32);
   let learningRate = $state(0.0001);
@@ -21,7 +20,6 @@
   let unlisteners: (() => void)[] = [];
 
   onMount(async () => {
-    // Listen for training events
     const epochUnlisten = await listen<{
       epoch: number;
       total_epochs: number;
@@ -69,8 +67,6 @@
       addActivity('success', `Training complete! Final accuracy: ${event.payload.final_accuracy.toFixed(1)}%`);
     });
     unlisteners.push(completeUnlisten);
-
-    // Data dir is automatically derived from dataset info
   });
 
   onDestroy(() => {
@@ -130,11 +126,13 @@
       ? ($trainingState.epoch / $trainingState.totalEpochs) * 100
       : 0
   );
+
+  const isRunning = $derived($trainingState.status === 'running');
 </script>
 
 <div class="p-6 space-y-6">
   <div class="flex items-center justify-between">
-    <h2 class="text-2xl font-bold text-white">Training</h2>
+    <h2 class="text-2xl font-bold text-gray-800">Training</h2>
     <div class="flex gap-3">
       <button
         class="btn-secondary flex items-center gap-2"
@@ -143,7 +141,7 @@
         <Settings class="w-4 h-4" />
         Settings
       </button>
-      {#if $trainingState.status === 'running'}
+      {#if isRunning}
         <button
           class="bg-red-500 hover:bg-red-600 text-white font-medium py-2 px-4 rounded-lg flex items-center gap-2"
           onclick={stopTraining}
@@ -155,7 +153,6 @@
         <button
           class="btn-primary flex items-center gap-2"
           onclick={startTraining}
-          disabled={$trainingState.status === 'running'}
         >
           <Play class="w-4 h-4" />
           Start Training
@@ -169,29 +166,29 @@
     <Card title="Training Configuration">
       <div class="grid grid-cols-2 md:grid-cols-3 gap-4">
         <div>
-          <label class="block text-sm text-slate-400 mb-1">Epochs</label>
+          <label class="block text-sm text-gray-500 mb-1">Epochs</label>
           <input type="number" class="input w-full" bind:value={epochs} min="1" max="200" />
         </div>
         <div>
-          <label class="block text-sm text-slate-400 mb-1">Batch Size</label>
+          <label class="block text-sm text-gray-500 mb-1">Batch Size</label>
           <input type="number" class="input w-full" bind:value={batchSize} min="8" max="128" step="8" />
         </div>
         <div>
-          <label class="block text-sm text-slate-400 mb-1">Learning Rate</label>
+          <label class="block text-sm text-gray-500 mb-1">Learning Rate</label>
           <input type="number" class="input w-full" bind:value={learningRate} min="0.00001" max="0.01" step="0.0001" />
         </div>
         <div>
-          <label class="block text-sm text-slate-400 mb-1">Labeled Ratio</label>
+          <label class="block text-sm text-gray-500 mb-1">Labeled Ratio</label>
           <input type="number" class="input w-full" bind:value={labeledRatio} min="0.1" max="1.0" step="0.1" />
         </div>
         <div>
-          <label class="block text-sm text-slate-400 mb-1">Confidence Threshold</label>
+          <label class="block text-sm text-gray-500 mb-1">Confidence Threshold</label>
           <input type="number" class="input w-full" bind:value={confidenceThreshold} min="0.5" max="0.99" step="0.05" />
         </div>
         <div>
-          <label class="block text-sm text-slate-400 mb-1">Data Directory</label>
-          <input type="text" class="input w-full bg-slate-800/50 text-slate-500" value={dataDir} readonly />
-          <p class="text-xs text-slate-500 mt-1">Auto-loaded from balanced dataset</p>
+          <label class="block text-sm text-gray-500 mb-1">Data Directory</label>
+          <input type="text" class="input w-full bg-gray-100 text-gray-500" value={dataDir} readonly />
+          <p class="text-xs text-gray-400 mt-1">Auto-loaded from balanced dataset</p>
         </div>
       </div>
     </Card>
@@ -204,31 +201,31 @@
     </Card>
     
     <Card>
-      <p class="text-slate-400 text-sm">Current Epoch</p>
-      <p class="text-3xl font-bold text-white mt-2">
-        {$trainingState.epoch}<span class="text-lg text-slate-400">/{$trainingState.totalEpochs}</span>
+      <p class="text-gray-500 text-sm">Current Epoch</p>
+      <p class="text-3xl font-bold text-gray-800 mt-2">
+        {$trainingState.epoch}<span class="text-lg text-gray-500">/{$trainingState.totalEpochs}</span>
       </p>
       {#if $trainingState.totalBatches > 0}
-        <p class="text-sm text-slate-400 mt-1">
+        <p class="text-sm text-gray-500 mt-1">
           Batch {$trainingState.batch}/{$trainingState.totalBatches}
         </p>
       {/if}
     </Card>
     
     <Card>
-      <p class="text-slate-400 text-sm">Training Loss</p>
-      <p class="text-3xl font-bold text-white mt-2">
+      <p class="text-gray-500 text-sm">Training Loss</p>
+      <p class="text-3xl font-bold text-gray-800 mt-2">
         {$trainingState.currentLoss.toFixed(4)}
       </p>
-      <p class="text-sm text-slate-400 mt-1">Cross-entropy</p>
+      <p class="text-sm text-gray-500 mt-1">Cross-entropy</p>
     </Card>
     
     <Card>
-      <p class="text-slate-400 text-sm">Validation Accuracy</p>
-      <p class="text-3xl font-bold text-primary mt-2">
+      <p class="text-gray-500 text-sm">Validation Accuracy</p>
+      <p class="text-3xl font-bold text-blue-600 mt-2">
         {$trainingState.currentAccuracy.toFixed(1)}%
       </p>
-      <p class="text-sm text-slate-400 mt-1">
+      <p class="text-sm text-gray-500 mt-1">
         {$trainingState.status === 'completed' ? 'Final' : 'Current'}
       </p>
     </Card>
@@ -246,7 +243,7 @@
             yAxisLabel="Loss"
           />
         {:else}
-          <div class="h-full flex items-center justify-center text-slate-400">
+          <div class="h-full flex items-center justify-center text-gray-400">
             Start training to see loss curve
           </div>
         {/if}
@@ -259,11 +256,11 @@
           <LineChart 
             data={$trainingState.accuracyHistory}
             label="Validation Accuracy"
-            color="#10B981"
+            color="#2142f1"
             yAxisLabel="Accuracy (%)"
           />
         {:else}
-          <div class="h-full flex items-center justify-center text-slate-400">
+          <div class="h-full flex items-center justify-center text-gray-400">
             Start training to see accuracy curve
           </div>
         {/if}

@@ -23,9 +23,7 @@ anyhow = "1.0"
 tracing = "0.1"
 
 # Reference to the unified workspace crates
-plantvillage-core = { path = "../../../plantvillage_unified/crates/plantvillage-core", features = ["cuda"] }
-plantvillage-ssl = { path = "../../../plantvillage_unified/crates/plantvillage-ssl", features = ["cuda"] }
-plantvillage-incremental = { path = "../../../plantvillage_unified/crates/plantvillage-incremental", features = ["cuda"] }
+plantvillage_ssl = { path = "../..", features = ["cuda"] }
 
 burn = { version = "0.20.0-pre" }
 burn-cuda = { version = "0.20.0-pre" }

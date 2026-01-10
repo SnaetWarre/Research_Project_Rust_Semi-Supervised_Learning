@@ -15,14 +15,9 @@
 
     const navItems = [
         { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
-        { id: "training", label: "Training", icon: GraduationCap },
+        { id: "experiment", label: "Experiments", icon: FlaskConical },
         { id: "inference", label: "Inference", icon: ScanLine },
         { id: "diagnostics", label: "Diagnostics", icon: Activity },
-        { id: "pseudo", label: "Pseudo-Label", icon: Tags },
-        { id: "simulation", label: "Simulation", icon: PlayCircle },
-        { id: "benchmark", label: "Benchmark", icon: Gauge },
-        { id: "incremental", label: "Incremental Learning", icon: TrendingUp },
-        { id: "experiment", label: "Experiments", icon: FlaskConical },
     ];
 
     function navigate(pageId: string) {
@@ -30,38 +25,29 @@
     }
 </script>
 
-<aside
-    class="w-64 h-screen bg-background-light border-r border-slate-700 flex flex-col"
->
+<aside class="sidebar">
     <!-- Logo/Header -->
-    <div class="p-6 border-b border-slate-700">
-        <div class="flex items-center gap-3">
-            <div
-                class="w-10 h-10 rounded-lg bg-primary/20 flex items-center justify-center"
-            >
-                <Leaf class="w-6 h-6 text-primary" />
-            </div>
-            <div>
-                <h1 class="font-bold text-lg text-white">PlantVillage</h1>
-                <p class="text-xs text-slate-400">SSL Dashboard</p>
-            </div>
+    <div class="sidebar-header">
+        <div class="logo-icon">
+            <Leaf class="w-5 h-5" style="color: #2142f1;" />
+        </div>
+        <div>
+            <h1 class="logo-title">PlantVillage</h1>
+            <p class="logo-subtitle">SSL Research</p>
         </div>
     </div>
 
     <!-- Navigation -->
-    <nav class="flex-1 p-4 overflow-y-auto">
-        <ul class="space-y-2">
+    <nav class="sidebar-nav">
+        <ul class="nav-list">
             {#each navItems as item}
                 <li>
                     <button
-                        class="w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors duration-200
-              {$currentPage === item.id
-                            ? 'bg-primary/20 text-primary'
-                            : 'text-slate-400 hover:bg-slate-700/50 hover:text-white'}"
+                        class="nav-item {$currentPage === item.id ? 'nav-item-active' : ''}"
                         onclick={() => navigate(item.id)}
                     >
                         <svelte:component this={item.icon} class="w-5 h-5" />
-                        <span class="font-medium">{item.label}</span>
+                        <span>{item.label}</span>
                     </button>
                 </li>
             {/each}
@@ -69,23 +55,148 @@
     </nav>
 
     <!-- Status Footer -->
-    <div class="p-4 border-t border-slate-700">
-        <div class="bg-background rounded-lg p-3">
-            <div class="flex items-center justify-between mb-2">
-                <span class="text-xs text-slate-400">Model Status</span>
-                <span
-                    class="w-2 h-2 rounded-full {$modelInfo.loaded
-                        ? 'bg-primary'
-                        : 'bg-slate-500'}"
-                ></span>
+    <div class="sidebar-footer">
+        <div class="status-card">
+            <div class="status-header">
+                <span class="status-label">Model</span>
+                <span class="status-dot {$modelInfo.loaded ? 'status-dot-active' : ''}"></span>
             </div>
-            <p class="text-sm text-white truncate">
+            <p class="status-text">
                 {#if $modelInfo.loaded}
                     {$modelInfo.path?.split("/").pop() || "Loaded"}
                 {:else}
-                    No model loaded
+                    Not loaded
                 {/if}
             </p>
         </div>
     </div>
 </aside>
+
+<style>
+    .sidebar {
+        width: 240px;
+        height: 100%;
+        background-color: #ffffff;
+        border-right: 1px solid #e5e7eb;
+        display: flex;
+        flex-direction: column;
+    }
+
+    .sidebar-header {
+        padding: 20px;
+        border-bottom: 1px solid #e5e7eb;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
+
+    .logo-icon {
+        width: 40px;
+        height: 40px;
+        border-radius: 10px;
+        background-color: #eef2ff;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .logo-title {
+        font-size: 16px;
+        font-weight: 700;
+        color: #111827;
+        margin: 0;
+    }
+
+    .logo-subtitle {
+        font-size: 12px;
+        color: #6b7280;
+        margin: 0;
+    }
+
+    .sidebar-nav {
+        flex: 1;
+        padding: 16px 12px;
+        overflow-y: auto;
+    }
+
+    .nav-list {
+        list-style: none;
+        margin: 0;
+        padding: 0;
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+    }
+
+    .nav-item {
+        width: 100%;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 10px 12px;
+        border-radius: 8px;
+        border: none;
+        background: transparent;
+        color: #4b5563;
+        font-size: 14px;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.15s ease;
+        text-align: left;
+    }
+
+    .nav-item:hover {
+        background-color: #f3f4f6;
+        color: #111827;
+    }
+
+    .nav-item-active {
+        background-color: #eef2ff;
+        color: #2142f1;
+    }
+
+    .sidebar-footer {
+        padding: 16px;
+        border-top: 1px solid #e5e7eb;
+    }
+
+    .status-card {
+        background-color: #f9fafb;
+        border-radius: 8px;
+        padding: 12px;
+    }
+
+    .status-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 4px;
+    }
+
+    .status-label {
+        font-size: 11px;
+        color: #6b7280;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+
+    .status-dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background-color: #d1d5db;
+    }
+
+    .status-dot-active {
+        background-color: #10b981;
+    }
+
+    .status-text {
+        font-size: 13px;
+        color: #111827;
+        margin: 0;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+</style>

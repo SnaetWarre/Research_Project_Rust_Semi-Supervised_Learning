@@ -19,6 +19,7 @@ pub mod supervised;
 pub mod pseudo_label;
 pub mod scheduler;
 pub mod simulation;
+pub mod ssl_incremental;
 pub mod trainer;
 
 // Re-export main types for convenience
@@ -26,6 +27,7 @@ pub use pseudo_label::{PseudoLabelConfig, PseudoLabeler};
 pub use simulation::{run_simulation, SimulationConfig, SimulationResults};
 pub use scheduler::LRScheduler as LearningRateScheduler;
 pub use scheduler::LRScheduler as SchedulerType;
+pub use ssl_incremental::{SSLIncrementalConfig, SSLIncrementalResults, run_ssl_incremental_experiment};
 pub use trainer::{Trainer, TrainingState};
 
 // Re-export TrainingConfig from model::config where it's defined

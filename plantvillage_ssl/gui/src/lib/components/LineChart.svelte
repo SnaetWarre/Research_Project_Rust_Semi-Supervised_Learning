@@ -50,23 +50,23 @@
         scales: {
           x: {
             grid: {
-              color: '#334155',
+              color: '#e5e7eb',
             },
             ticks: {
-              color: '#94A3B8',
+              color: '#374151',
             },
           },
           y: {
             grid: {
-              color: '#334155',
+              color: '#e5e7eb',
             },
             ticks: {
-              color: '#94A3B8',
+              color: '#374151',
             },
             title: yAxisLabel ? {
               display: true,
               text: yAxisLabel,
-              color: '#94A3B8',
+              color: '#374151',
             } : undefined,
           },
         },

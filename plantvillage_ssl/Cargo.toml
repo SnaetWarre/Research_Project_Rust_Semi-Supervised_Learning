@@ -60,6 +60,10 @@ download = ["tokio", "reqwest"]                          # Dataset download feat
 name = "plantvillage_ssl"
 path = "src/main.rs"
 
+[[bin]]
+name = "experiments"
+path = "src/bin/experiments.rs"
+
 [profile.release]
 opt-level = 3
 lto = true

@@ -2,7 +2,8 @@
 //!
 //! Commands for loading datasets and getting statistics.
 
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
+use std::fs;
 use serde::{Deserialize, Serialize};
 use tauri::State;
 use std::sync::Arc;
@@ -20,19 +21,76 @@ pub struct ModelInfo {
     pub input_size: usize,
 }
 
+/// Helper function to find the newest model file in likely directories
+fn find_newest_model() -> Option<PathBuf> {
+    let search_paths = vec![
+        PathBuf::from("output/research_pipeline/ssl"),
+        PathBuf::from("output/research_pipeline/burn"),
+        PathBuf::from("plantvillage_ssl/output/research_pipeline/ssl"),
+        PathBuf::from("plantvillage_ssl/output/research_pipeline/burn"),
+        PathBuf::from("../output/research_pipeline/ssl"),
+        PathBuf::from("../output/research_pipeline/burn"),
+        PathBuf::from("../../output/research_pipeline/ssl"),
+        PathBuf::from("../../output/research_pipeline/burn"),
+    ];
+
+    let mut newest_file: Option<PathBuf> = None;
+    let mut newest_time = std::time::SystemTime::UNIX_EPOCH;
+
+    for dir in search_paths {
+        if let Ok(entries) = fs::read_dir(&dir) {
+            for entry in entries.filter_map(|e| e.ok()) {
+                let path = entry.path();
+                if path.extension().and_then(|s| s.to_str()) == Some("mpk") {
+                    if let Ok(metadata) = fs::metadata(&path) {
+                        if let Ok(modified) = metadata.modified() {
+                            if modified > newest_time {
+                                newest_time = modified;
+                                newest_file = Some(path);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    newest_file
+}
+
 /// Get dataset statistics
 #[tauri::command]
 pub async fn get_dataset_stats(
     data_dir: String,
     state: State<'_, Arc<AppState>>,
 ) -> Result<DatasetInfo, String> {
-    let path = Path::new(&data_dir);
+    let mut path = PathBuf::from(&data_dir);
     
+    // Auto-discovery of dataset directory
+    if !path.exists() {
+        let candidates = vec![
+            PathBuf::from(&data_dir),
+            PathBuf::from(format!("../{}", data_dir)),
+            PathBuf::from(format!("../../{}", data_dir)),
+            PathBuf::from("data/plantvillage/balanced"),
+            PathBuf::from("../data/plantvillage/balanced"),
+        ];
+
+        for candidate in candidates {
+            if candidate.exists() {
+                path = candidate;
+                break;
+            }
+        }
+    }
+
     if !path.exists() {
         return Err(format!("Dataset directory not found: {}", data_dir));
     }
+    
+    let path_str = path.to_string_lossy().to_string();
 
-    let dataset = PlantVillageDataset::new(&data_dir)
+    let dataset = PlantVillageDataset::new(&path_str)
         .map_err(|e| format!("Failed to load dataset: {:?}", e))?;
     
     let stats = dataset.get_stats();
@@ -46,7 +104,7 @@ pub async fn get_dataset_stats(
         .collect();
 
     let info = DatasetInfo {
-        path: data_dir.clone(),
+        path: path_str,
         total_samples: stats.total_samples,
         num_classes: stats.num_classes,
         class_names,
@@ -66,27 +124,64 @@ pub async fn load_model(
     model_path: String,
     state: State<'_, Arc<AppState>>,
 ) -> Result<ModelInfo, String> {
-    let path = std::path::Path::new(&model_path);
+    let mut path = PathBuf::from(&model_path);
     
-    // Check if path exists (with or without .mpk extension)
-    let actual_path = if path.exists() {
-        path.to_path_buf()
-    } else {
-        let with_ext = PathBuf::from(format!("{}.mpk", model_path));
-        if with_ext.exists() {
-            path.to_path_buf()
-        } else {
-            return Err(format!("Model file not found: {}", model_path));
+    // Special case for auto-discovery "best_model.mpk" or "auto"
+    if model_path == "best_model.mpk" || model_path == "auto" {
+        // First priority: Try to find the newest model from experiment outputs
+        if let Some(newest) = find_newest_model() {
+            path = newest;
         }
-    };
+        // Fallback: Check if best_model.mpk actually exists as a file/symlink
+        else if !path.exists() {
+             // Fallback search logic for specific paths if find_newest didn't work
+             let candidates = vec![
+                PathBuf::from("best_model.mpk"),
+                PathBuf::from("../best_model.mpk"),
+                PathBuf::from("plantvillage_ssl/best_model.mpk"),
+            ];
+            for candidate in candidates {
+                if candidate.exists() {
+                    path = candidate;
+                    break;
+                }
+            }
+        }
+    }
+    else if !path.exists() {
+         // Standard relative path search
+         let candidates = vec![
+            PathBuf::from(&model_path),
+            PathBuf::from(format!("../{}", model_path)),
+            PathBuf::from(format!("output/checkpoints/{}", model_path)),
+            PathBuf::from(format!("../output/checkpoints/{}", model_path)),
+        ];
 
+        for candidate in candidates {
+            if candidate.exists() {
+                path = candidate;
+                break;
+            }
+             // Try with .mpk extension
+             let with_ext = PathBuf::from(format!("{}.mpk", candidate.to_string_lossy()));
+             if with_ext.exists() {
+                path = with_ext;
+                break;
+            }
+        }
+    }
+
+    if !path.exists() {
+        return Err(format!("Model file not found: {}", model_path));
+    }
+    
     // Store the path in state (model will be loaded on-demand)
     let mut model_path_state = state.model_path.write().await;
-    *model_path_state = Some(actual_path.clone());
+    *model_path_state = Some(path.clone());
 
     Ok(ModelInfo {
         loaded: true,
-        path: Some(model_path),
+        path: Some(path.to_string_lossy().to_string()),
         num_classes: 38,
         input_size: 128,
     })

@@ -1,5 +1,6 @@
 <script lang="ts">
     import { getCurrentWindow } from "@tauri-apps/api/window";
+    import { invoke } from "@tauri-apps/api/core";
     import { Minus, Square, X, Maximize2 } from "lucide-svelte";
 
     const appWindow = getCurrentWindow();
@@ -17,8 +18,14 @@
         }
     }
 
-    function close() {
-        appWindow.close();
+    async function close() {
+        console.log('Closing application...');
+        try {
+            await invoke('exit_app');
+            console.log('Exit command sent');
+        } catch (error) {
+            console.error('Error closing app:', error);
+        }
     }
 </script>
 

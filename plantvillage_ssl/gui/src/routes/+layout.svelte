@@ -142,7 +142,7 @@
 <!-- SvelteKit requires this but we don't use it -->
 {@render children?.()}
 
-<style>
+<style lang="css">
     .app-container {
         display: flex;
         height: calc(100vh - 32px);

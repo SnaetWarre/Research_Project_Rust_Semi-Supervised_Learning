@@ -8,6 +8,7 @@ mod state;
 
 use std::sync::Arc;
 use tokio::sync::Mutex;
+use tauri::Manager;
 use state::AppState;
 use commands::incremental::IncrementalProgress;
 
@@ -24,6 +25,20 @@ pub fn run() {
         .plugin(tauri_plugin_dialog::init())
         .manage(app_state)
         .manage(incremental_progress_state)
+        .setup(|app| {
+            #[cfg(debug_assertions)]
+            {
+                let window = app.get_webview_window("main").unwrap();
+                window.open_devtools();
+            }
+            Ok(())
+        })
+        .on_window_event(|window, event| {
+            if let tauri::WindowEvent::CloseRequested { .. } = event {
+                let _ = window.destroy();
+                std::process::exit(0);
+            }
+        })
         .invoke_handler(tauri::generate_handler![
             // Dataset commands
             commands::get_dataset_stats,
@@ -62,7 +77,14 @@ pub fn run() {
             commands::load_all_experiment_results,
             commands::load_experiment_conclusions,
             commands::get_available_experiments,
+            // Exit app command
+            exit_app,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
+}
+
+#[tauri::command]
+fn exit_app() {
+    std::process::exit(0);
 }

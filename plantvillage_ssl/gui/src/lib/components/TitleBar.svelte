@@ -43,11 +43,11 @@
 <style>
     .titlebar {
         height: 32px;
-        background: #ffffff;
+        background: var(--bg-panel);
         display: flex;
         justify-content: space-between;
         align-items: center;
-        border-bottom: 1px solid #e5e7eb;
+        border-bottom: 1px solid var(--border-base);
         user-select: none;
         position: fixed;
         top: 0;
@@ -72,7 +72,7 @@
     .app-title {
         font-size: 12px;
         font-weight: 600;
-        color: #374151;
+        color: var(--text-secondary);
         font-family: system-ui, -apple-system, sans-serif;
     }
 
@@ -89,17 +89,18 @@
         height: 100%;
         background: transparent;
         border: none;
-        color: #4b5563;
+        color: var(--text-secondary);
         cursor: default;
         transition: background-color 0.1s;
     }
 
     .control-btn:hover {
-        background-color: #f3f4f6;
+        background-color: var(--bg-hover);
+        color: var(--text-main);
     }
 
     .control-btn.close:hover {
-        background-color: #ef4444;
+        background-color: var(--error);
         color: white;
     }
 </style>

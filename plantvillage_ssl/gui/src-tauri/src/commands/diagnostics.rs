@@ -11,7 +11,7 @@ use std::sync::Arc;
 
 use burn::module::Module;
 use burn::record::CompactRecorder;
-use burn::tensor::Tensor;
+use burn::tensor::{Tensor, TensorData};
 use image::imageops::FilterType;
 use rand::seq::SliceRandom;
 
@@ -39,6 +39,8 @@ pub struct DiagnosticResult {
     pub low_confidence_count: usize,
     /// Expected class distribution from dataset
     pub class_distribution: HashMap<usize, usize>,
+    /// Distribution of input classes used for diagnostics (class_name -> count)
+    pub input_distribution: HashMap<String, usize>,
 }
 
 /// PlantVillage class names (must match inference.rs)
@@ -158,6 +160,7 @@ pub async fn run_model_diagnostics(
     let mut class_confidences: HashMap<usize, Vec<f32>> = HashMap::new();
     let mut total_predictions = 0;
     let mut low_confidence_count = 0;
+    let mut input_class_counts: HashMap<String, usize> = HashMap::new();
 
     let device = <AppBackend as burn::tensor::backend::Backend>::Device::default();
 
@@ -168,6 +171,14 @@ pub async fn run_model_diagnostics(
 
         if !path.exists() {
             continue;
+        }
+
+        // Count input distribution for debugging bias
+        if let Some(parent) = path.parent() {
+            if let Some(name) = parent.file_name() {
+                let class_name = name.to_string_lossy().to_string();
+                *input_class_counts.entry(class_name).or_insert(0) += 1;
+            }
         }
 
         // Load and preprocess image
@@ -193,6 +204,17 @@ pub async fn run_model_diagnostics(
 
         let tensor = Tensor::<AppBackend, 1>::from_floats(pixels.as_slice(), &device)
             .reshape([1, 3, input_size, input_size]);
+
+        // Apply ImageNet normalization (same as training)
+        let mean = Tensor::<AppBackend, 4>::from_floats(
+            TensorData::new(vec![0.485f32, 0.456, 0.406], [1, 3, 1, 1]),
+            &device,
+        );
+        let std = Tensor::<AppBackend, 4>::from_floats(
+            TensorData::new(vec![0.229f32, 0.224, 0.225], [1, 3, 1, 1]),
+            &device,
+        );
+        let tensor = (tensor - mean) / std;
 
         // Run inference
         let output = model.forward_softmax(tensor);
@@ -228,6 +250,15 @@ pub async fn run_model_diagnostics(
         return Err("No valid predictions were made".to_string());
     }
 
+    // Log the input distribution to stdout for debugging bias
+    println!("\n🔍 Diagnostics Input Distribution ({} samples):", total_predictions);
+    let mut sorted_inputs: Vec<_> = input_class_counts.iter().collect();
+    sorted_inputs.sort_by(|a, b| b.1.cmp(a.1)); // Sort by count descending
+    for (class_name, count) in sorted_inputs {
+        println!("  • {}: {}", class_name, count);
+    }
+    println!("--------------------------------------------------\n");
+
     // Find most predicted class
     let (most_predicted_class, most_predicted_count) = class_predictions
         .iter()
@@ -248,6 +279,7 @@ pub async fn run_model_diagnostics(
         prediction_bias_score,
         low_confidence_count,
         class_distribution,
+        input_distribution: input_class_counts,
     })
 }
 

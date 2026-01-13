@@ -238,3 +238,77 @@ cargo test -p plant-incremental
 4. **38 classes**: PlantVillage dataset has 38 disease classes
 5. **Workspace structure**: `incremental_learning/` is a Cargo workspace with multiple crates
 6. **GUI uses Svelte 5**: Modern runes syntax (`$props()`, `$state()`, etc.)
+
+## SSL Training Pipeline - IMPORTANT!
+
+When the user asks to train the model for SSL (semi-supervised learning), use this workflow:
+
+### Step 1: Initial CNN Training (20% labeled data)
+```bash
+cd plantvillage_ssl
+cargo run --release --bin plantvillage_ssl -- train \
+    --epochs 30 \
+    --cuda \
+    --labeled-ratio 0.2
+```
+
+**Key parameters:**
+- `--labeled-ratio 0.2` = 20% for CNN training, 60% reserved for SSL stream, 10% validation, 10% test
+- `--epochs 30` = Sufficient for initial model (can increase if needed)
+- `--cuda` = Use GPU acceleration
+
+### Step 2: SSL Simulation (Pseudo-labeling with all unlabeled data)
+```bash
+cd plantvillage_ssl
+cargo run --release --bin plantvillage_ssl -- simulate \
+    --model "output/models/plant_classifier_TIMESTAMP" \
+    --data-dir "data/plantvillage/balanced" \
+    --cuda \
+    --days 0 \
+    --images-per-day 100 \
+    --labeled-ratio 0.2 \
+    --retrain-threshold 200 \
+    --confidence-threshold 0.9
+```
+
+**Key parameters:**
+- `--days 0` = Unlimited - process ALL available SSL stream data
+- `--images-per-day 100` = Batch size per "day" for streaming simulation
+- `--labeled-ratio 0.2` = MUST match training! Ensures correct data split
+- `--retrain-threshold 200` = Retrain after accumulating 200 pseudo-labels
+- `--confidence-threshold 0.9` = Only accept predictions with >90% confidence
+
+### Step 3: Copy Best Model for Demo
+```bash
+cp plantvillage_ssl/output/simulation/plant_classifier_ssl_TIMESTAMP.mpk plantvillage_ssl/best_model.mpk
+```
+
+### Data Split Strategy
+
+| Pool | Fraction | Purpose |
+|------|----------|---------|
+| Test | 10% | Final evaluation (never seen during training) |
+| Validation | 10% | Hyperparameter tuning, early stopping |
+| Labeled (CNN) | 20% | Initial supervised training |
+| Stream (SSL) | 60% | Unlabeled data for pseudo-labeling |
+
+### Expected Results
+- Initial CNN training: ~70-75% validation accuracy (with only 20% labeled data)
+- After SSL pipeline: ~78-85%+ validation accuracy
+- Pseudo-label precision: >95%
+
+### Quick Reference Commands
+```bash
+# Full SSL workflow (train + simulate)
+cd plantvillage_ssl
+cargo run --release --bin plantvillage_ssl -- train --epochs 30 --cuda --labeled-ratio 0.2
+cargo run --release --bin plantvillage_ssl -- simulate \
+    --model "output/models/plant_classifier_LATEST" \
+    --data-dir "data/plantvillage/balanced" \
+    --cuda --days 0 --labeled-ratio 0.2
+
+# Check available commands
+cargo run --release --bin plantvillage_ssl -- --help
+cargo run --release --bin plantvillage_ssl -- train --help
+cargo run --release --bin plantvillage_ssl -- simulate --help
+```

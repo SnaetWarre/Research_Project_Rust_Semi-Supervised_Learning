@@ -151,6 +151,17 @@ pub async fn run_inference(
     let tensor = Tensor::<AppBackend, 1>::from_floats(pixels.as_slice(), &device)
         .reshape([1, 3, input_size, input_size]);
 
+    // Apply ImageNet normalization: (x - mean) / std
+    let mean = Tensor::<AppBackend, 4>::from_floats(
+        burn::tensor::TensorData::new(vec![0.485f32, 0.456, 0.406], [1, 3, 1, 1]),
+        &device,
+    );
+    let std = Tensor::<AppBackend, 4>::from_floats(
+        burn::tensor::TensorData::new(vec![0.229f32, 0.224, 0.225], [1, 3, 1, 1]),
+        &device,
+    );
+    let tensor = (tensor - mean) / std;
+
     // Run inference
     let start = Instant::now();
     let output = model.forward_softmax(tensor);
@@ -231,6 +242,17 @@ pub async fn run_inference_bytes(
 
     let tensor = Tensor::<AppBackend, 1>::from_floats(pixels.as_slice(), &device)
         .reshape([1, 3, input_size, input_size]);
+
+    // Apply ImageNet normalization: (x - mean) / std
+    let mean = Tensor::<AppBackend, 4>::from_floats(
+        burn::tensor::TensorData::new(vec![0.485f32, 0.456, 0.406], [1, 3, 1, 1]),
+        &device,
+    );
+    let std = Tensor::<AppBackend, 4>::from_floats(
+        burn::tensor::TensorData::new(vec![0.229f32, 0.224, 0.225], [1, 3, 1, 1]),
+        &device,
+    );
+    let tensor = (tensor - mean) / std;
 
     // Run inference
     let start = Instant::now();

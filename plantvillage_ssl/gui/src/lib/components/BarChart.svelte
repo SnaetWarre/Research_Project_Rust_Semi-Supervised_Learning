@@ -42,21 +42,21 @@
             display: false,
           },
         },
-        scales: {
+          scales: {
           x: {
             grid: {
-              color: '#e5e7eb',
+              color: '#27272a',
             },
             ticks: {
-              color: '#374151',
+              color: '#a1a1aa',
             },
           },
           y: {
             grid: {
-              color: '#e5e7eb',
+              color: '#27272a',
             },
             ticks: {
-              color: '#374151',
+              color: '#a1a1aa',
             },
           },
         },

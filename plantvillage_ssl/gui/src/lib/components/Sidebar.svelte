@@ -2,13 +2,8 @@
     import { currentPage, modelInfo } from "$lib/stores/app";
     import {
         LayoutDashboard,
-        GraduationCap,
         ScanLine,
-        Tags,
-        PlayCircle,
-        Gauge,
         Leaf,
-        TrendingUp,
         FlaskConical,
         Activity,
     } from "lucide-svelte";
@@ -29,7 +24,7 @@
     <!-- Logo/Header -->
     <div class="sidebar-header">
         <div class="logo-icon">
-            <Leaf class="w-5 h-5" style="color: #2142f1;" />
+            <Leaf class="w-5 h-5" style="color: var(--c-white);" />
         </div>
         <div>
             <h1 class="logo-title">PlantVillage</h1>
@@ -76,15 +71,15 @@
     .sidebar {
         width: 240px;
         height: 100%;
-        background-color: #ffffff;
-        border-right: 1px solid #e5e7eb;
+        background-color: var(--bg-panel);
+        border-right: 1px solid var(--border-base);
         display: flex;
         flex-direction: column;
     }
 
     .sidebar-header {
         padding: 20px;
-        border-bottom: 1px solid #e5e7eb;
+        border-bottom: 1px solid var(--border-base);
         display: flex;
         align-items: center;
         gap: 12px;
@@ -94,7 +89,7 @@
         width: 40px;
         height: 40px;
         border-radius: 10px;
-        background-color: #eef2ff;
+        background-color: var(--c-zinc-800);
         display: flex;
         align-items: center;
         justify-content: center;
@@ -103,13 +98,13 @@
     .logo-title {
         font-size: 16px;
         font-weight: 700;
-        color: #111827;
+        color: var(--text-main);
         margin: 0;
     }
 
     .logo-subtitle {
         font-size: 12px;
-        color: #6b7280;
+        color: var(--text-secondary);
         margin: 0;
     }
 
@@ -135,9 +130,9 @@
         gap: 12px;
         padding: 10px 12px;
         border-radius: 8px;
-        border: none;
+        border: 1px solid transparent;
         background: transparent;
-        color: #4b5563;
+        color: var(--text-secondary);
         font-size: 14px;
         font-weight: 500;
         cursor: pointer;
@@ -146,22 +141,24 @@
     }
 
     .nav-item:hover {
-        background-color: #f3f4f6;
-        color: #111827;
+        background-color: var(--bg-hover);
+        color: var(--text-main);
     }
 
     .nav-item-active {
-        background-color: #eef2ff;
-        color: #2142f1;
+        background-color: var(--bg-hover);
+        border-color: var(--border-highlight);
+        color: var(--text-main);
     }
 
     .sidebar-footer {
         padding: 16px;
-        border-top: 1px solid #e5e7eb;
+        border-top: 1px solid var(--border-base);
     }
 
     .status-card {
-        background-color: #f9fafb;
+        background-color: var(--bg-surface);
+        border: 1px solid var(--border-base);
         border-radius: 8px;
         padding: 12px;
     }
@@ -175,7 +172,7 @@
 
     .status-label {
         font-size: 11px;
-        color: #6b7280;
+        color: var(--text-secondary);
         text-transform: uppercase;
         letter-spacing: 0.5px;
     }
@@ -184,16 +181,16 @@
         width: 8px;
         height: 8px;
         border-radius: 50%;
-        background-color: #d1d5db;
+        background-color: var(--c-zinc-700);
     }
 
     .status-dot-active {
-        background-color: #10b981;
+        background-color: var(--success);
     }
 
     .status-text {
         font-size: 13px;
-        color: #111827;
+        color: var(--text-main);
         margin: 0;
         white-space: nowrap;
         overflow: hidden;

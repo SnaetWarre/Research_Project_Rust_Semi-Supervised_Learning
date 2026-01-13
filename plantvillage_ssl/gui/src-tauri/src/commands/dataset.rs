@@ -65,7 +65,7 @@ pub async fn get_dataset_stats(
     state: State<'_, Arc<AppState>>,
 ) -> Result<DatasetInfo, String> {
     let mut path = PathBuf::from(&data_dir);
-    
+
     // Auto-discovery of dataset directory
     if !path.exists() {
         let candidates = vec![
@@ -87,18 +87,18 @@ pub async fn get_dataset_stats(
     if !path.exists() {
         return Err(format!("Dataset directory not found: {}", data_dir));
     }
-    
+
     let path_str = path.to_string_lossy().to_string();
 
     let dataset = PlantVillageDataset::new(&path_str)
         .map_err(|e| format!("Failed to load dataset: {:?}", e))?;
-    
+
     let stats = dataset.get_stats();
-    
+
     let class_names: Vec<String> = (0..stats.num_classes)
         .map(|i| stats.class_names.get(&i).cloned().unwrap_or_else(|| format!("Class {}", i)))
         .collect();
-    
+
     let class_counts: Vec<usize> = (0..stats.num_classes)
         .map(|i| stats.class_counts.get(i).copied().unwrap_or(0))
         .collect();
@@ -125,7 +125,7 @@ pub async fn load_model(
     state: State<'_, Arc<AppState>>,
 ) -> Result<ModelInfo, String> {
     let mut path = PathBuf::from(&model_path);
-    
+
     // Special case for auto-discovery "best_model.mpk" or "auto"
     if model_path == "best_model.mpk" || model_path == "auto" {
         // First priority: Try to find the newest model from experiment outputs
@@ -174,7 +174,7 @@ pub async fn load_model(
     if !path.exists() {
         return Err(format!("Model file not found: {}", model_path));
     }
-    
+
     // Store the path in state (model will be loaded on-demand)
     let mut model_path_state = state.model_path.write().await;
     *model_path_state = Some(path.clone());
@@ -193,7 +193,7 @@ pub async fn get_model_status(
     state: State<'_, Arc<AppState>>,
 ) -> Result<ModelInfo, String> {
     let model_path = state.model_path.read().await;
-    
+
     match &*model_path {
         Some(path) => Ok(ModelInfo {
             loaded: true,

@@ -35,6 +35,7 @@ pub struct SimulationConfig {
     pub images_per_day: usize,
     pub confidence_threshold: f64,
     pub retrain_threshold: usize,
+    pub labeled_ratio: f64,
     pub output_dir: String,
     pub seed: u64,
     pub batch_size: usize,
@@ -47,10 +48,11 @@ impl Default for SimulationConfig {
         Self {
             data_dir: "data/plantvillage".to_string(),
             model_path: "output/models/plant_classifier".to_string(),
-            days: 30,
-            images_per_day: 50,
+            days: 0,  // 0 = unlimited (use all available data)
+            images_per_day: 100,
             confidence_threshold: 0.9,
             retrain_threshold: 200,
+            labeled_ratio: 0.2,  // 20% for CNN, 60% for SSL stream, 10% val, 10% test
             output_dir: "output/simulation".to_string(),
             seed: 42,
             batch_size: 32,
@@ -85,7 +87,7 @@ where
     println!("  Total samples: {}", stats.total_samples);
     println!("  Classes: {}", stats.num_classes);
 
-    // Create stratified splits
+    // Create stratified splits using CLI-configured labeled_ratio
     println!("{}", "Creating Data Splits...".cyan());
     let all_images: Vec<(PathBuf, usize, String)> = dataset
         .samples
@@ -93,11 +95,14 @@ where
         .map(|s| (s.path.clone(), s.label, s.class_name.clone()))
         .collect();
 
+    // Calculate stream fraction: remaining after test (10%), validation (10%), and labeled
+    let stream_fraction = 1.0 - config.labeled_ratio - 0.10; // Reserve 10% for future pool
+    
     let split_config = SplitConfig {
         test_fraction: 0.10,
         validation_fraction: 0.10,
-        labeled_fraction: 0.30,  // 30% for supervised CNN training
-        stream_fraction: 0.70,   // 70% for SSL pipeline
+        labeled_fraction: config.labeled_ratio,  // Use CLI-configured ratio!
+        stream_fraction,                         // Maximize for SSL!
         seed: config.seed,
         stratified: true,
     };
@@ -294,8 +299,8 @@ where
             println!();
         }
 
-        // Stop if we've simulated enough days
-        if day >= config.days {
+        // Stop if we've simulated enough days (0 = unlimited, process all data)
+        if config.days > 0 && day >= config.days {
             break;
         }
     }

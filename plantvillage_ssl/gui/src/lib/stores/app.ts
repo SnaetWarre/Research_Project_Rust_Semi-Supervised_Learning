@@ -77,6 +77,37 @@ export const simulationState = writable<SimulationState>({
   accuracyHistory: [],
 });
 
+// Diagnostics state
+export interface DiagnosticResult {
+  class_predictions: { [key: number]: number };
+  class_confidences: { [key: number]: number[] };
+  total_predictions: number;
+  most_predicted_class: number;
+  most_predicted_class_name: string;
+  prediction_bias_score: number;
+  low_confidence_count: number;
+  class_distribution: { [key: number]: number };
+  input_distribution: { [key: string]: number };
+}
+
+export interface DiagnosticsState {
+  result: DiagnosticResult | null;
+  lastRunAt: Date | null;
+  config: {
+    numSamples: number;
+    confidenceThreshold: number;
+  };
+}
+
+export const diagnosticsState = writable<DiagnosticsState>({
+  result: null,
+  lastRunAt: null,
+  config: {
+    numSamples: 100,
+    confidenceThreshold: 0.7,
+  },
+});
+
 // Activity log
 export interface ActivityItem {
   id: number;

@@ -18,8 +18,7 @@
   <svg class="transform -rotate-90" width={size} height={size}>
     <!-- Background circle -->
     <circle
-      class="text-background-lighter"
-      stroke="currentColor"
+      stroke="var(--c-zinc-800)"
       stroke-width={strokeWidth}
       fill="transparent"
       r={radius}
@@ -28,21 +27,20 @@
     />
     <!-- Progress circle -->
     <circle
-      class="text-primary transition-all duration-500 ease-out"
-      stroke="currentColor"
+      stroke="var(--c-accent)"
       stroke-width={strokeWidth}
       stroke-linecap="round"
       fill="transparent"
       r={radius}
       cx={size / 2}
       cy={size / 2}
-      style="stroke-dasharray: {circumference}; stroke-dashoffset: {offset}"
+      style="stroke-dasharray: {circumference}; stroke-dashoffset: {offset}; transition: stroke-dashoffset 0.5s ease-out;"
     />
   </svg>
   <div class="absolute flex flex-col items-center justify-center">
-    <span class="text-2xl font-bold text-white">{value.toFixed(1)}%</span>
+    <span class="text-2xl font-bold" style="color: var(--text-main);">{value.toFixed(1)}%</span>
     {#if label}
-      <span class="text-xs text-slate-400">{label}</span>
+      <span class="text-xs" style="color: var(--text-secondary);">{label}</span>
     {/if}
   </div>
 </div>

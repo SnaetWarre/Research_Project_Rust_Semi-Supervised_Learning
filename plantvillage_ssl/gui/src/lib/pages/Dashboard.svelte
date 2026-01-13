@@ -8,6 +8,7 @@
         trainingState,
         activityLog,
         addActivity,
+        diagnosticsState,
     } from "$lib/stores/app";
     import {
         Database,
@@ -90,6 +91,14 @@
                     numClasses: result.num_classes,
                     inputSize: result.input_size,
                 });
+                
+                // Clear previous diagnostics when loading a new model
+                diagnosticsState.update(state => ({
+                    ...state,
+                    result: null,
+                    lastRunAt: null,
+                }));
+                
                 addActivity("success", `Model loaded successfully`);
             } catch (e) {
                 addActivity("error", `Failed to load model: ${e}`);
@@ -121,7 +130,7 @@
             case "error":
                 return "color: #ef4444;";
             default:
-                return "color: #2142f1;";
+                return "color: #3b82f6;";
         }
     }
 </script>
@@ -274,13 +283,13 @@
     .page-title {
         font-size: 28px;
         font-weight: 700;
-        color: #111827;
+        color: var(--text-main);
         margin: 0 0 4px 0;
     }
 
     .page-subtitle {
         font-size: 14px;
-        color: #6b7280;
+        color: var(--text-secondary);
         margin: 0;
     }
 
@@ -303,22 +312,22 @@
     }
 
     .btn-primary {
-        background-color: #2142f1;
-        color: white;
+        background-color: var(--c-white);
+        color: var(--c-black);
     }
 
     .btn-primary:hover:not(:disabled) {
-        background-color: #1a35c4;
+        background-color: var(--c-zinc-200);
     }
 
     .btn-secondary {
-        background-color: #f3f4f6;
-        color: #374151;
-        border: 1px solid #e5e7eb;
+        background-color: transparent;
+        color: var(--text-main);
+        border: 1px solid var(--border-base);
     }
 
     .btn-secondary:hover:not(:disabled) {
-        background-color: #e5e7eb;
+        background-color: var(--bg-hover);
     }
 
     .btn-primary:disabled, .btn-secondary:disabled {
@@ -334,8 +343,8 @@
     }
 
     .stat-card {
-        background: white;
-        border: 1px solid #e5e7eb;
+        background: var(--bg-panel);
+        border: 1px solid var(--border-base);
         border-radius: 12px;
         padding: 20px;
         display: flex;
@@ -354,23 +363,23 @@
     }
 
     .stat-icon-blue {
-        background-color: #eef2ff;
-        color: #2142f1;
+        background-color: var(--c-accent-dim);
+        color: var(--c-accent);
     }
 
     .stat-icon-green {
-        background-color: #d1fae5;
-        color: #10b981;
+        background-color: rgba(16, 185, 129, 0.15);
+        color: var(--success);
     }
 
     .stat-icon-gray {
-        background-color: #f3f4f6;
-        color: #9ca3af;
+        background-color: var(--c-zinc-800);
+        color: var(--c-zinc-400);
     }
 
     .stat-icon-primary {
-        background-color: #eef2ff;
-        color: #2142f1;
+        background-color: var(--c-accent-dim);
+        color: var(--c-accent);
     }
 
     .stat-content {
@@ -379,20 +388,20 @@
 
     .stat-label {
         font-size: 13px;
-        color: #6b7280;
+        color: var(--text-secondary);
         margin: 0 0 4px 0;
     }
 
     .stat-value {
         font-size: 24px;
         font-weight: 700;
-        color: #111827;
+        color: var(--text-main);
         margin: 0 0 4px 0;
     }
 
     .stat-desc {
         font-size: 13px;
-        color: #9ca3af;
+        color: var(--text-secondary);
         margin: 0;
     }
 
@@ -419,7 +428,7 @@
     .class-name {
         width: 100px;
         font-size: 13px;
-        color: #374151;
+        color: var(--text-main);
         white-space: nowrap;
         overflow: hidden;
         text-overflow: ellipsis;
@@ -428,14 +437,14 @@
     .class-bar-container {
         flex: 1;
         height: 8px;
-        background-color: #f3f4f6;
+        background-color: var(--c-zinc-800);
         border-radius: 4px;
         overflow: hidden;
     }
 
     .class-bar {
         height: 100%;
-        background-color: #2142f1;
+        background-color: var(--c-accent);
         border-radius: 4px;
     }
 
@@ -443,7 +452,7 @@
         width: 40px;
         text-align: right;
         font-size: 13px;
-        color: #6b7280;
+        color: var(--text-secondary);
     }
 
     .activity-list {
@@ -458,7 +467,7 @@
         display: flex;
         gap: 12px;
         padding-bottom: 12px;
-        border-bottom: 1px solid #f3f4f6;
+        border-bottom: 1px solid var(--border-base);
     }
 
     .activity-item:last-child {
@@ -473,19 +482,19 @@
 
     .activity-message {
         font-size: 13px;
-        color: #374151;
+        color: var(--text-main);
         margin: 0 0 2px 0;
     }
 
     .activity-time {
         font-size: 11px;
-        color: #9ca3af;
+        color: var(--text-secondary);
         margin: 0;
     }
 
     .no-activity {
         font-size: 13px;
-        color: #9ca3af;
+        color: var(--text-secondary);
         margin: 0;
     }
 

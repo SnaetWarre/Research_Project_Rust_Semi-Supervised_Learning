@@ -17,16 +17,16 @@
 
 <style>
   .card-component {
-    background-color: #ffffff;
+    background-color: var(--bg-panel);
     border-radius: 12px;
     padding: 20px;
-    border: 1px solid #e5e7eb;
+    border: 1px solid var(--border-base);
   }
 
   .card-title {
     font-size: 16px;
     font-weight: 600;
-    color: #111827;
+    color: var(--text-main);
     margin: 0 0 16px 0;
   }
 </style>

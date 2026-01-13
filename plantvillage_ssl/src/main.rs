@@ -79,8 +79,8 @@ enum Commands {
         #[arg(short, long, default_value = "0.0001")]
         learning_rate: f64,
 
-        /// Percentage of labeled data (0.0-1.0)
-        #[arg(long, default_value = "0.8")]
+        /// Percentage of labeled data (0.0-1.0). Use 0.2 for SSL workflows!
+        #[arg(long, default_value = "0.2")]
         labeled_ratio: f64,
 
         /// Confidence threshold for pseudo-labeling (0.0-1.0)
@@ -164,12 +164,12 @@ enum Commands {
         #[arg(short, long)]
         model: String,
 
-        /// Number of simulated days
-        #[arg(long, default_value = "30")]
+        /// Number of simulated days (use 0 for unlimited - process all available data)
+        #[arg(long, default_value = "0")]
         days: usize,
 
         /// Images per day
-        #[arg(long, default_value = "50")]
+        #[arg(long, default_value = "100")]
         images_per_day: usize,
 
         /// Confidence threshold for pseudo-labeling
@@ -179,6 +179,10 @@ enum Commands {
         /// Retrain after this many pseudo-labeled images
         #[arg(long, default_value = "200")]
         retrain_threshold: usize,
+
+        /// Labeled ratio for data split (0.0-1.0). Should match training!
+        #[arg(long, default_value = "0.2")]
+        labeled_ratio: f64,
 
         /// Output directory for logs and metrics
         #[arg(short, long, default_value = "output/simulation")]
@@ -303,6 +307,7 @@ fn main() -> Result<()> {
             images_per_day,
             confidence_threshold,
             retrain_threshold,
+            labeled_ratio,
             output_dir,
             cuda: _cuda,
         } => {
@@ -313,6 +318,7 @@ fn main() -> Result<()> {
                 images_per_day,
                 confidence_threshold,
                 retrain_threshold,
+                labeled_ratio,
                 &output_dir,
                 true,
             )?;
@@ -650,6 +656,7 @@ fn cmd_simulate(
     images_per_day: usize,
     confidence_threshold: f64,
     retrain_threshold: usize,
+    labeled_ratio: f64,
     output_dir: &str,
     _cuda: bool,
 ) -> Result<()> {
@@ -657,18 +664,20 @@ fn cmd_simulate(
     use plantvillage_ssl::training::{run_simulation, SimulationConfig};
 
     info!("Starting stream simulation");
-    info!("  Days: {}", days);
+    info!("  Days: {} (0 = unlimited)", days);
     info!("  Images per day: {}", images_per_day);
     info!("  Confidence threshold: {}", confidence_threshold);
     info!("  Retrain threshold: {} images", retrain_threshold);
+    info!("  Labeled ratio: {:.0}%", labeled_ratio * 100.0);
 
     println!("{}", "Simulation Configuration:".cyan().bold());
     println!("  📁 Data directory:    {}", data_dir);
     println!("  🧠 Initial model:     {}", model);
-    println!("  📅 Simulated days:   {}", days);
+    println!("  📅 Simulated days:   {} (0 = unlimited)", days);
     println!("  📷 Images per day:   {}", images_per_day);
     println!("  🎯 Confidence threshold: {}", confidence_threshold);
     println!("  🔄 Retrain threshold:  {} images", retrain_threshold);
+    println!("  🏷️  Labeled ratio:     {:.0}% (SSL stream: {:.0}%)", labeled_ratio * 100.0, (1.0 - labeled_ratio - 0.20) * 100.0);
     println!("  💾 Output directory:   {}", output_dir);
     println!("  🖥️  Backend:          CUDA");
     println!();
@@ -680,6 +689,7 @@ fn cmd_simulate(
         images_per_day,
         confidence_threshold,
         retrain_threshold,
+        labeled_ratio,
         output_dir: output_dir.to_string(),
         seed: 42,
         batch_size: 32,

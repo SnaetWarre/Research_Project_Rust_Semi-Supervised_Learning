@@ -148,7 +148,7 @@
         height: calc(100vh - 32px);
         margin-top: 32px;
         overflow: hidden;
-        background-color: #f9fafb;
+        background-color: var(--bg-app);
     }
 
     .main-content {
@@ -163,7 +163,7 @@
         margin-top: 32px;
         align-items: center;
         justify-content: center;
-        background-color: #f9fafb;
+        background-color: var(--bg-app);
     }
 
     .loading-content {
@@ -173,15 +173,15 @@
     .loading-spinner {
         width: 48px;
         height: 48px;
-        border: 3px solid #e5e7eb;
-        border-top-color: #2142f1;
+        border: 3px solid var(--c-zinc-800);
+        border-top-color: var(--c-accent);
         border-radius: 50%;
         animation: spin 0.8s linear infinite;
         margin: 0 auto 16px;
     }
 
     .loading-text {
-        color: #6b7280;
+        color: var(--text-secondary);
         font-family: "Inter", sans-serif;
         font-size: 14px;
     }

@@ -17,9 +17,6 @@ use burn::{
 };
 
 /// Configuration for the PlantClassifier CNN model
-///
-/// A stronger baseline model (~85-90% accuracy) that provides good performance
-/// while still leaving room for SSL pipeline improvements.
 #[derive(Config, Debug)]
 pub struct PlantClassifierConfig {
     /// Number of output classes (default: 38 for PlantVillage)

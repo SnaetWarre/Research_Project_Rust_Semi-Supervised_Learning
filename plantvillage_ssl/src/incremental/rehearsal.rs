@@ -3,7 +3,7 @@
 //! This module implements rehearsal methods that maintain a memory buffer
 //! of exemplars from previous tasks to prevent catastrophic forgetting.
 
-use crate::{ExemplarSelection, IncrementalConfig, IncrementalLearner, TrainingMetrics};
+use super::{ExemplarSelection, IncrementalConfig, IncrementalLearner, TrainingMetrics};
 use anyhow::{anyhow, Result};
 use burn::tensor::backend::Backend;
 use serde::{Deserialize, Serialize};
@@ -504,7 +504,7 @@ impl<B: Backend> IncrementalLearner<B> for RehearsalLearner<B> {
     }
 }
 
-#[cfg(test)]
+#[cfg(all(test, feature = "cpu"))]
 mod tests {
     use super::*;
     use burn_ndarray::NdArray;

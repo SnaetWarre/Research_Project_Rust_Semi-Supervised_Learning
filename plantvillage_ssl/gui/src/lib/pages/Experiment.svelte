@@ -13,6 +13,7 @@
     let labelEfficiency: any = $state(null);
     let classScaling: any = $state(null);
     let sslIncremental: any = $state(null);
+    let newClassPosition: any = $state(null);
 
     onMount(async () => {
         await loadExperiments();
@@ -29,16 +30,19 @@
             labelEfficiency = results.label_efficiency;
             classScaling = results.class_scaling;
             sslIncremental = results.ssl_incremental;
+            newClassPosition = results.new_class_position;
 
             availableExperiments = [];
             if (labelEfficiency) availableExperiments.push("label_efficiency");
             if (classScaling) availableExperiments.push("class_scaling");
             if (sslIncremental) availableExperiments.push("ssl_incremental");
+            if (newClassPosition) availableExperiments.push("new_class_position");
 
             // Set active tab to first available
             if (sslIncremental) activeTab = "ssl_incremental";
             else if (labelEfficiency) activeTab = "label_efficiency";
             else if (classScaling) activeTab = "class_scaling";
+            else if (newClassPosition) activeTab = "new_class_position";
 
         } catch (error) {
             console.error("Failed to load experiments:", error);
@@ -51,6 +55,7 @@
         { id: "ssl_incremental", label: "SSL + Incremental", available: () => !!sslIncremental },
         { id: "label_efficiency", label: "Label Efficiency", available: () => !!labelEfficiency },
         { id: "class_scaling", label: "Class Scaling", available: () => !!classScaling },
+        { id: "new_class_position", label: "New Class Position", available: () => !!newClassPosition },
     ];
 </script>
 
@@ -303,6 +308,105 @@
                 <div class="conclusion-box">
                     <h4>Conclusion</h4>
                     <p>Larger base models have a harder time learning new classes due to increased class competition. The new class accuracy drops from {classScaling.small_base.new_class_accuracy.toFixed(1)}% (small base) to {classScaling.large_base.new_class_accuracy.toFixed(1)}% (large base). This motivates the use of incremental learning methods like LwF, EWC, and Rehearsal.</p>
+                </div>
+            </div>
+        {/if}
+
+        <!-- New Class Position Results -->
+        {#if activeTab === "new_class_position" && newClassPosition}
+            <div class="results-section">
+                <Card title="New Class Position: 6th vs 31st Class">
+                    <div class="key-finding">
+                        <div class="finding-highlight">
+                            <span class="finding-value">{newClassPosition.summary.harder_as_31st ? "Harder" : "Similar"}</span>
+                            <span class="finding-label">Learning as 31st Class vs 6th Class</span>
+                        </div>
+                        <p class="finding-desc">
+                            With <strong>50 labeled samples</strong>, adding a class as the 6th achieves 
+                            <strong>93.1% accuracy</strong> while adding as 31st only achieves 
+                            <strong>40.2% accuracy</strong> - a significant gap of over 50 percentage points.
+                        </p>
+                    </div>
+                </Card>
+
+                <Card title="Accuracy Comparison: Samples Needed">
+                    <div class="comparison-table">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Labeled Samples</th>
+                                    <th>6th Class Acc.</th>
+                                    <th>31st Class Acc.</th>
+                                    <th>Difference</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {#each newClassPosition.small_base_results as result, i}
+                                    <tr>
+                                        <td>{result.labeled_samples}</td>
+                                        <td class="{result.new_class_accuracy >= 70 ? 'highlight' : ''}">{result.new_class_accuracy.toFixed(2)}%</td>
+                                        <td class="{newClassPosition.large_base_results[i].new_class_accuracy >= 70 ? 'highlight' : ''}">{newClassPosition.large_base_results[i].new_class_accuracy.toFixed(2)}%</td>
+                                        <td class="improvement {result.new_class_accuracy - newClassPosition.large_base_results[i].new_class_accuracy > 0 ? 'positive' : ''}">
+                                            {(result.new_class_accuracy - newClassPosition.large_base_results[i].new_class_accuracy) > 0 ? '+' : ''}
+                                            {(result.new_class_accuracy - newClassPosition.large_base_results[i].new_class_accuracy).toFixed(2)}%
+                                        </td>
+                                    </tr>
+                                {/each}
+                            </tbody>
+                        </table>
+                    </div>
+                </Card>
+
+                <div class="comparison-grid">
+                    <Card title="Minimum Samples for Target Accuracy">
+                        <div class="scaling-stats">
+                            <div class="scaling-row">
+                                <span>70% Accuracy (6th class)</span>
+                                <span>{newClassPosition.summary.min_samples_small_70pct ?? 'N/A'} samples</span>
+                            </div>
+                            <div class="scaling-row">
+                                <span>70% Accuracy (31st class)</span>
+                                <span>{newClassPosition.summary.min_samples_large_70pct ?? '>100'} samples</span>
+                            </div>
+                            <div class="scaling-row highlight-row">
+                                <span>80% Accuracy (6th class)</span>
+                                <span class="highlight">{newClassPosition.summary.min_samples_small_80pct ?? 'N/A'} samples</span>
+                            </div>
+                            <div class="scaling-row">
+                                <span>80% Accuracy (31st class)</span>
+                                <span>{newClassPosition.summary.min_samples_large_80pct ?? '>100'} samples</span>
+                            </div>
+                        </div>
+                    </Card>
+
+                    <Card title="Forgetting Analysis">
+                        <div class="scaling-stats">
+                            <div class="scaling-row">
+                                <span>Avg. Forgetting Difference</span>
+                                <span>{newClassPosition.summary.avg_forgetting_difference.toFixed(2)}%</span>
+                            </div>
+                            <div class="scaling-row">
+                                <span>Harder as 31st Class?</span>
+                                <span class="{newClassPosition.summary.harder_as_31st ? 'highlight' : ''}">{newClassPosition.summary.harder_as_31st ? 'Yes' : 'No'}</span>
+                            </div>
+                            <div class="scaling-row highlight-row">
+                                <span>Samples Ratio (31st/6th)</span>
+                                <span class="highlight">{newClassPosition.summary.samples_ratio.toFixed(2)}x</span>
+                            </div>
+                        </div>
+                    </Card>
+                </div>
+
+                <div class="conclusion-box">
+                    <h4>Conclusion</h4>
+                    <p>
+                        {#if newClassPosition.summary.harder_as_31st}
+                            Adding a new class becomes significantly harder as the model grows. With 50 samples, the 6th class achieves 93.1% accuracy while the 31st class only achieves 40.2%. 
+                            <strong>For mature models with many classes, collect more labeled samples or use SSL to augment limited data.</strong>
+                        {:else}
+                            Class position has limited impact on learning difficulty. The same labeling effort works for both early and late classes.
+                        {/if}
+                    </p>
                 </div>
             </div>
         {/if}

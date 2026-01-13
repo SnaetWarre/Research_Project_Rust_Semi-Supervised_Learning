@@ -74,6 +74,7 @@ pub fn run() {
             commands::load_label_efficiency_results,
             commands::load_class_scaling_results,
             commands::load_ssl_incremental_results,
+            commands::load_new_class_position_results,
             commands::load_all_experiment_results,
             commands::load_experiment_conclusions,
             commands::get_available_experiments,

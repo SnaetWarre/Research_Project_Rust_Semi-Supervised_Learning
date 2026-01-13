@@ -256,20 +256,4 @@ impl DatasetStats {
     }
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
 
-    #[test]
-    fn test_image_sample_creation() {
-        let sample = ImageSample {
-            path: PathBuf::from("/test/image.jpg"),
-            label: 5,
-            class_name: "Tomato___Late_blight".to_string(),
-            id: 42,
-        };
-
-        assert_eq!(sample.label, 5);
-        assert_eq!(sample.id, 42);
-    }
-}

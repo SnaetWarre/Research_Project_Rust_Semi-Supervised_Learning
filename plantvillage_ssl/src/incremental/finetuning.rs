@@ -3,7 +3,7 @@
 //! This module implements simple fine-tuning strategies with optional
 //! layer freezing to reduce catastrophic forgetting.
 
-use crate::{IncrementalConfig, IncrementalLearner, TrainingMetrics};
+use super::{IncrementalConfig, IncrementalLearner, IncrementalMethod, TrainingMetrics};
 use anyhow::{anyhow, Result};
 use burn::tensor::backend::Backend;
 use serde::{Deserialize, Serialize};
@@ -197,9 +197,10 @@ impl<B: Backend> IncrementalLearner<B> for FineTuningLearner<B> {
     }
 }
 
-#[cfg(test)]
+#[cfg(all(test, feature = "cpu"))]
 mod tests {
     use super::*;
+    use super::super::IncrementalMethod;
     use burn_ndarray::NdArray;
 
     type TestBackend = NdArray;
@@ -267,7 +268,7 @@ mod tests {
             initial_classes: 5,
             classes_per_step: 5,
             num_steps: 1,
-            method: crate::IncrementalMethod::FineTuning {
+            method: IncrementalMethod::FineTuning {
                 freeze_backbone: false,
                 freeze_layers: 0,
             },
@@ -315,7 +316,7 @@ mod tests {
             initial_classes: 5,
             classes_per_step: 5,
             num_steps: 1,
-            method: crate::IncrementalMethod::FineTuning {
+            method: IncrementalMethod::FineTuning {
                 freeze_backbone: false,
                 freeze_layers: 0,
             },

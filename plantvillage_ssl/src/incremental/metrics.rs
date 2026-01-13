@@ -3,7 +3,7 @@
 //! This module provides utilities for computing and analyzing metrics
 //! specific to incremental learning scenarios.
 
-use crate::{IncrementalResult, StepMetrics};
+use super::{IncrementalResult, StepMetrics};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
@@ -356,7 +356,7 @@ impl Default for MethodComparison {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{ExperimentMetadata, IncrementalConfig, IncrementalMethod, TrainingMetrics};
+    use super::super::{ExperimentMetadata, IncrementalConfig, IncrementalMethod, TrainingMetrics};
 
     #[test]
     fn test_average_accuracy() {

@@ -148,13 +148,13 @@ impl std::fmt::Display for JetsonBenchmarkResult {
         }
         writeln!(f, "╠══════════════════════════════════════════════════════════════════╣")?;
         writeln!(f, "║ LATENCY                                                          ║")?;
-        writeln!(f, "║   Mean:     {:8.2} ms                                          ║", self.latency.mean_ms)?;
-        writeln!(f, "║   Std Dev:  {:8.2} ms                                          ║", self.latency.std_ms)?;
-        writeln!(f, "║   P50:      {:8.2} ms                                          ║", self.latency.p50_ms)?;
-        writeln!(f, "║   P95:      {:8.2} ms                                          ║", self.latency.p95_ms)?;
-        writeln!(f, "║   P99:      {:8.2} ms                                          ║", self.latency.p99_ms)?;
+        writeln!(f, "║   Mean:     {:8.2} ms                                            ║", self.latency.mean_ms)?;
+        writeln!(f, "║   Std Dev:  {:8.2} ms                                            ║", self.latency.std_ms)?;
+        writeln!(f, "║   P50:      {:8.2} ms                                            ║", self.latency.p50_ms)?;
+        writeln!(f, "║   P95:      {:8.2} ms                                            ║", self.latency.p95_ms)?;
+        writeln!(f, "║   P99:      {:8.2} ms                                            ║", self.latency.p99_ms)?;
         writeln!(f, "╠══════════════════════════════════════════════════════════════════╣")?;
-        writeln!(f, "║ THROUGHPUT: {:8.1} images/second                              ║", self.throughput_fps)?;
+        writeln!(f, "║ THROUGHPUT: {:8.1} images/second                                 ║", self.throughput_fps)?;
         writeln!(f, "╠══════════════════════════════════════════════════════════════════╣")?;
         writeln!(f, "║ MEMORY                                                           ║")?;
         writeln!(f, "║   GPU Used:   {:6.1} MB                                          ║", self.memory.gpu_used_mb)?;
@@ -162,9 +162,9 @@ impl std::fmt::Display for JetsonBenchmarkResult {
         writeln!(f, "║   CPU RSS:    {:6.1} MB                                          ║", self.memory.cpu_rss_mb)?;
         writeln!(f, "╠══════════════════════════════════════════════════════════════════╣")?;
         writeln!(f, "║ POWER                                                            ║")?;
-        writeln!(f, "║   Avg Power:  {:7.1} mW                                         ║", self.power.avg_inference_power_mw)?;
-        writeln!(f, "║   Peak Power: {:7.1} mW                                         ║", self.power.peak_power_mw)?;
-        writeln!(f, "║   Energy/Inf: {:7.2} mJ                                         ║", self.power.energy_per_inference_mj)?;
+        writeln!(f, "║   Avg Power:  {:7.1} mW                                          ║", self.power.avg_inference_power_mw)?;
+        writeln!(f, "║   Peak Power: {:7.1} mW                                          ║", self.power.peak_power_mw)?;
+        writeln!(f, "║   Energy/Inf: {:7.2} mJ                                          ║", self.power.energy_per_inference_mj)?;
         writeln!(f, "╚══════════════════════════════════════════════════════════════════╝")?;
         Ok(())
     }

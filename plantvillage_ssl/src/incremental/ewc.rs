@@ -4,7 +4,7 @@
 //! to identify important parameters and penalize changes to them during
 //! incremental learning.
 
-use crate::{IncrementalConfig, IncrementalLearner, TrainingMetrics};
+use super::{IncrementalConfig, IncrementalLearner, TrainingMetrics};
 use anyhow::{anyhow, Result};
 use burn::tensor::backend::Backend;
 use serde::{Deserialize, Serialize};
@@ -319,7 +319,7 @@ impl<B: Backend> IncrementalLearner<B> for EWCLearner<B> {
     }
 }
 
-#[cfg(test)]
+#[cfg(all(test, feature = "cpu"))]
 mod tests {
     use super::*;
     use burn_ndarray::NdArray;

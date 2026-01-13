@@ -58,12 +58,43 @@ pub struct IncrementalStepResult {
     pub training_time: f64,
 }
 
+/// New class position experiment results
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct NewClassPositionResults {
+    pub small_base_results: Vec<PositionLabelResult>,
+    pub large_base_results: Vec<PositionLabelResult>,
+    pub summary: PositionSummary,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PositionLabelResult {
+    pub base_classes: usize,
+    pub labeled_samples: usize,
+    pub new_class_accuracy: f64,
+    pub base_accuracy_after: f64,
+    pub forgetting: f64,
+    pub overall_accuracy: f64,
+    pub training_time: f64,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PositionSummary {
+    pub min_samples_small_70pct: Option<usize>,
+    pub min_samples_large_70pct: Option<usize>,
+    pub min_samples_small_80pct: Option<usize>,
+    pub min_samples_large_80pct: Option<usize>,
+    pub avg_forgetting_difference: f64,
+    pub harder_as_31st: bool,
+    pub samples_ratio: f64,
+}
+
 /// All experiment results combined
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AllExperimentResults {
     pub label_efficiency: Option<LabelEfficiencyResults>,
     pub class_scaling: Option<ClassScalingResults>,
     pub ssl_incremental: Option<SSLIncrementalResults>,
+    pub new_class_position: Option<NewClassPositionResults>,
     pub has_results: bool,
 }
 
@@ -118,6 +149,23 @@ pub async fn load_ssl_incremental_results(
     Ok(results)
 }
 
+/// Load new class position experiment results
+#[tauri::command]
+pub async fn load_new_class_position_results(
+    results_dir: Option<String>,
+) -> Result<NewClassPositionResults, String> {
+    let base_path = results_dir.unwrap_or_else(|| "output/experiments/new_class_position".to_string());
+    let results_path = Path::new(&base_path).join("results.json");
+
+    let json = fs::read_to_string(&results_path)
+        .map_err(|e| format!("Failed to read results: {:?}", e))?;
+    
+    let results: NewClassPositionResults = serde_json::from_str(&json)
+        .map_err(|e| format!("Failed to parse results: {:?}", e))?;
+
+    Ok(results)
+}
+
 /// Load all available experiment results
 #[tauri::command]
 pub async fn load_all_experiment_results(
@@ -146,14 +194,20 @@ pub async fn load_all_experiment_results(
         Some(format!("{}/ssl_incremental", base_path))
     ).await.ok();
 
+    let new_class_position = load_new_class_position_results(
+        Some(format!("{}/new_class_position", base_path))
+    ).await.ok();
+
     let has_results = label_efficiency.is_some() 
         || class_scaling.is_some() 
-        || ssl_incremental.is_some();
+        || ssl_incremental.is_some()
+        || new_class_position.is_some();
 
     Ok(AllExperimentResults {
         label_efficiency,
         class_scaling,
         ssl_incremental,
+        new_class_position,
         has_results,
     })
 }
@@ -191,6 +245,9 @@ pub async fn get_available_experiments(
     }
     if base.join("ssl_incremental/results.json").exists() {
         available.push("ssl_incremental".to_string());
+    }
+    if base.join("new_class_position/results.json").exists() {
+        available.push("new_class_position".to_string());
     }
 
     Ok(available)

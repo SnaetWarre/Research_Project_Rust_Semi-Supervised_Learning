@@ -55,7 +55,7 @@ impl Default for SimulationConfig {
             labeled_ratio: 0.2,  // 20% for CNN, 60% for SSL stream, 10% val, 10% test
             output_dir: "output/simulation".to_string(),
             seed: 42,
-            batch_size: 4,  // Small batch for Jetson's 8GB shared memory
+            batch_size: 32,  // Standard batch size for GPU training
             learning_rate: 0.0001,
             retrain_epochs: 5,
         }

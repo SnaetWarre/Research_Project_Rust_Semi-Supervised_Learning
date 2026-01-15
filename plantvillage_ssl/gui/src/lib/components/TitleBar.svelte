@@ -2,7 +2,6 @@
     import { getCurrentWindow } from "@tauri-apps/api/window";
     import { invoke } from "@tauri-apps/api/core";
     import { Minus, Square, X, Maximize2 } from "lucide-svelte";
-    import ConnectionStatus from "./ConnectionStatus.svelte";
 
     const appWindow = getCurrentWindow();
 
@@ -36,7 +35,7 @@
         <span class="app-title">PlantVillage SSL Research</span>
     </div>
     <div class="center-content">
-        <ConnectionStatus compact={true} />
+        <span class="mode-badge">Local GPU</span>
     </div>
     <div class="window-controls">
         <button class="control-btn minimize" onclick={minimize}>
@@ -91,6 +90,15 @@
         position: absolute;
         left: 50%;
         transform: translateX(-50%);
+    }
+
+    .mode-badge {
+        font-size: 11px;
+        font-weight: 500;
+        color: var(--success);
+        background: rgba(16, 185, 129, 0.15);
+        padding: 2px 8px;
+        border-radius: 4px;
     }
 
     .window-controls {

@@ -148,7 +148,7 @@ enum Commands {
         seed: u64,
     },
 
-    /// Run inference benchmark (with Jetson power monitoring if available)
+    /// Run inference benchmark
     Benchmark {
         /// Path to model checkpoint (optional, uses fresh model if not specified)
         #[arg(short, long)]
@@ -2239,7 +2239,7 @@ fn generate_improvement_chart(
     fs::write(output_path, svg)
 }
 
-/// Run inference benchmark with optional Jetson power monitoring
+/// Run inference benchmark
 fn run_inference_benchmark(
     model_path: Option<&str>,
     output_dir: &str,
@@ -2248,8 +2248,7 @@ fn run_inference_benchmark(
     batch_size: usize,
     image_size: usize,
 ) -> Result<()> {
-    use plantvillage_ssl::inference::{BenchmarkConfig, run_benchmark, is_jetson};
-    use plantvillage_ssl::inference::jetson::JetsonDeviceInfo;
+    use plantvillage_ssl::inference::{BenchmarkConfig, run_benchmark};
     use plantvillage_ssl::backend::{DefaultBackend, default_device};
     use burn::tensor::Tensor;
 
@@ -2258,22 +2257,7 @@ fn run_inference_benchmark(
 
     fs::create_dir_all(output_dir)?;
 
-    // Check if running on Jetson
-    let on_jetson = is_jetson();
-    if on_jetson {
-        println!("{}", "Detected Jetson device - enabling power monitoring".green());
-        if let Some(info) = JetsonDeviceInfo::detect() {
-            println!("  Model: {}", info.jetson_model);
-            if let Some(ref mode) = info.power_mode {
-                println!("  Power Mode: {}", mode);
-            }
-            if let Some(freq) = info.gpu_freq_mhz {
-                println!("  GPU Frequency: {} MHz", freq);
-            }
-        }
-    } else {
-        println!("{}", "Not running on Jetson - power monitoring disabled".yellow());
-    }
+    println!("{}", "Running GPU benchmark...".green());
     println!();
 
     let config = BenchmarkConfig {
@@ -2297,7 +2281,7 @@ fn run_inference_benchmark(
     println!("\nResults saved to: {:?}", results_path);
 
     // Generate summary for research paper
-    let summary = generate_benchmark_summary(&result, on_jetson);
+    let summary = generate_benchmark_summary(&result);
     let summary_path = Path::new(output_dir).join("benchmark_summary.txt");
     fs::write(&summary_path, &summary)?;
     println!("Summary saved to: {:?}", summary_path);
@@ -2312,7 +2296,7 @@ fn run_inference_benchmark(
 }
 
 /// Generate benchmark summary for research paper
-fn generate_benchmark_summary(result: &plantvillage_ssl::inference::BenchmarkOutput, on_jetson: bool) -> String {
+fn generate_benchmark_summary(result: &plantvillage_ssl::inference::BenchmarkOutput) -> String {
     let mut summary = String::new();
 
     summary.push_str("========================================================================\n");
@@ -2322,9 +2306,7 @@ fn generate_benchmark_summary(result: &plantvillage_ssl::inference::BenchmarkOut
     summary.push_str(&format!("Framework: {}\n", result.framework));
     summary.push_str(&format!("Device: {}\n", result.device));
     summary.push_str(&format!("Timestamp: {}\n", result.timestamp));
-    if on_jetson {
-        summary.push_str("Platform: NVIDIA Jetson\n");
-    }
+    summary.push_str("Platform: CUDA GPU\n");
     summary.push_str("\n");
 
     summary.push_str("CONFIGURATION:\n");

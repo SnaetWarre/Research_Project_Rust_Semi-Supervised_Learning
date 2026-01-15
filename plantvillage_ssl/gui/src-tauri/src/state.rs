@@ -9,48 +9,8 @@ use serde::{Deserialize, Serialize};
 
 use burn_cuda::Cuda;
 
-use crate::client::JetsonClient;
-
 /// Type alias for the backend we use
 pub type AppBackend = Cuda;
-
-/// Connection mode for training
-#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
-#[serde(rename_all = "lowercase")]
-pub enum ConnectionMode {
-    /// Run training locally on this machine
-    Local,
-    /// Run training on remote Jetson device
-    Remote,
-}
-
-impl Default for ConnectionMode {
-    fn default() -> Self {
-        ConnectionMode::Local
-    }
-}
-
-/// Connection status to Jetson
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "lowercase")]
-pub enum ConnectionStatus {
-    /// Not connected / connection mode is local
-    Disconnected,
-    /// Actively connected to Jetson
-    Connected {
-        url: String,
-        uptime_seconds: u64,
-        version: String,
-    },
-    /// Connection failed
-    Error(String),
-}
-
-impl Default for ConnectionStatus {
-    fn default() -> Self {
-        ConnectionStatus::Disconnected
-    }
-}
 
 /// Application state shared across commands
 /// Note: Models are NOT stored here due to CUDA threading restrictions.
@@ -64,12 +24,6 @@ pub struct AppState {
     pub training_state: RwLock<TrainingStatus>,
     /// Simulation state
     pub simulation_state: RwLock<SimulationStatus>,
-    /// Connection mode (local vs remote)
-    pub connection_mode: RwLock<ConnectionMode>,
-    /// Connection status to Jetson
-    pub connection_status: RwLock<ConnectionStatus>,
-    /// Jetson HTTP client
-    pub jetson_client: RwLock<JetsonClient>,
 }
 
 impl AppState {
@@ -79,9 +33,6 @@ impl AppState {
             dataset_info: RwLock::new(None),
             training_state: RwLock::new(TrainingStatus::Idle),
             simulation_state: RwLock::new(SimulationStatus::Idle),
-            connection_mode: RwLock::new(ConnectionMode::Local),
-            connection_status: RwLock::new(ConnectionStatus::Disconnected),
-            jetson_client: RwLock::new(JetsonClient::new()),
         }
     }
 }

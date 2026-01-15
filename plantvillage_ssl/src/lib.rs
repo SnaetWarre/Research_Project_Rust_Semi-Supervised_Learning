@@ -1,13 +1,13 @@
 //! # PlantVillage Semi-Supervised Learning
 //!
 //! A Rust library for semi-supervised plant disease classification using the Burn framework.
-//! Designed for deployment on NVIDIA Jetson Orin Nano edge devices.
+//! Designed for GPU training with CUDA acceleration.
 //!
 //! ## Features
 //!
 //! - **Semi-supervised learning** with pseudo-labeling for efficient training on partially labeled data
 //! - **Burn framework** for portable, efficient neural network training and inference
-//! - **Edge deployment** optimized for NVIDIA Jetson Orin Nano
+//! - **GPU acceleration** with CUDA for high-performance training
 //! - **PlantVillage dataset** support with 39 disease classes
 //!
 //! ## Modules

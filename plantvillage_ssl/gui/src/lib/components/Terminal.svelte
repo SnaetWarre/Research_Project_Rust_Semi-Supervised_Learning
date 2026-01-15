@@ -1,6 +1,12 @@
 <script lang="ts">
   import { onMount, onDestroy } from 'svelte';
-  import type { OutputLine } from '$lib/stores/connection';
+  
+  // Local type definition for output lines
+  interface OutputLine {
+    timestamp: string;
+    stream: 'stdout' | 'stderr';
+    content: string;
+  }
   
   export let lines: OutputLine[] = [];
   export let maxLines: number = 500;

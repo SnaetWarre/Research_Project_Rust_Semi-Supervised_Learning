@@ -1,4 +1,4 @@
-//! Backend abstraction - CUDA ONLY for Jetson
+//! Backend abstraction - CUDA GPU backend
 //!
 //! This module strictly enforces usage of the CUDA backend.
 //! CPU fallbacks have been removed to ensure high-performance GPU execution.
@@ -31,5 +31,5 @@ pub fn default_device() -> <DefaultBackend as burn::tensor::backend::Backend>::D
 /// Get a human-readable name for the current backend
 pub fn backend_name() -> &'static str {
     #[cfg(feature = "cuda")]
-    { "CUDA (NVIDIA Jetson Optimized)" }
+    { "CUDA (GPU)" }
 }

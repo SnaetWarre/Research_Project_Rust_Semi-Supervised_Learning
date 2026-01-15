@@ -12,8 +12,6 @@ pub mod benchmark;
 pub mod incremental;
 pub mod diagnostics;
 pub mod experiments;
-pub mod connection;
-pub mod remote;
 
 // Re-export all commands for registration
 pub use dataset::*;
@@ -25,5 +23,3 @@ pub use benchmark::*;
 pub use incremental::*;
 pub use diagnostics::*;
 pub use experiments::*;
-pub use connection::*;
-pub use remote::*;

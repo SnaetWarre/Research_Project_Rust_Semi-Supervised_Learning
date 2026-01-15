@@ -17,8 +17,7 @@ use plantvillage_ssl::utils::logging::{init_logging, LogConfig};
 /// PlantVillage Semi-Supervised Plant Disease Classification
 ///
 /// A Rust-based semi-supervised learning system for plant disease classification
-/// using the Burn framework, designed for deployment on edge devices like the
-/// NVIDIA Jetson Orin Nano.
+/// using the Burn framework with CUDA GPU acceleration.
 #[derive(Parser, Debug)]
 #[command(name = "plantvillage_ssl")]
 #[command(author = "Warre Snaet")]
@@ -261,7 +260,7 @@ fn main() -> Result<()> {
             quick,
             class_weighted,
         } => {
-            // Always use CUDA - this project targets GPU (Jetson Orin Nano)
+            // Always use CUDA - this project targets GPU
             let _ = cuda; // Ignore flag, always GPU
 
             let max_samples = if quick {
@@ -351,7 +350,7 @@ fn print_banner() {
  ╔══════════════════════════════════════════════════════════════════╗
  ║   🌱 PlantVillage Semi-Supervised Learning                           ║
  ║   Plant Disease Classification with Burn + Rust                      ║
- ║   Designed for NVIDIA Jetson Orin Nano                               ║
+ ║   Designed for GPU Training with CUDA                               ║
  ╚════════════════════════════════════════════════════════════════╝
   "#
           .green()
@@ -693,7 +692,7 @@ fn cmd_simulate(
         labeled_ratio,
         output_dir: output_dir.to_string(),
         seed: 42,
-        batch_size: 4,  // Small batch size for Jetson's limited 8GB shared memory
+        batch_size: 32,  // Standard batch size for GPU training
         learning_rate: 0.0001,
         retrain_epochs: 5,
     };

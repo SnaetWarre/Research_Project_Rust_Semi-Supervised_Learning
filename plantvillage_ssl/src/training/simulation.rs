@@ -55,7 +55,7 @@ impl Default for SimulationConfig {
             labeled_ratio: 0.2,  // 20% for CNN, 60% for SSL stream, 10% val, 10% test
             output_dir: "output/simulation".to_string(),
             seed: 42,
-            batch_size: 32,
+            batch_size: 4,  // Small batch for Jetson's 8GB shared memory
             learning_rate: 0.0001,
             retrain_epochs: 5,
         }
@@ -276,9 +276,9 @@ where
                 pseudo_labels.len()
             );
 
-            // Create combined dataset
-            let combined_dataset = PlantVillageBurnDataset::new_cached(combined_samples, 128)
-                .expect("Failed to create combined dataset");
+            // Create combined dataset - use NON-cached to avoid OOM on Jetson
+            // The validation set is already cached, so we can't cache training too
+            let combined_dataset = PlantVillageBurnDataset::new(combined_samples, 128);
 
             // Retrain model
             model = retrain_model(

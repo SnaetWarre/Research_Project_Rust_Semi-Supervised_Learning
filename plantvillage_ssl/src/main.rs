@@ -11,6 +11,7 @@ use clap::{Parser, Subcommand};
 use colored::Colorize;
 use tracing::info;
 
+use plantvillage_ssl::backend::{DefaultBackend, TrainingBackend, backend_name};
 use plantvillage_ssl::utils::logging::{init_logging, LogConfig};
 
 /// PlantVillage Semi-Supervised Plant Disease Classification
@@ -270,7 +271,7 @@ fn main() -> Result<()> {
                 None
             };
 
-            plantvillage_ssl::training::supervised::run_training::<Autodiff<burn_cuda::Cuda>>(
+            plantvillage_ssl::training::supervised::run_training::<TrainingBackend>(
                 &data_dir,
                 epochs,
                 batch_size,
@@ -479,10 +480,10 @@ fn cmd_infer(input: &str, model: &str, _cuda: bool) -> Result<()> {
     use burn::record::CompactRecorder;
     use burn::tensor::Tensor;
     use burn::tensor::activation::softmax;
-    use burn_cuda::Cuda;
     use image::imageops::FilterType;
     use plantvillage_ssl::model::cnn::{PlantClassifier, PlantClassifierConfig};
     use plantvillage_ssl::dataset::CLASS_NAMES;
+    use plantvillage_ssl::backend::{DefaultBackend, default_device, backend_name};
 
     info!("Running inference");
     info!("  Input: {}", input);
@@ -491,7 +492,7 @@ fn cmd_infer(input: &str, model: &str, _cuda: bool) -> Result<()> {
     println!("{}", "Inference Configuration:".cyan().bold());
     println!("  📷 Input:  {}", input);
     println!("  🧠 Model:  {}", model);
-    println!("  🖥️  Backend: CUDA");
+    println!("  🖥️  Backend: {}", backend_name());
     println!();
 
     if !Path::new(input).exists() {
@@ -506,7 +507,7 @@ fn cmd_infer(input: &str, model: &str, _cuda: bool) -> Result<()> {
 
     // Load model
     println!("{}", "Loading model...".cyan());
-    let device = <Cuda as burn::tensor::backend::Backend>::Device::default();
+    let device = default_device();
     let config = PlantClassifierConfig {
         num_classes: 38,
         input_size: 128,
@@ -514,7 +515,7 @@ fn cmd_infer(input: &str, model: &str, _cuda: bool) -> Result<()> {
         in_channels: 3,
         base_filters: 32,
     };
-    let model_instance: PlantClassifier<Cuda> = PlantClassifier::new(&config, &device);
+    let model_instance: PlantClassifier<DefaultBackend> = PlantClassifier::new(&config, &device);
     let recorder = CompactRecorder::new();
     let model_instance = model_instance
         .load_file(model, &recorder, &device)
@@ -559,8 +560,8 @@ fn cmd_infer(input: &str, model: &str, _cuda: bool) -> Result<()> {
         }
         
         // Create tensor [1, 3, 128, 128]
-        let tensor: Tensor<Cuda, 1> = Tensor::from_floats(&data[..], &device);
-        let tensor: Tensor<Cuda, 4> = tensor.reshape([1, 3, 128, 128]);
+        let tensor: Tensor<DefaultBackend, 1> = Tensor::from_floats(&data[..], &device);
+        let tensor: Tensor<DefaultBackend, 4> = tensor.reshape([1, 3, 128, 128]);
         
         // Run inference
         let start = std::time::Instant::now();
@@ -613,8 +614,8 @@ fn cmd_benchmark(
     output: Option<&str>,
     verbose: bool,
 ) -> Result<()> {
-    use burn_cuda::Cuda;
     use plantvillage_ssl::inference::{BenchmarkConfig, run_benchmark};
+    use plantvillage_ssl::backend::{DefaultBackend, default_device};
     use std::path::PathBuf;
 
     info!("Running benchmark");
@@ -635,10 +636,10 @@ fn cmd_benchmark(
         output_path: output.map(PathBuf::from),
     };
 
-    let device = <Cuda as burn::tensor::backend::Backend>::Device::default();
+    let device = default_device();
     let model_path = model.map(std::path::Path::new);
 
-    let _result = run_benchmark::<Cuda>(config, model_path, image_size, &device)?;
+    let _result = run_benchmark::<DefaultBackend>(config, model_path, image_size, &device)?;
 
     // Print JSON output for easy parsing
     if output.is_some() {
@@ -660,8 +661,8 @@ fn cmd_simulate(
     output_dir: &str,
     _cuda: bool,
 ) -> Result<()> {
-    use burn_cuda::Cuda;
     use plantvillage_ssl::training::{run_simulation, SimulationConfig};
+    use plantvillage_ssl::backend::{TrainingBackend, backend_name};
 
     info!("Starting stream simulation");
     info!("  Days: {} (0 = unlimited)", days);
@@ -679,7 +680,7 @@ fn cmd_simulate(
     println!("  🔄 Retrain threshold:  {} images", retrain_threshold);
     println!("  🏷️  Labeled ratio:     {:.0}% (SSL stream: {:.0}%)", labeled_ratio * 100.0, (1.0 - labeled_ratio - 0.20) * 100.0);
     println!("  💾 Output directory:   {}", output_dir);
-    println!("  🖥️  Backend:          CUDA");
+    println!("  🖥️  Backend:          {}", backend_name());
     println!();
 
     let config = SimulationConfig {
@@ -692,12 +693,12 @@ fn cmd_simulate(
         labeled_ratio,
         output_dir: output_dir.to_string(),
         seed: 42,
-        batch_size: 32,
+        batch_size: 4,  // Small batch size for Jetson's limited 8GB shared memory
         learning_rate: 0.0001,
         retrain_epochs: 5,
     };
 
-    let results = run_simulation::<Autodiff<Cuda>>(config)?;
+    let results = run_simulation::<TrainingBackend>(config)?;
 
     println!();
     println!("{}", "Simulation Summary:".green().bold());

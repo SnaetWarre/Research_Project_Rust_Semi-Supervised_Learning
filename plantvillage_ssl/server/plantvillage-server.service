@@ -1,0 +1,37 @@
+[Unit]
+Description=PlantVillage SSL Training Server
+Documentation=https://github.com/your-repo/plantvillage_ssl
+After=network.target
+
+[Service]
+Type=simple
+User=nvidia-user
+Group=nvidia-user
+WorkingDirectory=/home/nvidia-user/plantvillage_ssl
+
+# Server binary and configuration
+ExecStart=/home/nvidia-user/plantvillage_ssl/server/target/release/plantvillage-server \
+    --port 8080 \
+    --project-dir /home/nvidia-user/plantvillage_ssl
+
+# Restart on failure
+Restart=on-failure
+RestartSec=5
+
+# Environment
+Environment=RUST_LOG=info
+Environment=RUST_BACKTRACE=1
+
+# Security hardening (optional, comment out if issues)
+# NoNewPrivileges=true
+# ProtectSystem=strict
+# ProtectHome=read-only
+# ReadWritePaths=/home/nvidia-user/plantvillage_ssl/output
+
+# Logging
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=plantvillage-server
+
+[Install]
+WantedBy=multi-user.target

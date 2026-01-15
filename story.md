@@ -1,83 +1,76 @@
-# The Why: Plant Disease Detection on Edge Devices
+# Technical Rationale: Intelligent Disease Detection on the Edge
 
-## The Problem
+## The Problem Space: Agricultural Economic Volatility
 
-Imagine a farmer in a remote area. Their crops are showing strange spots on the leaves. Is it a disease? Which one? Should they spray pesticides? Wait it out? By the time they get an expert opinion, it might be too late - the disease has spread, and they've lost half their harvest.
+Crop disease represents a significant systemic risk in agriculture. For a commercial producer, the interval between the first symptom and the application of a targeted treatment determines the difference between a minor operational cost and a catastrophic yield loss.
 
-Now imagine they have a simple device - a camera connected to a small computer - that can instantly tell them: "This is Early Blight. Treat it now."
+### The Decision-Making Bottleneck
+Currently, a producer faces three sub-optimal paths when a potential pathogen is identified:
+1. **Passive Observation:** Risking exponential spread of the pathogen.
+2. **Prophylactic Spraying:** High OPEX (Chemical costs: €50–200/hectare) and environmental impact.
+3. **Professional Consultation:** High latency (24-72 hours) and high fixed costs (€150–300 per visit).
 
-This technology exists. But there's a catch.
-
-## The Current Reality
-
-Today's plant disease detection relies on:
-- **Cloud-based AI** - needs internet (many farms don't have it)
-- **Expensive hardware** - costs thousands of euros
-- **Static models** - can't learn new diseases without a complete rebuild
-- **Python/PyTorch** - heavy, slow, needs complex setup on small devices
-
-Farmers in developing countries, remote areas, or even local Belgian greenhouses often can't use these solutions.
-
-## What This Research Asks
-
-**Can we build a plant disease detector that:**
-1. Runs on a small, cheap device (no internet needed)?
-2. Learns from very little labeled data (labeling is expensive)?
-3. Can learn new diseases over time without forgetting old ones?
-4. Uses Rust instead of Python for better performance and reliability?
-
-No one has really tried this combination before.
-
-## Why Howest Should Care
-
-### 1. It's Genuinely Novel
-Using Rust and the Burn framework for agricultural ML on edge devices is largely unexplored territory. Most researchers default to Python/PyTorch. This project tests whether the Rust ecosystem is ready for real-world ML applications.
-
-### 2. It Solves Real Problems
-- **Data scarcity**: Farmers don't have thousands of labeled disease images. Semi-supervised learning makes the most of limited data.
-- **Offline operation**: Agricultural settings often lack reliable internet.
-- **Adaptability**: New diseases emerge. Climate change brings new pests. A model that can't learn is a model that becomes obsolete.
-
-### 3. It Produces Measurable Results
-This isn't theoretical. The research will answer concrete questions:
-- How much accuracy do we lose using 30% labeled data vs 100%?
-- Which incremental learning method works best: LwF, EWC, Rehearsal, or fine-tuning?
-- Is adding class #6 harder than adding class #31?
-- Can inference run under 200ms on a Jetson Orin Nano?
-
-### 4. It Has Educational Value
-The project combines:
-- Deep learning fundamentals
-- Systems programming (Rust)
-- Edge computing constraints
-- Agricultural domain knowledge
-- Experimental research methodology
-
-This is the kind of cross-disciplinary work that prepares students for real industry challenges.
-
-## What New Knowledge Will We Gain?
-
-| Question | Why It Matters |
-|----------|----------------|
-| Can Burn (Rust ML framework) match PyTorch accuracy? | Determines if Rust is viable for ML deployment |
-| How effective is pseudo-labeling on edge devices? | Shows if SSL works with hardware constraints |
-| Which incremental learning method minimizes forgetting? | Guides future continuous learning systems |
-| Is learning 5->6 classes different from 30->31? | Reveals how model capacity affects learning |
-| What's the minimum data needed per new class? | Practical guidance for real deployments |
-
-These answers don't exist yet. This research creates them.
-
-## The Bigger Picture
-
-Agriculture faces massive challenges: climate change, labor shortages, food security. AI can help, but only if it's accessible. A smartphone-sized device that a farmer in rural Africa or a greenhouse in Roeselare can use equally well - that's the vision.
-
-This research is one step toward that future. It won't solve everything, but it will prove whether this approach is viable and document what works and what doesn't.
-
-## In One Sentence
-
-**This research explores whether Rust-based machine learning can enable affordable, offline, continuously-learning plant disease detection - filling a gap that current Python-based cloud solutions cannot address.**
+The objective of this research is to provide a fourth path: **Instantaneous, localized, and high-accuracy diagnostic capability.**
 
 ---
 
+## Economic Drivers for Edge-Native Solutions
+
+Farmers prioritize technology based on ROI and operational reliability rather than novelty. The value proposition of an edge-based diagnostic tool is found in the optimization of the following variables:
+
+| Variable | Impact of Traditional Methods | Impact of Edge-Native AI |
+| :--- | :--- | :--- |
+| **Detection Latency** | Days (Expert arrival/Lab results) | Seconds (On-device inference) |
+| **Treatment Precision** | Blanket application (Wasteful) | Targeted application (Cost-effective) |
+| **Connectivity Dependency** | High (Cloud/Mobile data required) | Zero (Works in remote/shielded areas) |
+| **Recurring Costs** | High (Consultation fees/Subscriptions) | Low (Single CAPEX for hardware) |
+
+### The ROI Projection
+A single Jetson Orin Nano-based deployment (~€350) can achieve payback within a single growing season by preventing a 5-10% yield loss on a high-value crop (e.g., greenhouse tomatoes) or by reducing pesticide waste by 20-30%.
+
+---
+
+## Technical Architecture Rationalization
+
+Every design choice in this research is engineered to solve specific operational constraints inherent to the agricultural environment.
+
+### 1. Edge Computing vs. Cloud Dependency
+*   **Operational Continuity:** Agricultural environments often lack reliable 4G/5G or WiFi infrastructure. Moving the compute to the edge ensures the tool is available 24/7.
+*   **Data Sovereignty:** Local processing ensures that proprietary farm data (yield indicators, pathogen locations) remains on-premises.
+*   **Inference Latency:** Eliminating the round-trip to a central server allows for real-time scanning as a producer walks through the rows.
+
+### 2. Semi-Supervised Learning (SSL) for Data Scarcity
+*   **The Problem:** Expert-labeled datasets for specific regional pathogens are expensive and rare.
+*   **The Solution:** By utilizing SSL, the model can leverage a small set of labeled "anchor" images (20-30%) and improve its feature representation using the vast amounts of unlabeled data collected during daily operations. This reduces the barrier to entry for new crop types.
+
+### 3. Incremental Learning for Dynamic Pathogen Evolution
+*   **The Problem:** Machine Learning models are typically static. Agriculture is dynamic; new disease strains emerge, and environmental conditions change.
+*   **The Solution:** Implementing incremental learning allows the device to incorporate new disease classes or adapt to local visual variations without requiring a full retraining cycle on a GPU cluster.
+
+### 4. The Rust/Burn Stack: Reliability and Performance
+*   **System Stability:** In the field, software crashes lead to lost time. Rust’s memory safety guarantees eliminate common runtime errors found in Python-based deployments.
+*   **Efficiency:** The Burn framework allows for deep learning models to be compiled into highly optimized binaries, squeezing maximum performance out of low-power edge hardware.
+*   **Deployment:** A single compiled binary reduces the "dependency hell" typically associated with deploying Python/PyTorch stacks on ARM-based edge devices.
+
+---
+
+## Research Objectives
+
+This project evaluates the technical feasibility of this integrated approach by answering the following:
+
+1.  **Performance Parity:** Can a Rust/Burn implementation match the accuracy of traditional Python/PyTorch stacks for plant pathology?
+2.  **Data Efficiency:** Can we maintain >85% F1-score with only 20% labeled data using Semi-Supervised techniques?
+3.  **Hardware Optimization:** Can the system achieve sub-200ms inference on a Jetson Nano while maintaining a low thermal profile?
+4.  **Adaptability:** Can the model learn a new pathogen class in a field environment without "catastrophic forgetting" of previous classes?
+
+---
+
+## Conclusion: From Reactive to Proactive
+
+The goal is not just to build an app, but to create a robust, industrial-grade tool. By moving from cloud-dependent, static models to edge-native, continuously learning systems, we provide producers with a high-fidelity diagnostic instrument that functions as a force multiplier for their existing expertise. 
+
+This research serves as a proof-of-concept for the next generation of resilient agricultural technology.
+
+---
 *Research Project - Semester 5 - Howest MCT*
 *Warre Snaet*

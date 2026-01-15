@@ -2,6 +2,7 @@
     import { getCurrentWindow } from "@tauri-apps/api/window";
     import { invoke } from "@tauri-apps/api/core";
     import { Minus, Square, X, Maximize2 } from "lucide-svelte";
+    import ConnectionStatus from "./ConnectionStatus.svelte";
 
     const appWindow = getCurrentWindow();
 
@@ -33,6 +34,9 @@
     <div class="title-content">
         <img src="/icons/32x32.png" alt="Logo" class="app-icon" />
         <span class="app-title">PlantVillage SSL Research</span>
+    </div>
+    <div class="center-content">
+        <ConnectionStatus compact={true} />
     </div>
     <div class="window-controls">
         <button class="control-btn minimize" onclick={minimize}>
@@ -81,6 +85,12 @@
         font-weight: 600;
         color: var(--text-secondary);
         font-family: system-ui, -apple-system, sans-serif;
+    }
+
+    .center-content {
+        position: absolute;
+        left: 50%;
+        transform: translateX(-50%);
     }
 
     .window-controls {

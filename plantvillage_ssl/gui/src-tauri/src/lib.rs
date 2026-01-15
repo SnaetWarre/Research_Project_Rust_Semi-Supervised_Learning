@@ -3,6 +3,7 @@
 //! This is the Tauri backend for the PlantVillage SSL Dashboard,
 //! providing commands and state management for the GUI.
 
+mod client;
 mod commands;
 mod state;
 
@@ -78,6 +79,21 @@ pub fn run() {
             commands::load_all_experiment_results,
             commands::load_experiment_conclusions,
             commands::get_available_experiments,
+            // Connection commands (new)
+            commands::get_connection_info,
+            commands::set_connection_mode,
+            commands::set_jetson_url,
+            commands::test_jetson_connection,
+            commands::connect_to_jetson,
+            commands::disconnect_from_jetson,
+            // Remote training commands (new)
+            commands::start_remote_training,
+            commands::get_remote_training_status,
+            commands::stop_remote_training,
+            commands::get_training_stream_url,
+            commands::list_remote_experiments,
+            commands::list_remote_models,
+            commands::download_remote_file,
             // Exit app command
             exit_app,
         ])

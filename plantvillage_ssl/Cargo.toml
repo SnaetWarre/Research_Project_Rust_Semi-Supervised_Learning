@@ -13,6 +13,7 @@ burn = { version = "0.20.0-pre", features = ["train", "metrics"] }
 burn-cuda = { version = "0.20.0-pre", optional = true }       # CUDA backend for GPU training
 burn-ndarray = { version = "0.20.0-pre", optional = true }    # CPU backend fallback
 burn-tch = { version = "0.20.0-pre", optional = true }        # LibTorch backend (optional, for comparison)
+burn-wgpu = { version = "0.20.0-pre", features = ["vulkan"], optional = true }       # WGPU backend (Vulkan/Metal/DX12)
 
 # Data handling
 image = "0.25"
@@ -51,9 +52,10 @@ csv = "1.3"
 [features]
 default = ["cuda"]
 cpu = ["burn-ndarray"]                                   # CPU-only backend (fallback only)
-cuda = ["burn-cuda"]                                     # CUDA GPU backend (default for Jetson)
+cuda = ["burn-cuda"]                                     # CUDA GPU backend (desktop/datacenter)
+wgpu = ["burn-wgpu"]                                     # WGPU backend (Vulkan on Jetson) - has issues with Send trait
 tch = ["burn-tch"]                                       # LibTorch backend
-jetson = ["cuda"]                                        # Jetson-specific optimizations
+jetson = ["cuda"]                                        # Jetson uses CUDA backend (with fix for v2 symbol)
 download = ["tokio", "reqwest"]                          # Dataset download feature
 
 [[bin]]
@@ -71,4 +73,6 @@ codegen-units = 1
 
 [profile.release-jetson]
 inherits = "release"
-opt-level = "s"                                          # Optimize for size on edge devices
+opt-level = 2                                            # Good optimization, less aggressive than 3
+lto = "thin"                                             # Much less memory than full LTO
+codegen-units = 4                                        # Balance between speed and memory

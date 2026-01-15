@@ -20,7 +20,6 @@ use burn::nn::loss::CrossEntropyLossConfig;
 use burn::optim::{AdamConfig, GradientsParams, Optimizer};
 use burn::tensor::backend::AutodiffBackend;
 use burn::tensor::ElementConversion;
-use burn_cuda::Cuda;
 use chrono::Local;
 use clap::{Parser, Subcommand};
 use colored::Colorize;
@@ -28,11 +27,12 @@ use rand::prelude::*;
 use rand_chacha::ChaCha8Rng;
 use serde::{Deserialize, Serialize};
 
+use plantvillage_ssl::backend::TrainingBackend;
 use plantvillage_ssl::dataset::burn_dataset::{PlantVillageBatcher, PlantVillageBurnDataset};
 use plantvillage_ssl::model::cnn::{PlantClassifier, PlantClassifierConfig};
 use plantvillage_ssl::PlantVillageDataset;
 
-type Backend = Autodiff<Cuda>;
+type Backend = TrainingBackend;
 
 /// Experiment Runner CLI
 #[derive(Parser, Debug)]
@@ -2250,8 +2250,8 @@ fn run_inference_benchmark(
 ) -> Result<()> {
     use plantvillage_ssl::inference::{BenchmarkConfig, run_benchmark, is_jetson};
     use plantvillage_ssl::inference::jetson::JetsonDeviceInfo;
+    use plantvillage_ssl::backend::{DefaultBackend, default_device};
     use burn::tensor::Tensor;
-    use burn_cuda::Cuda;
 
     println!("{}", "BENCHMARK: Inference Performance".yellow().bold());
     println!();
@@ -2285,10 +2285,10 @@ fn run_inference_benchmark(
         output_path: Some(Path::new(output_dir).join("benchmark_results.json")),
     };
 
-    let device = <Cuda as burn::tensor::backend::Backend>::Device::default();
+    let device = default_device();
     let model_path_ref = model_path.map(Path::new);
 
-    let result = run_benchmark::<Cuda>(config.clone(), model_path_ref, image_size, &device)?;
+    let result = run_benchmark::<DefaultBackend>(config.clone(), model_path_ref, image_size, &device)?;
 
     // Save standard results
     let json = serde_json::to_string_pretty(&result)?;

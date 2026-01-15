@@ -32,6 +32,7 @@
 //! // ... training and inference
 //! ```
 
+pub mod backend;
 pub mod dataset;
 pub mod incremental;
 pub mod inference;

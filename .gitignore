@@ -5,6 +5,9 @@ cifar10_semi_supervised/
 
 # Build artifacts
 plantvillage_ssl/target/
+plantvillage_ssl/server/target/
+plantvillage_ssl/gui/src-tauri/target/
+**/target/
 
 # Output/models (generated, do not commit)
 plantvillage_ssl/output/

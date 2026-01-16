@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Image Preprocessing Test</title>
+    <style>
+        body {
+            font-family: monospace;
+            padding: 20px;
+            background: #1a1a1a;
+            color: #fff;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        button {
+            padding: 10px 20px;
+            margin: 10px 0;
+            font-size: 16px;
+            cursor: pointer;
+        }
+        #preview {
+            margin: 20px 0;
+            max-width: 256px;
+            border: 2px solid #444;
+        }
+        pre {
+            background: #2a2a2a;
+            padding: 15px;
+            border-radius: 5px;
+            overflow-x: auto;
+        }
+        .pass { color: #4ade80; }
+        .fail { color: #ef4444; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Image Preprocessing Test</h1>
+        <p>This page tests if the browser preprocessing matches the expected Python preprocessing.</p>
+        
+        <input type="file" id="fileInput" accept="image/*">
+        <img id="preview" style="display:none;">
+        
+        <h2>Results:</h2>
+        <pre id="output">Load an image to test...</pre>
+        
+        <h2>Expected Values (from Python):</h2>
+        <pre>
+For Peach___healthy_0000.jpg:
+  R channel: min=-2.067, max=1.478, mean=0.208
+  G channel: min=-1.948, max=1.588, mean=0.297
+  B channel: min=-1.787, max=1.856, mean=0.517
+  Overall mean: 0.341
+        </pre>
+    </div>
+
+    <script>
+        const fileInput = document.getElementById('fileInput');
+        const preview = document.getElementById('preview');
+        const output = document.getElementById('output');
+
+        fileInput.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = (event) => {
+                preview.src = event.target.result;
+                preview.style.display = 'block';
+                preview.onload = () => processImage(preview);
+            };
+            reader.readAsDataURL(file);
+        });
+
+        async function processImage(imageElement) {
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d');
+            
+            // Resize to 128x128 (same as model)
+            canvas.width = 128;
+            canvas.height = 128;
+            ctx.drawImage(imageElement, 0, 0, 128, 128);
+            
+            const imageData = ctx.getImageData(0, 0, 128, 128);
+            const pixels = imageData.data;
+            
+            const floatData = new Float32Array(3 * 128 * 128);
+            const mean = [0.485, 0.456, 0.406];
+            const std = [0.229, 0.224, 0.225];
+            
+            // Track per-channel stats
+            const channelSums = [0, 0, 0];
+            const channelMins = [Infinity, Infinity, Infinity];
+            const channelMaxs = [-Infinity, -Infinity, -Infinity];
+            const pixelCount = 128 * 128;
+            
+            // Convert to CHW format with normalization
+            for (let y = 0; y < 128; y++) {
+                for (let x = 0; x < 128; x++) {
+                    const srcIdx = (y * 128 + x) * 4; // RGBA format
+                    for (let c = 0; c < 3; c++) {
+                        const dstIdx = c * 128 * 128 + y * 128 + x;
+                        const pixelValue = pixels[srcIdx + c];
+                        const value = pixelValue / 255.0;
+                        const normalized = (value - mean[c]) / std[c];
+                        floatData[dstIdx] = normalized;
+                        
+                        // Track stats
+                        channelSums[c] += normalized;
+                        if (normalized < channelMins[c]) channelMins[c] = normalized;
+                        if (normalized > channelMaxs[c]) channelMaxs[c] = normalized;
+                    }
+                }
+            }
+            
+            // Calculate overall stats
+            let overallMin = Infinity, overallMax = -Infinity, overallSum = 0;
+            for (let i = 0; i < floatData.length; i++) {
+                if (floatData[i] < overallMin) overallMin = floatData[i];
+                if (floatData[i] > overallMax) overallMax = floatData[i];
+                overallSum += floatData[i];
+            }
+            const overallMean = overallSum / floatData.length;
+            
+            // Display results
+            let results = 'Browser Preprocessing Results:\n';
+            results += '================================\n\n';
+            
+            results += `Overall:\n`;
+            results += `  min=${overallMin.toFixed(3)}, max=${overallMax.toFixed(3)}, mean=${overallMean.toFixed(3)}\n\n`;
+            
+            results += 'Per-channel:\n';
+            ['R', 'G', 'B'].forEach((name, i) => {
+                const channelMean = channelSums[i] / pixelCount;
+                results += `  ${name} channel: min=${channelMins[i].toFixed(3)}, max=${channelMaxs[i].toFixed(3)}, mean=${channelMean.toFixed(3)}\n`;
+            });
+            
+            results += '\n';
+            results += 'Comparison with expected (Peach image):\n';
+            results += '========================================\n';
+            
+            // Compare with expected values for Peach___healthy_0000.jpg
+            const expectedChannelMeans = [0.208, 0.297, 0.517];
+            const expectedOverallMean = 0.341;
+            
+            const tolerance = 0.02; // 2% tolerance
+            let allPass = true;
+            
+            ['R', 'G', 'B'].forEach((name, i) => {
+                const channelMean = channelSums[i] / pixelCount;
+                const diff = Math.abs(channelMean - expectedChannelMeans[i]);
+                const pass = diff < tolerance;
+                allPass = allPass && pass;
+                results += `  ${name} channel mean: ${channelMean.toFixed(3)} (expected ${expectedChannelMeans[i].toFixed(3)}) `;
+                results += pass ? '✅ PASS\n' : `❌ FAIL (diff: ${diff.toFixed(3)})\n`;
+            });
+            
+            const overallDiff = Math.abs(overallMean - expectedOverallMean);
+            const overallPass = overallDiff < tolerance;
+            allPass = allPass && overallPass;
+            results += `  Overall mean: ${overallMean.toFixed(3)} (expected ${expectedOverallMean.toFixed(3)}) `;
+            results += overallPass ? '✅ PASS\n' : `❌ FAIL (diff: ${overallDiff.toFixed(3)})\n`;
+            
+            results += '\n';
+            results += allPass ? '✅ All checks passed!\n' : '❌ Some checks failed. Preprocessing may be incorrect.\n';
+            
+            output.textContent = results;
+            output.className = allPass ? 'pass' : 'fail';
+        }
+    </script>
+</body>
+</html>

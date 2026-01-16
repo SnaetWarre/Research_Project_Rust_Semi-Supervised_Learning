@@ -1,0 +1,21 @@
+# Python virtual environment
+venv/
+.venv/
+
+# Node.js dependencies
+node_modules/
+
+# PWA is a separate GitHub Pages repository
+# https://github.com/SnaetWarre/plantvillage-demo
+pwa/
+
+# Generated model files (regenerate with load_weights.py)
+model.onnx
+weights/
+
+# Generated binary files
+*.bin
+
+# Byte-compiled Python files
+__pycache__/
+*.pyc

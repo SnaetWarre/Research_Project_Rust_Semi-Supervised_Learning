@@ -43,10 +43,10 @@ pub struct PlantClassifierConfig {
 /// A CNN block with Conv2d, BatchNorm, ReLU, and optional MaxPool
 #[derive(Module, Debug)]
 pub struct ConvBlock<B: Backend> {
-    conv: Conv2d<B>,
-    bn: BatchNorm<B>,
-    relu: Relu,
-    pool: Option<MaxPool2d>,
+    pub conv: Conv2d<B>,
+    pub bn: BatchNorm<B>,
+    pub relu: Relu,
+    pub pool: Option<MaxPool2d>,
 }
 
 impl<B: Backend> ConvBlock<B> {
@@ -101,19 +101,19 @@ impl<B: Backend> ConvBlock<B> {
 /// - Fully connected classifier with dropout
 #[derive(Module, Debug)]
 pub struct PlantClassifier<B: Backend> {
-    // Convolutional blocks
-    conv1: ConvBlock<B>,
-    conv2: ConvBlock<B>,
-    conv3: ConvBlock<B>,
-    conv4: ConvBlock<B>,
+    // Convolutional blocks (public for weight export)
+    pub conv1: ConvBlock<B>,
+    pub conv2: ConvBlock<B>,
+    pub conv3: ConvBlock<B>,
+    pub conv4: ConvBlock<B>,
 
     // Global pooling
-    global_pool: AdaptiveAvgPool2d,
+    pub global_pool: AdaptiveAvgPool2d,
 
-    // Classifier head
-    fc1: Linear<B>,
-    dropout: Dropout,
-    fc2: Linear<B>,
+    // Classifier head (public for weight export)
+    pub fc1: Linear<B>,
+    pub dropout: Dropout,
+    pub fc2: Linear<B>,
 
     // Store config for reference
     num_classes: usize,

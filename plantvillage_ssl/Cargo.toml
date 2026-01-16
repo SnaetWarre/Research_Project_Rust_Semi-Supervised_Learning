@@ -63,6 +63,10 @@ path = "src/main.rs"
 name = "experiments"
 path = "src/bin/experiments.rs"
 
+[[bin]]
+name = "export_weights"
+path = "src/bin/export_weights.rs"
+
 [profile.release]
 opt-level = 3
 lto = true

@@ -74,10 +74,10 @@ class PlantClassifier(nn.Module):
         # Global average pooling
         self.global_pool = nn.AdaptiveAvgPool2d((1, 1))
 
-        # Classifier
-        self.fc1 = nn.Linear(base_filters * 8, 512)
+        # Classifier (matches Burn architecture: 256 -> 256 -> num_classes)
+        self.fc1 = nn.Linear(base_filters * 8, 256)
         self.dropout = nn.Dropout(dropout_rate)
-        self.fc2 = nn.Linear(512, num_classes)
+        self.fc2 = nn.Linear(256, num_classes)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         """Forward pass through the network."""

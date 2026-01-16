@@ -23,3 +23,13 @@ __pycache__/
 .vscode/
 *.swp
 *.swo
+
+# Mobile export - separate GitHub Pages repo
+plantvillage_ssl/mobile_export/pwa/
+
+# Python virtual environments
+venv/
+.venv/
+
+# Node.js
+node_modules/

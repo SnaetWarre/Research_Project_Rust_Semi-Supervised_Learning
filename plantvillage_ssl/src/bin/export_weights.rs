@@ -36,7 +36,7 @@ struct Args {
     output: PathBuf,
 
     /// Number of classes in the model
-    #[arg(long, default_value = "39")]
+    #[arg(long, default_value = "38")]
     num_classes: usize,
 }
 

@@ -42,29 +42,10 @@ enum Commands {
         output_dir: String,
     },
 
-    /// Prepare a balanced dataset from raw PlantVillage data
-    Prepare {
-        /// Source directory containing raw data (will auto-detect nested structure)
-        #[arg(short, long, default_value = "data/plantvillage/raw")]
-        source_dir: String,
-
-        /// Output directory for balanced dataset
-        #[arg(short, long, default_value = "data/plantvillage/balanced")]
-        output_dir: String,
-
-        /// Samples per class (default: use minimum class size for perfect balance)
-        #[arg(short, long)]
-        samples_per_class: Option<usize>,
-
-        /// Random seed for reproducibility
-        #[arg(long, default_value = "42")]
-        seed: u64,
-    },
-
     /// Train the model with semi-supervised learning
     Train {
         /// Path to the dataset directory
-        #[arg(short, long, default_value = "data/plantvillage/balanced")]
+        #[arg(short, long, default_value = "data/plantvillage")]
         data_dir: String,
 
         /// Number of training epochs
@@ -72,7 +53,7 @@ enum Commands {
         epochs: usize,
 
         /// Batch size for training
-        #[arg(short, long, default_value = "32")]
+        #[arg(short, long, default_value = "64")]
         batch_size: usize,
 
         /// Learning rate
@@ -103,9 +84,21 @@ enum Commands {
         #[arg(long, default_value = "false")]
         quick: bool,
 
-        /// Use class-weighted loss (inverse frequency weighting for imbalanced data)
+        /// Enable data augmentation during training (improves generalization)
+        #[arg(long, default_value = "true")]
+        augmentation: bool,
+
+        /// Disable early stopping at target validation accuracy
         #[arg(long, default_value = "false")]
-        class_weighted: bool,
+        no_early_stop: bool,
+
+        /// Target validation accuracy for early stopping (0.0-1.0)
+        #[arg(long, default_value = "0.88")]
+        target_accuracy: f64,
+
+        /// Patience epochs for early stopping (stop after N epochs at target)
+        #[arg(long, default_value = "3")]
+        early_stop_patience: usize,
     },
 
     /// Run inference on a single image or directory
@@ -238,15 +231,6 @@ fn main() -> Result<()> {
             cmd_download(&output_dir)?;
         }
 
-        Commands::Prepare {
-            source_dir,
-            output_dir,
-            samples_per_class,
-            seed,
-        } => {
-            cmd_prepare(&source_dir, &output_dir, samples_per_class, seed)?;
-        }
-
         Commands::Train {
             data_dir,
             epochs,
@@ -258,7 +242,10 @@ fn main() -> Result<()> {
             cuda,
             seed,
             quick,
-            class_weighted,
+            augmentation,
+            no_early_stop,
+            target_accuracy,
+            early_stop_patience,
         } => {
             // Always use CUDA - this project targets GPU
             let _ = cuda; // Ignore flag, always GPU
@@ -268,6 +255,17 @@ fn main() -> Result<()> {
                 Some(500usize)
             } else {
                 None
+            };
+
+            // Configure early stopping
+            let early_stopping = if no_early_stop {
+                None
+            } else {
+                Some(plantvillage_ssl::training::supervised::EarlyStoppingConfig {
+                    target_accuracy,
+                    patience: early_stop_patience,
+                    enabled: true,
+                })
             };
 
             plantvillage_ssl::training::supervised::run_training::<TrainingBackend>(
@@ -280,7 +278,8 @@ fn main() -> Result<()> {
                 &output_dir,
                 seed,
                 max_samples,
-                class_weighted,
+                augmentation,
+                early_stopping,
             )?;
         }
 
@@ -358,60 +357,31 @@ fn print_banner() {
 }
 
 fn cmd_download(output_dir: &str) -> Result<()> {
-    info!("Downloading PlantVillage dataset to: {}", output_dir);
+    info!("Downloading New Plant Diseases Dataset to: {}", output_dir);
 
     println!(
-        "{} Dataset download not yet implemented. Please download manually from Kaggle.",
+        "{} Dataset download requires Kaggle CLI. Please download manually or use the provided script.",
         "Note:".yellow()
     );
-    println!("  Dataset URL: https://www.kaggle.com/datasets/abdallahalidev/plantvillage-dataset");
-    println!("  Extract to: {}", output_dir);
     println!();
-    println!("{}", "Steps to download manually:".cyan());
-    println!("  1. Visit the Kaggle URL above");
-    println!("  2. Download and extract the dataset");
-    println!("  3. Run: plantvillage_ssl prepare --source-dir {}/raw --output-dir {}/balanced", output_dir, output_dir);
-
-    Ok(())
-}
-
-fn cmd_prepare(source_dir: &str, output_dir: &str, samples_per_class: Option<usize>, seed: u64) -> Result<()> {
-    use plantvillage_ssl::dataset::prepare::{prepare_balanced_dataset, PrepareConfig};
-    use std::path::Path;
-
-    info!("Preparing balanced dataset");
-    info!("  Source: {}", source_dir);
-    info!("  Output: {}", output_dir);
-
-    println!("{}", "Dataset Preparation".cyan().bold());
-    println!("  📁 Source: {}", source_dir);
-    println!("  📁 Output: {}", output_dir);
-    println!("  🎲 Seed: {}", seed);
-    if let Some(n) = samples_per_class {
-        println!("  📊 Samples per class: {}", n);
-    } else {
-        println!("  📊 Samples per class: auto (minimum class size)");
-    }
+    println!("{}", "Option 1: Use the download script".cyan());
+    println!("  ./scripts/download_dataset.sh");
     println!();
-
-    let config = PrepareConfig {
-        seed,
-        samples_per_class,
-    };
-
-    let stats = prepare_balanced_dataset(
-        Path::new(source_dir),
-        Path::new(output_dir),
-        &config,
-    )?;
-
+    println!("{}", "Option 2: Download manually from Kaggle".cyan());
+    println!("  Dataset: https://www.kaggle.com/datasets/vipoooool/new-plant-diseases-dataset");
+    println!("  Extract train/ and valid/ folders to: {}", output_dir);
     println!();
-    println!("{}", "Next steps:".cyan().bold());
-    println!("  • Train with balanced data:");
-    println!("    plantvillage_ssl train --data-dir {} --epochs 50", output_dir);
+    println!("{}", "Expected structure:".yellow());
+    println!("  {}/", output_dir);
+    println!("  ├── train/");
+    println!("  │   ├── Apple___Apple_scab/");
+    println!("  │   └── ...");
+    println!("  └── valid/");
+    println!("      ├── Apple___Apple_scab/");
+    println!("      └── ...");
     println!();
-    println!("  • Or use class-weighted loss with original data:");
-    println!("    plantvillage_ssl train --data-dir data/plantvillage/raw --class-weighted");
+    println!("{}", "After download, run:".green());
+    println!("  plantvillage_ssl train --epochs 50 --cuda");
 
     Ok(())
 }
@@ -692,7 +662,7 @@ fn cmd_simulate(
         labeled_ratio,
         output_dir: output_dir.to_string(),
         seed: 42,
-        batch_size: 32,  // Standard batch size for GPU training
+        batch_size: 64,  // Standard batch size for GPU training
         learning_rate: 0.0001,
         retrain_epochs: 5,
     };

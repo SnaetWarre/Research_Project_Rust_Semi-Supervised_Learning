@@ -2,6 +2,13 @@
 //!
 //! This module implements the stream simulation for demonstrating
 //! semi-supervised learning with pseudo-labeling.
+//!
+//! ## Augmentation Strategy
+//!
+//! SSL retraining uses the same augmentation strategy as initial training:
+//! - Random flips, rotation, color jitter, blur, noise
+//! - Applied on-the-fly to both labeled AND pseudo-labeled images
+//! - This prevents overfitting to pseudo-labeled data
 
 use std::path::{Path, PathBuf};
 
@@ -20,7 +27,7 @@ use rand::seq::SliceRandom;
 use rand::SeedableRng;
 use rand_chacha::ChaCha8Rng;
 
-use crate::dataset::burn_dataset::{PlantVillageBurnDataset, PlantVillageItem};
+use crate::dataset::burn_dataset::{PlantVillageBurnDataset, PlantVillageItem, RawPlantVillageDataset, AugmentingBatcher};
 use crate::dataset::split::{DatasetSplits, HiddenLabelImage, SplitConfig};
 use crate::model::cnn::PlantClassifierConfig;
 use crate::training::pseudo_label::{Prediction, PseudoLabelConfig, PseudoLabeler, StreamSimulator};
@@ -55,7 +62,7 @@ impl Default for SimulationConfig {
             labeled_ratio: 0.2,  // 20% for CNN, 60% for SSL stream, 10% val, 10% test
             output_dir: "output/simulation".to_string(),
             seed: 42,
-            batch_size: 32,  // Standard batch size for GPU training
+            batch_size: 64,  // Standard batch size for GPU training
             learning_rate: 0.0001,
             retrain_epochs: 5,
         }
@@ -276,12 +283,13 @@ where
                 pseudo_labels.len()
             );
 
-            // Create combined dataset - use NON-cached to avoid OOM on Jetson
-            // The validation set is already cached, so we can't cache training too
-            let combined_dataset = PlantVillageBurnDataset::new(combined_samples, 128);
+            // Create combined dataset with raw images for augmentation
+            // Using RawPlantVillageDataset to enable on-the-fly augmentation during retraining
+            let combined_dataset = RawPlantVillageDataset::new_cached(combined_samples)
+                .expect("Failed to load combined dataset for retraining");
 
-            // Retrain model
-            model = retrain_model(
+            // Retrain model with augmentation
+            model = retrain_model_with_augmentation(
                 model,
                 &mut optimizer,
                 &combined_dataset,
@@ -469,21 +477,27 @@ fn evaluate_model<B: AutodiffBackend>(
     }
 }
 
-/// Retrain model with combined labeled and pseudo-labeled data
-fn retrain_model<B: AutodiffBackend>(
+/// Retrain model with augmentation on combined labeled and pseudo-labeled data
+/// 
+/// This uses the same augmentation strategy as initial training to ensure
+/// consistency and prevent overfitting to pseudo-labeled samples.
+fn retrain_model_with_augmentation<B: AutodiffBackend>(
     mut model: PlantClassifier<B>,
     optimizer: &mut burn::optim::adaptor::OptimizerAdaptor<burn::optim::Adam, PlantClassifier<B>, B>,
-    dataset: &PlantVillageBurnDataset,
+    dataset: &RawPlantVillageDataset,
     epochs: usize,
     batch_size: usize,
     learning_rate: f64,
     seed: u64,
 ) -> PlantClassifier<B> {
+    use burn::data::dataloader::batcher::Batcher;
     use burn::data::dataset::Dataset;
 
     let device = B::Device::default();
-    let batcher = PlantVillageBatcher::<B>::with_image_size(device.clone(), 128);
+    let aug_batcher = AugmentingBatcher::<B>::new(device.clone(), 128, seed);
     let mut rng = ChaCha8Rng::seed_from_u64(seed);
+
+    println!("    (with augmentation enabled)");
 
     for epoch in 0..epochs {
         let len = dataset.len();
@@ -505,7 +519,8 @@ fn retrain_model<B: AutodiffBackend>(
                 continue;
             }
 
-            let batch = batcher.batch(items, &device);
+            // Use augmenting batcher for on-the-fly augmentation
+            let batch = aug_batcher.batch(items, &device);
 
             // Forward pass
             let output = model.forward(batch.images.clone());

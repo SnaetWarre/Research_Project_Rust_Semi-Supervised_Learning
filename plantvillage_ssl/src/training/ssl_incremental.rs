@@ -82,7 +82,7 @@ impl Default for SSLIncrementalConfig {
             max_pseudo_labels_per_class: 100,
             base_epochs: 30,
             incremental_epochs: 20,
-            batch_size: 32,
+            batch_size: 64,
             learning_rate: 0.0001,
             seed: 42,
             use_distillation: true,
@@ -496,7 +496,7 @@ fn generate_pseudo_labels<B: AutodiffBackend>(
     let len = dataset.len();
 
     let mut pseudo_labels: Vec<(PathBuf, usize, f64)> = Vec::new();
-    let batch_size = 32;
+    let batch_size = 64;
 
     for start in (0..len).step_by(batch_size) {
         let end = (start + batch_size).min(len);

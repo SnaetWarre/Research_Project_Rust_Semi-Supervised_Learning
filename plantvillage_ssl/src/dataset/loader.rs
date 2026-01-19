@@ -1,7 +1,24 @@
 //! PlantVillage Dataset Loader
 //!
-//! This module handles loading the PlantVillage dataset from disk,
+//! This module handles loading the New Plant Diseases Dataset from disk,
 //! organizing it into labeled/unlabeled splits for semi-supervised learning.
+//!
+//! ## Dataset Structure
+//!
+//! The New Plant Diseases Dataset (from Kaggle) has this structure:
+//! ```text
+//! data/plantvillage/
+//! ├── train/
+//! │   ├── Apple___Apple_scab/
+//! │   │   ├── image1.jpg
+//! │   │   └── image2.jpg
+//! │   └── ...
+//! └── valid/
+//!     ├── Apple___Apple_scab/
+//!     └── ...
+//! ```
+//!
+//! For SSL training, we merge both folders and create our own splits.
 
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
@@ -48,14 +65,25 @@ pub struct PlantVillageDataset {
 impl PlantVillageDataset {
     /// Create a new PlantVillage dataset from a directory
     ///
-    /// The directory should be structured as:
+    /// Supports two structures:
+    /// 1. New Plant Diseases Dataset (with train/ and valid/ subdirs - will merge them)
+    /// 2. Flat structure with class folders directly
+    ///
     /// ```text
+    /// # Structure 1: New Plant Diseases Dataset
+    /// root_dir/
+    /// ├── train/
+    /// │   ├── Apple___Apple_scab/
+    /// │   └── ...
+    /// └── valid/
+    ///     ├── Apple___Apple_scab/
+    ///     └── ...
+    ///
+    /// # Structure 2: Flat (legacy)
     /// root_dir/
     /// ├── Apple___Apple_scab/
     /// │   ├── image1.jpg
     /// │   └── image2.jpg
-    /// ├── Apple___Black_rot/
-    /// │   └── ...
     /// └── ...
     /// ```
     pub fn new<P: AsRef<Path>>(root_dir: P) -> Result<Self> {
@@ -66,16 +94,33 @@ impl PlantVillageDataset {
             anyhow::bail!("Dataset directory does not exist: {:?}", root_dir);
         }
 
-        // Discover all class directories
-        let mut class_dirs: Vec<String> = Vec::new();
-        for entry in std::fs::read_dir(&root_dir)? {
-            let entry = entry?;
-            if entry.file_type()?.is_dir() {
-                if let Some(name) = entry.file_name().to_str() {
-                    class_dirs.push(name.to_string());
+        // Check if this is the new dataset structure (with train/ and valid/ subdirs)
+        let train_dir = root_dir.join("train");
+        let valid_dir = root_dir.join("valid");
+        
+        let source_dirs: Vec<PathBuf> = if train_dir.exists() && valid_dir.exists() {
+            info!("Detected New Plant Diseases Dataset structure (train/ + valid/)");
+            info!("Merging train and valid folders for SSL training...");
+            vec![train_dir, valid_dir]
+        } else {
+            // Legacy flat structure
+            vec![root_dir.clone()]
+        };
+
+        // Discover all class directories from all source dirs
+        let mut class_set: std::collections::HashSet<String> = std::collections::HashSet::new();
+        for source_dir in &source_dirs {
+            for entry in std::fs::read_dir(source_dir)? {
+                let entry = entry?;
+                if entry.file_type()?.is_dir() {
+                    if let Some(name) = entry.file_name().to_str() {
+                        class_set.insert(name.to_string());
+                    }
                 }
             }
         }
+        
+        let mut class_dirs: Vec<String> = class_set.into_iter().collect();
         class_dirs.sort();
 
         info!("Found {} classes", class_dirs.len());
@@ -93,41 +138,55 @@ impl PlantVillageDataset {
             .map(|(idx, name)| (idx, name.clone()))
             .collect();
 
-        // Load all samples
+        // Load all samples from all source directories
         let mut samples = Vec::new();
         let mut sample_id: usize = 0;
 
-        for class_name in &class_dirs {
-            let class_dir = root_dir.join(class_name);
-            let label = class_to_idx[class_name];
+        for source_dir in &source_dirs {
+            let source_name = source_dir.file_name()
+                .map(|n| n.to_string_lossy().to_string())
+                .unwrap_or_else(|| "root".to_string());
+            
+            for class_name in &class_dirs {
+                let class_dir = source_dir.join(class_name);
+                
+                // Skip if this class doesn't exist in this source dir
+                if !class_dir.exists() {
+                    continue;
+                }
+                
+                let label = class_to_idx[class_name];
+                let mut class_count = 0;
 
-            for entry in WalkDir::new(&class_dir)
-                .min_depth(1)
-                .max_depth(1)
-                .into_iter()
-                .filter_map(|e| e.ok())
-            {
-                let path = entry.path().to_path_buf();
+                for entry in WalkDir::new(&class_dir)
+                    .min_depth(1)
+                    .max_depth(1)
+                    .into_iter()
+                    .filter_map(|e| e.ok())
+                {
+                    let path = entry.path().to_path_buf();
 
-                // Only include image files
-                if let Some(ext) = path.extension() {
-                    let ext = ext.to_string_lossy().to_lowercase();
-                    if ["jpg", "jpeg", "png", "bmp"].contains(&ext.as_str()) {
-                        samples.push(ImageSample {
-                            path,
-                            label,
-                            class_name: class_name.clone(),
-                            id: sample_id,
-                        });
-                        sample_id += 1;
+                    // Only include image files
+                    if let Some(ext) = path.extension() {
+                        let ext = ext.to_string_lossy().to_lowercase();
+                        if ["jpg", "jpeg", "png", "bmp"].contains(&ext.as_str()) {
+                            samples.push(ImageSample {
+                                path,
+                                label,
+                                class_name: class_name.clone(),
+                                id: sample_id,
+                            });
+                            sample_id += 1;
+                            class_count += 1;
+                        }
                     }
                 }
-            }
 
-            debug!(
-                "Class '{}' (label {}): loaded samples",
-                class_name, label
-            );
+                debug!(
+                    "{}/{}: {} samples (label {})",
+                    source_name, class_name, class_count, label
+                );
+            }
         }
 
         info!("Loaded {} total samples", samples.len());

@@ -238,6 +238,42 @@ cargo test -p plant-incremental
 4. **38 classes**: PlantVillage dataset has 38 disease classes
 5. **Workspace structure**: `incremental_learning/` is a Cargo workspace with multiple crates
 6. **GUI uses Svelte 5**: Modern runes syntax (`$props()`, `$state()`, etc.)
+7. **New Plant Diseases Dataset**: Uses pre-balanced dataset from Kaggle (~87K images)
+
+## Dataset
+
+The project uses the **New Plant Diseases Dataset** from Kaggle (`vipoooool/new-plant-diseases-dataset`):
+- ~87,000 images (pre-balanced and augmented)
+- Same 38 classes as original PlantVillage
+- Pre-split into `train/` (~70K) and `valid/` (~17K) folders
+- No balancing needed - dataset is already balanced (~2K images per class)
+
+### Download Dataset
+```bash
+cd plantvillage_ssl
+./scripts/download_dataset.sh
+```
+
+Or manually via Kaggle CLI:
+```bash
+kaggle datasets download -d vipoooool/new-plant-diseases-dataset
+unzip new-plant-diseases-dataset.zip -d data/plantvillage/
+```
+
+### Expected Structure
+```
+data/plantvillage/
+├── train/
+│   ├── Apple___Apple_scab/
+│   │   ├── image1.jpg
+│   │   └── ...
+│   └── ... (38 classes)
+└── valid/
+    ├── Apple___Apple_scab/
+    └── ... (38 classes)
+```
+
+The loader automatically merges train/ and valid/ folders for SSL training.
 
 ## SSL Training Pipeline - IMPORTANT!
 
@@ -262,7 +298,7 @@ cargo run --release --bin plantvillage_ssl -- train \
 cd plantvillage_ssl
 cargo run --release --bin plantvillage_ssl -- simulate \
     --model "output/models/plant_classifier_TIMESTAMP" \
-    --data-dir "data/plantvillage/balanced" \
+    --data-dir "data/plantvillage" \
     --cuda \
     --days 0 \
     --images-per-day 100 \
@@ -304,7 +340,7 @@ cd plantvillage_ssl
 cargo run --release --bin plantvillage_ssl -- train --epochs 30 --cuda --labeled-ratio 0.2
 cargo run --release --bin plantvillage_ssl -- simulate \
     --model "output/models/plant_classifier_LATEST" \
-    --data-dir "data/plantvillage/balanced" \
+    --data-dir "data/plantvillage" \
     --cuda --days 0 --labeled-ratio 0.2
 
 # Check available commands

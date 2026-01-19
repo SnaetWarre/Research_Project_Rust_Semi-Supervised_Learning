@@ -2,19 +2,28 @@
 //!
 //! This module implements Burn's Dataset trait and Batcher for efficient
 //! data loading and batching during training.
+//!
+//! ## Augmentation Support
+//!
+//! - `PlantVillageBatcher`: Standard batcher without augmentation (for validation/inference)
+//! - `AugmentingBatcher`: Applies on-the-fly augmentation (for training)
 
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicUsize, Ordering};
+use std::sync::Mutex;
 
 use burn::data::dataloader::batcher::Batcher;
 use burn::data::dataset::Dataset;
 use burn::prelude::*;
 use image::imageops::FilterType;
-use image::ImageReader;
+use image::{DynamicImage, ImageReader};
 use indicatif::{ProgressBar, ProgressStyle};
+use rand::SeedableRng;
+use rand_chacha::ChaCha8Rng;
 use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
 
+use crate::dataset::augmentation::{AugmentationConfig, Augmenter};
 use crate::IMAGE_SIZE;
 
 /// A single PlantVillage item ready for Burn
@@ -63,6 +72,112 @@ impl PlantVillageItem {
     /// Create from pre-loaded image data
     pub fn from_data(image: Vec<f32>, label: usize, path: String) -> Self {
         Self { image, label, path }
+    }
+}
+
+/// A raw PlantVillage item that stores the unprocessed image
+/// Used for on-the-fly augmentation during training
+#[derive(Clone)]
+pub struct RawPlantVillageItem {
+    /// Raw image data (not resized, not normalized)
+    pub image: DynamicImage,
+    /// Class label (0-38)
+    pub label: usize,
+    /// Image path (for debugging/logging)
+    pub path: String,
+}
+
+impl RawPlantVillageItem {
+    /// Create a new raw item by loading an image without preprocessing
+    pub fn from_path(path: &PathBuf, label: usize) -> anyhow::Result<Self> {
+        let img = ImageReader::open(path)?.decode()?;
+        
+        Ok(Self {
+            image: img,
+            label,
+            path: path.to_string_lossy().to_string(),
+        })
+    }
+}
+
+impl std::fmt::Debug for RawPlantVillageItem {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("RawPlantVillageItem")
+            .field("label", &self.label)
+            .field("path", &self.path)
+            .field("image_size", &format!("{}x{}", self.image.width(), self.image.height()))
+            .finish()
+    }
+}
+
+/// Dataset that stores raw images for on-the-fly augmentation
+#[derive(Clone)]
+pub struct RawPlantVillageDataset {
+    /// Cached raw images
+    items: Vec<RawPlantVillageItem>,
+}
+
+impl std::fmt::Debug for RawPlantVillageDataset {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("RawPlantVillageDataset")
+            .field("len", &self.items.len())
+            .finish()
+    }
+}
+
+impl RawPlantVillageDataset {
+    /// Create a new dataset by loading all images into memory (raw, unprocessed)
+    pub fn new_cached(samples: Vec<(PathBuf, usize)>) -> anyhow::Result<Self> {
+        let total = samples.len();
+        println!("  📦 Pre-loading {} raw images for augmentation...", total);
+
+        let pb = ProgressBar::new(total as u64);
+        pb.set_style(
+            ProgressStyle::default_bar()
+                .template("  {spinner:.green} [{elapsed_precise}] [{bar:40.cyan/blue}] {pos}/{len} ({per_sec})")
+                .unwrap()
+                .progress_chars("#>-"),
+        );
+
+        let loaded = AtomicUsize::new(0);
+
+        // Parallel loading with rayon
+        let items: Vec<_> = samples
+            .par_iter()
+            .filter_map(|(path, label)| {
+                let result = RawPlantVillageItem::from_path(path, *label).ok();
+                let count = loaded.fetch_add(1, Ordering::Relaxed);
+                if count % 100 == 0 {
+                    pb.set_position(count as u64);
+                }
+                result
+            })
+            .collect();
+
+        pb.finish_with_message(format!("Loaded {} raw images", items.len()));
+        println!("  ✅ Loaded {} raw images for on-the-fly augmentation", items.len());
+
+        Ok(Self { items })
+    }
+
+    /// Get the number of classes in the dataset
+    pub fn num_classes(&self) -> usize {
+        self.items
+            .iter()
+            .map(|item| item.label)
+            .max()
+            .map(|m| m + 1)
+            .unwrap_or(0)
+    }
+}
+
+impl Dataset<RawPlantVillageItem> for RawPlantVillageDataset {
+    fn get(&self, index: usize) -> Option<RawPlantVillageItem> {
+        self.items.get(index).cloned()
+    }
+
+    fn len(&self) -> usize {
+        self.items.len()
     }
 }
 
@@ -263,6 +378,118 @@ impl<B: Backend> Batcher<B, PlantVillageItem, PlantVillageBatch<B>> for PlantVil
 
         // Create targets tensor
         let targets_data: Vec<i64> = items.iter().map(|item| item.label as i64).collect();
+        let targets = Tensor::<B, 1, Int>::from_data(
+            TensorData::new(targets_data, [batch_size]),
+            device,
+        );
+
+        PlantVillageBatch { images, targets }
+    }
+}
+
+/// Batcher that applies on-the-fly augmentation to raw images
+///
+/// This batcher is used during training to apply random augmentations
+/// to each batch, improving model generalization.
+pub struct AugmentingBatcher<B: Backend> {
+    device: B::Device,
+    image_size: usize,
+    augmenter: Augmenter,
+    /// Thread-local RNG wrapped in Mutex for interior mutability
+    rng: Mutex<ChaCha8Rng>,
+}
+
+impl<B: Backend> Clone for AugmentingBatcher<B> {
+    fn clone(&self) -> Self {
+        // Create a new RNG with a different seed for each clone
+        let current_seed = self.rng.lock().unwrap().clone();
+        Self {
+            device: self.device.clone(),
+            image_size: self.image_size,
+            augmenter: self.augmenter.clone(),
+            rng: Mutex::new(current_seed),
+        }
+    }
+}
+
+impl<B: Backend> std::fmt::Debug for AugmentingBatcher<B> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("AugmentingBatcher")
+            .field("image_size", &self.image_size)
+            .finish()
+    }
+}
+
+impl<B: Backend> AugmentingBatcher<B> {
+    /// Create a new augmenting batcher with default (medium) augmentation
+    pub fn new(device: B::Device, image_size: usize, seed: u64) -> Self {
+        Self {
+            device,
+            image_size,
+            augmenter: Augmenter::new(AugmentationConfig::default(), image_size as u32),
+            rng: Mutex::new(ChaCha8Rng::seed_from_u64(seed)),
+        }
+    }
+
+    /// Create with a specific augmentation config
+    pub fn with_config(device: B::Device, image_size: usize, config: AugmentationConfig, seed: u64) -> Self {
+        Self {
+            device,
+            image_size,
+            augmenter: Augmenter::new(config, image_size as u32),
+            rng: Mutex::new(ChaCha8Rng::seed_from_u64(seed)),
+        }
+    }
+
+    /// Create with light augmentation (less aggressive)
+    pub fn light(device: B::Device, image_size: usize, seed: u64) -> Self {
+        Self::with_config(device, image_size, AugmentationConfig::light(), seed)
+    }
+
+    /// Create with heavy augmentation (more aggressive)
+    pub fn heavy(device: B::Device, image_size: usize, seed: u64) -> Self {
+        Self::with_config(device, image_size, AugmentationConfig::heavy(), seed)
+    }
+}
+
+impl<B: Backend> Batcher<B, RawPlantVillageItem, PlantVillageBatch<B>> for AugmentingBatcher<B> {
+    fn batch(&self, items: Vec<RawPlantVillageItem>, device: &B::Device) -> PlantVillageBatch<B> {
+        let batch_size = items.len();
+        let channels = 3;
+        let height = self.image_size;
+        let width = self.image_size;
+
+        // Process each image with augmentation
+        let mut images_data = Vec::with_capacity(batch_size * channels * height * width);
+        let mut targets_data = Vec::with_capacity(batch_size);
+
+        for item in items {
+            // Apply augmentation and preprocessing
+            let mut rng = self.rng.lock().unwrap();
+            let tensor_data = self.augmenter.preprocess(item.image, Some(&mut rng));
+            images_data.extend(tensor_data);
+            targets_data.push(item.label as i64);
+        }
+
+        // Create image tensor with shape [batch_size, channels, height, width]
+        let images = Tensor::<B, 4>::from_floats(
+            TensorData::new(images_data, [batch_size, channels, height, width]),
+            device,
+        );
+
+        // Apply ImageNet normalization: (x - mean) / std
+        let mean = Tensor::<B, 4>::from_floats(
+            TensorData::new(vec![0.485f32, 0.456, 0.406], [1, 3, 1, 1]),
+            device,
+        );
+        let std = Tensor::<B, 4>::from_floats(
+            TensorData::new(vec![0.229f32, 0.224, 0.225], [1, 3, 1, 1]),
+            device,
+        );
+
+        let images = (images - mean) / std;
+
+        // Create targets tensor
         let targets = Tensor::<B, 1, Int>::from_data(
             TensorData::new(targets_data, [batch_size]),
             device,

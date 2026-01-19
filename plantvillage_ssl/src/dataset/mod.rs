@@ -1,31 +1,38 @@
 //! Dataset module for PlantVillage data handling
 //!
 //! This module provides functionality for:
-//! - Loading the PlantVillage dataset from disk
+//! - Loading the New Plant Diseases Dataset (balanced, augmented PlantVillage)
 //! - Data augmentation for training robustness
 //! - Dataset splitting with semi-supervised learning simulation
 //!
+//! ## Dataset Structure
+//!
+//! The New Plant Diseases Dataset comes pre-balanced with ~87K images:
+//! - `train/` folder: ~70K images across 38 balanced classes
+//! - `valid/` folder: ~17K images across 38 balanced classes
+//!
 //! ## Semi-Supervised Split Strategy
 //!
-//! The dataset is split into several pools to simulate a real-world scenario:
+//! For SSL training, we merge train+valid and re-split:
 //! 1. **Test Set**: 10% of data, held out for final evaluation (never seen during training)
-//! 2. **Validation Set**: 10% of data, for hyperparameter tuning
-//! 3. **Labeled Pool**: 20-30% of remaining data, simulating manually labeled images
-//! 4. **Stream Pool**: Remaining data, simulating "incoming" camera captures
+//! 2. **Validation Set**: 10% of data, for hyperparameter tuning and early stopping
+//! 3. **Labeled Pool**: 20% of remaining 80%, simulating manually labeled images (~14K)
+//! 4. **Stream Pool**: 60% of remaining 80%, simulating "incoming" camera captures (~42K)
 //! 5. **Pseudo-labeled Pool**: Images from stream pool that have been pseudo-labeled
 
+pub mod augmentation;
 pub mod burn_dataset;
 pub mod loader;
-pub mod prepare;
 pub mod split;
 
 // Re-export main types for convenience
+pub use augmentation::{AugmentationConfig, Augmenter};
 pub use burn_dataset::{
-    CombinedDataset, PlantVillageBatch, PlantVillageBatcher, PlantVillageBurnDataset,
-    PlantVillageItem, PseudoLabelBatch, PseudoLabelBatcher, PseudoLabelDataset, PseudoLabeledItem,
+    AugmentingBatcher, CombinedDataset, PlantVillageBatch, PlantVillageBatcher,
+    PlantVillageBurnDataset, PlantVillageItem, PseudoLabelBatch, PseudoLabelBatcher,
+    PseudoLabelDataset, PseudoLabeledItem, RawPlantVillageDataset, RawPlantVillageItem,
 };
 pub use loader::{DatasetStats, ImageSample, PlantVillageDataset};
-pub use prepare::{compute_class_weights, prepare_balanced_dataset, PrepareConfig, PrepareStats};
 pub use split::{DatasetSplits, HiddenLabelImage, LabeledImage, PseudoLabeledImage, SplitConfig};
 
 /// Total number of classes in PlantVillage dataset

@@ -2,6 +2,11 @@
 //!
 //! This implements a working training loop using Burn 0.15's API directly
 //! with a simple, custom training loop rather than the high-level LearnerBuilder.
+//!
+//! ## Features
+//!
+//! - On-the-fly data augmentation for better generalization
+//! - Early stopping at target validation accuracy (leaves room for SSL improvement)
 
 use std::path::PathBuf;
 use chrono::Local;
@@ -23,8 +28,49 @@ use rand_chacha::ChaCha8Rng;
 use crate::{
     PlantVillageBatcher, PlantVillageBurnDataset, PlantVillageDataset, PlantClassifier,
 };
+use crate::dataset::burn_dataset::{RawPlantVillageDataset, AugmentingBatcher};
 use crate::dataset::split::{DatasetSplits, SplitConfig};
 use crate::model::cnn::PlantClassifierConfig;
+
+/// Configuration for early stopping based on validation accuracy
+#[derive(Clone, Debug)]
+pub struct EarlyStoppingConfig {
+    /// Target validation accuracy to stop at (e.g., 0.88 for 88%)
+    pub target_accuracy: f64,
+    /// Number of epochs to maintain target accuracy before stopping
+    pub patience: usize,
+    /// Whether early stopping is enabled
+    pub enabled: bool,
+}
+
+impl Default for EarlyStoppingConfig {
+    fn default() -> Self {
+        Self {
+            target_accuracy: 0.88, // 88% - leaves room for SSL to improve
+            patience: 3,           // Stop after 3 epochs at target
+            enabled: true,
+        }
+    }
+}
+
+impl EarlyStoppingConfig {
+    /// Disable early stopping
+    pub fn disabled() -> Self {
+        Self {
+            enabled: false,
+            ..Default::default()
+        }
+    }
+
+    /// Create with custom target accuracy
+    pub fn with_target(target_accuracy: f64, patience: usize) -> Self {
+        Self {
+            target_accuracy,
+            patience,
+            enabled: true,
+        }
+    }
+}
 
 /// Run training with the given configuration
 ///
@@ -41,7 +87,8 @@ use crate::model::cnn::PlantClassifierConfig;
 /// * `output_dir` - Directory to save model checkpoints
 /// * `seed` - Random seed for reproducibility
 /// * `max_samples` - Maximum samples to use (for quick testing)
-/// * `class_weighted` - Use inverse-frequency class weights for imbalanced data
+/// * `use_augmentation` - Enable data augmentation during training
+/// * `early_stopping` - Configuration for early stopping at target accuracy
 pub fn run_training<B>(
     data_dir: &str,
     epochs: usize,
@@ -52,7 +99,8 @@ pub fn run_training<B>(
     output_dir: &str,
     seed: u64,
     max_samples: Option<usize>,
-    class_weighted: bool,
+    use_augmentation: bool,
+    early_stopping: Option<EarlyStoppingConfig>,
 ) -> Result<()>
 where
     B: AutodiffBackend,
@@ -154,16 +202,41 @@ where
     // Use 128x128 images for better GPU memory usage on 6GB cards
     let image_size = 128;
 
+    // Determine augmentation settings
+    let early_stop_config = early_stopping.unwrap_or_else(EarlyStoppingConfig::default);
+    
     println!();
-    println!("{}", "Pre-loading Training Data...".cyan().bold());
-    let train_dataset = PlantVillageBurnDataset::new_cached(train_samples.clone(), image_size)
-        .expect("Failed to load training dataset");
+    if use_augmentation {
+        println!("{}", "Pre-loading Training Data (with augmentation)...".cyan().bold());
+    } else {
+        println!("{}", "Pre-loading Training Data...".cyan().bold());
+    }
+
+    // For augmentation, we need raw images; otherwise use preprocessed cache
+    let train_dataset_raw = if use_augmentation {
+        Some(RawPlantVillageDataset::new_cached(train_samples.clone())
+            .expect("Failed to load raw training dataset"))
+    } else {
+        None
+    };
+
+    let train_dataset = if !use_augmentation {
+        Some(PlantVillageBurnDataset::new_cached(train_samples.clone(), image_size)
+            .expect("Failed to load training dataset"))
+    } else {
+        None
+    };
 
     println!("{}", "Pre-loading Validation Data...".cyan().bold());
     let val_dataset = PlantVillageBurnDataset::new_cached(val_samples.clone(), image_size)
         .expect("Failed to load validation dataset");
 
     let batcher = PlantVillageBatcher::<B>::with_image_size(device.clone(), image_size);
+    let aug_batcher = if use_augmentation {
+        Some(AugmentingBatcher::<B>::new(device.clone(), image_size, seed))
+    } else {
+        None
+    };
 
     // Create model
     println!();
@@ -182,46 +255,6 @@ where
         .with_weight_decay(Some(burn::optim::decay::WeightDecayConfig::new(1e-4f32)))
         .init();
 
-    // Compute class weights if needed
-    let class_weights: Option<Vec<f32>> = if class_weighted {
-        println!();
-        println!("{}", "Computing Class Weights...".cyan());
-        
-        // Count samples per class in training set
-        let mut class_counts = vec![0usize; 38];
-        for (_, label) in &train_samples {
-            if *label < 38 {
-                class_counts[*label] += 1;
-            }
-        }
-        
-        let total = train_samples.len() as f32;
-        let num_classes = 38.0f32;
-        
-        // Inverse frequency weighting: weight = N / (C * n_c)
-        let weights: Vec<f32> = class_counts
-            .iter()
-            .map(|&count| {
-                if count > 0 {
-                    total / (num_classes * count as f32)
-                } else {
-                    1.0 // Default weight for empty classes
-                }
-            })
-            .collect();
-        
-        // Find min/max for display
-        let min_weight = weights.iter().cloned().fold(f32::INFINITY, f32::min);
-        let max_weight = weights.iter().cloned().fold(0.0f32, f32::max);
-        
-        println!("  ⚖️  Class weight range: {:.2} - {:.2}", min_weight, max_weight);
-        println!("  ⚖️  Using inverse-frequency weighting for imbalanced data");
-        
-        Some(weights)
-    } else {
-        None
-    };
-
     // Print training config
     let total_samples = train_samples.len() + val_samples.len();
     println!();
@@ -232,7 +265,14 @@ where
     println!("  🔄 Epochs:            {}", epochs);
     println!("  📦 Batch size:        {}", batch_size);
     println!("  📈 Learning rate:     {}", learning_rate);
-    println!("  ⚖️  Class weighted:    {}", if class_weighted { "yes" } else { "no" });
+    println!("  🎨 Augmentation:      {}", if use_augmentation { "enabled" } else { "disabled" });
+    if early_stop_config.enabled {
+        println!("  🛑 Early stopping:    at {:.0}% val acc ({} epochs)", 
+                 early_stop_config.target_accuracy * 100.0, 
+                 early_stop_config.patience);
+    } else {
+        println!("  🛑 Early stopping:    disabled");
+    }
     println!("  🧠 Device:            {:?}", device);
     println!();
 
@@ -240,9 +280,19 @@ where
     println!();
 
     let mut best_val_acc = 0.0f64;
+    let mut epochs_at_target = 0usize;  // Counter for early stopping
     
     // Create RNG for epoch shuffling
     let mut epoch_rng = ChaCha8Rng::seed_from_u64(seed);
+
+    // Get training dataset length for shuffling
+    let train_len = if use_augmentation {
+        use burn::data::dataset::Dataset;
+        train_dataset_raw.as_ref().unwrap().len()
+    } else {
+        use burn::data::dataset::Dataset;
+        train_dataset.as_ref().unwrap().len()
+    };
 
     // Training loop
     for epoch in 0..epochs {
@@ -254,10 +304,11 @@ where
         // Training phase
         let mut epoch_loss = 0.0f64;
         let mut correct = 0usize;
-        let mut total_samples = 0usize;
+        let mut total_samples_count = 0usize;
 
-        // Create shuffled indices for this epoch (don't pre-create batches to save GPU memory)
-        let shuffled_indices = create_shuffled_indices(&train_dataset, &mut epoch_rng);
+        // Create shuffled indices for this epoch
+        let mut shuffled_indices: Vec<usize> = (0..train_len).collect();
+        shuffled_indices.shuffle(&mut epoch_rng);
         let num_batches = (shuffled_indices.len() + batch_size - 1) / batch_size;
 
         for batch_idx in 0..num_batches {
@@ -266,32 +317,40 @@ where
             let end = (start + batch_size).min(shuffled_indices.len());
             let batch_indices = &shuffled_indices[start..end];
             
-            let items: Vec<_> = batch_indices
-                .iter()
-                .filter_map(|&i| {
-                    use burn::data::dataset::Dataset;
-                    train_dataset.get(i)
-                })
-                .collect();
-            
-            if items.is_empty() {
-                continue;
-            }
-            
-            let batch = batcher.batch(items, &device);
+            // Create batch based on whether augmentation is enabled
+            let batch = if use_augmentation {
+                use burn::data::dataset::Dataset;
+                let items: Vec<_> = batch_indices
+                    .iter()
+                    .filter_map(|&i| train_dataset_raw.as_ref().unwrap().get(i))
+                    .collect();
+                
+                if items.is_empty() {
+                    continue;
+                }
+                
+                aug_batcher.as_ref().unwrap().batch(items, &device)
+            } else {
+                use burn::data::dataset::Dataset;
+                let items: Vec<_> = batch_indices
+                    .iter()
+                    .filter_map(|&i| train_dataset.as_ref().unwrap().get(i))
+                    .collect();
+                
+                if items.is_empty() {
+                    continue;
+                }
+                
+                batcher.batch(items, &device)
+            };
 
             // Forward pass
             let output = model.forward(batch.images.clone());
 
-            // Compute loss (with optional class weights)
-            let loss = if let Some(ref weights) = class_weights {
-                // Manual weighted cross entropy: weight each sample by its class weight
-                weighted_cross_entropy(&output, &batch.targets, weights, &device)
-            } else {
-                CrossEntropyLossConfig::new()
-                    .init(&output.device())
-                    .forward(output.clone(), batch.targets.clone())
-            };
+            // Compute cross-entropy loss
+            let loss = CrossEntropyLossConfig::new()
+                .init(&output.device())
+                .forward(output.clone(), batch.targets.clone());
 
             let loss_value: f64 = loss.clone().into_scalar().elem();
             epoch_loss += loss_value;
@@ -305,7 +364,7 @@ where
                 .into_scalar()
                 .elem();
             correct += batch_correct as usize;
-            total_samples += batch.targets.dims()[0];
+            total_samples_count += batch.targets.dims()[0];
 
             // Backward pass
             let grads = loss.backward();
@@ -316,7 +375,7 @@ where
 
             // Progress logging
             if (batch_idx + 1) % 10 == 0 || batch_idx == num_batches - 1 {
-                let running_acc = 100.0 * correct as f64 / total_samples as f64;
+                let running_acc = 100.0 * correct as f64 / total_samples_count as f64;
                 println!(
                     "  Batch {:>4}/{}: loss = {:.4}, acc = {:.2}%",
                     batch_idx + 1,
@@ -331,7 +390,7 @@ where
         }
 
         let avg_loss = epoch_loss / num_batches.max(1) as f64;
-        let train_acc = 100.0 * correct as f64 / total_samples.max(1) as f64;
+        let train_acc = 100.0 * correct as f64 / total_samples_count.max(1) as f64;
 
         // Validation phase
         let val_acc = evaluate(&model, &val_dataset, &batcher, batch_size, image_size);
@@ -342,19 +401,54 @@ where
             best_val_acc = val_acc;
         }
 
+        // Check for early stopping at target accuracy
+        let val_acc_ratio = val_acc / 100.0;
+        let mut early_stop_triggered = false;
+        
+        if early_stop_config.enabled && val_acc_ratio >= early_stop_config.target_accuracy {
+            epochs_at_target += 1;
+            if epochs_at_target >= early_stop_config.patience {
+                early_stop_triggered = true;
+            }
+        } else {
+            epochs_at_target = 0;  // Reset counter if we drop below target
+        }
+
+        // Build status string
+        let mut status_parts = Vec::new();
+        if is_best {
+            status_parts.push(" (best)".green().to_string());
+        }
+        if early_stop_config.enabled && val_acc_ratio >= early_stop_config.target_accuracy {
+            status_parts.push(format!(" [target: {}/{}]", epochs_at_target, early_stop_config.patience).yellow().to_string());
+        }
+
         println!(
             "  {} Loss: {:.4} | Train Acc: {:.2}% | Val Acc: {:.2}%{}",
             "→".cyan(),
             avg_loss,
             train_acc,
             val_acc,
-            if is_best {
-                "(best)".green().to_string()
-            } else {
-                String::new()
-            }
+            status_parts.join("")
         );
         println!();
+
+        // Early stopping
+        if early_stop_triggered {
+            println!(
+                "{}",
+                format!(
+                    "🛑 Early stopping: reached {:.1}% validation accuracy for {} epochs",
+                    early_stop_config.target_accuracy * 100.0,
+                    early_stop_config.patience
+                )
+                .yellow()
+                .bold()
+            );
+            println!("   Leaving room for SSL to improve the model!");
+            println!();
+            break;
+        }
     }
 
     // Save the model with timestamp
@@ -390,19 +484,6 @@ where
     );
 
     Ok(())
-}
-
-/// Create shuffled indices for an epoch (memory-efficient - doesn't create batches upfront)
-fn create_shuffled_indices(
-    dataset: &PlantVillageBurnDataset,
-    rng: &mut ChaCha8Rng,
-) -> Vec<usize> {
-    use burn::data::dataset::Dataset;
-    
-    let len = dataset.len();
-    let mut indices: Vec<usize> = (0..len).collect();
-    indices.shuffle(rng);
-    indices
 }
 
 /// Evaluate the model on a dataset
@@ -455,46 +536,6 @@ fn evaluate<B: AutodiffBackend>(
     } else {
         100.0 * correct as f64 / total as f64
     }
-}
-
-/// Compute weighted cross entropy loss
-/// 
-/// This manually implements class-weighted cross entropy since Burn 0.20
-/// doesn't provide built-in support for it.
-/// 
-/// Formula: L = -sum(weight[class] * log(softmax(output)[class])) / sum(weights)
-fn weighted_cross_entropy<B: AutodiffBackend>(
-    output: &burn::tensor::Tensor<B, 2>,
-    targets: &burn::tensor::Tensor<B, 1, burn::tensor::Int>,
-    weights: &[f32],
-    device: &B::Device,
-) -> burn::tensor::Tensor<B, 1> {
-    use burn::tensor::Tensor;
-    use burn::tensor::activation::softmax;
-    
-    // Compute softmax probabilities
-    let probs = softmax(output.clone(), 1);
-    
-    // Add small epsilon for numerical stability before log
-    let epsilon = 1e-7f32;
-    let log_probs = (probs + epsilon).log();
-    
-    // Get the log probability of the correct class for each sample
-    // We need to gather the log probabilities at the target indices
-    let targets_expanded = targets.clone().unsqueeze_dim::<2>(1);
-    let target_log_probs = log_probs.gather(1, targets_expanded).squeeze::<1>();
-    
-    // Create weight tensor for each sample based on its class
-    let weights_tensor: Tensor<B, 1> = Tensor::from_floats(weights, device);
-    
-    // Gather weights for each target class
-    let sample_weights = weights_tensor.gather(0, targets.clone());
-    
-    // Weighted negative log likelihood
-    let weighted_nll = target_log_probs.neg().mul(sample_weights.clone());
-    
-    // Return mean weighted loss
-    weighted_nll.sum() / sample_weights.sum()
 }
 
 #[cfg(test)]

@@ -8,7 +8,7 @@ use serde::{Deserialize, Serialize};
 /// Configuration for the CNN model architecture
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ModelConfig {
-    /// Number of output classes (39 for PlantVillage)
+    /// Number of output classes (38 for PlantVillage)
     pub num_classes: usize,
 
     /// Input image size (width and height, assumed square)
@@ -39,8 +39,8 @@ pub struct ModelConfig {
 impl Default for ModelConfig {
     fn default() -> Self {
         Self {
-            num_classes: 39,
-            input_size: 256,
+            num_classes: 38,
+            input_size: 128,
             input_channels: 3,
             dropout_rate: 0.5,
             conv_filters: vec![32, 64, 128, 256],
@@ -65,8 +65,8 @@ impl ModelConfig {
     /// Create a lightweight model for edge deployment
     pub fn edge_optimized() -> Self {
         Self {
-            num_classes: 39,
-            input_size: 224, // Smaller input for faster inference
+            num_classes: 38,
+            input_size: 128, // Smaller input for faster inference
             input_channels: 3,
             dropout_rate: 0.3,
             conv_filters: vec![16, 32, 64, 128],
@@ -80,7 +80,7 @@ impl ModelConfig {
     /// Create a larger model for maximum accuracy
     pub fn high_accuracy() -> Self {
         Self {
-            num_classes: 39,
+            num_classes: 38,
             input_size: 256,
             input_channels: 3,
             dropout_rate: 0.5,
@@ -208,7 +208,7 @@ impl Default for TrainingConfig {
     fn default() -> Self {
         Self {
             epochs: 50,
-            batch_size: 32,
+            batch_size: 64,
             learning_rate: 0.001,
             weight_decay: 1e-4,
             lr_scheduler: LRSchedulerType::CosineAnnealing,
@@ -402,7 +402,7 @@ mod tests {
     fn test_training_config_default() {
         let config = TrainingConfig::default();
         assert_eq!(config.epochs, 50);
-        assert_eq!(config.batch_size, 32);
+        assert_eq!(config.batch_size, 64);
     }
 
     #[test]

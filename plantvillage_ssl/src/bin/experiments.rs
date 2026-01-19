@@ -48,7 +48,7 @@ enum Commands {
     /// Run label efficiency experiment: How many images per new class are needed?
     LabelEfficiency {
         /// Path to the dataset directory
-        #[arg(short, long, default_value = "data/plantvillage/balanced")]
+        #[arg(short, long, default_value = "data/plantvillage")]
         data_dir: String,
 
         /// Output directory for results
@@ -67,7 +67,7 @@ enum Commands {
     /// Run class scaling experiment: Is 5→6 harder than 30→31?
     ClassScaling {
         /// Path to the dataset directory
-        #[arg(short, long, default_value = "data/plantvillage/balanced")]
+        #[arg(short, long, default_value = "data/plantvillage")]
         data_dir: String,
 
         /// Output directory for results
@@ -86,7 +86,7 @@ enum Commands {
     /// Run all experiments
     All {
         /// Path to the dataset directory
-        #[arg(short, long, default_value = "data/plantvillage/balanced")]
+        #[arg(short, long, default_value = "data/plantvillage")]
         data_dir: String,
 
         /// Output directory for results
@@ -105,7 +105,7 @@ enum Commands {
     /// Run SSL + Incremental Learning combined experiment
     SslIncremental {
         /// Path to the dataset directory
-        #[arg(short, long, default_value = "data/plantvillage/balanced")]
+        #[arg(short, long, default_value = "data/plantvillage")]
         data_dir: String,
 
         /// Output directory for results
@@ -132,7 +132,7 @@ enum Commands {
     /// Run new class position experiment: Does 6th vs 31st class need different amounts of labels?
     NewClassPosition {
         /// Path to the dataset directory
-        #[arg(short, long, default_value = "data/plantvillage/balanced")]
+        #[arg(short, long, default_value = "data/plantvillage")]
         data_dir: String,
 
         /// Output directory for results
@@ -384,7 +384,7 @@ fn run_label_efficiency(data_dir: &str, output_dir: &str, epochs: usize, seed: u
     println!();
 
     // Test different numbers of images per class
-    let images_per_class_tests = vec![5, 10, 25, 50, 100, 152]; // 152 is max in balanced dataset
+    let images_per_class_tests = vec![5, 10, 25, 50, 100, 200, 500]; // Dataset has ~2K images per class
     let mut results = LabelEfficiencyResults {
         images_per_class: Vec::new(),
         accuracies: Vec::new(),
@@ -693,7 +693,7 @@ fn run_incremental_with_limited_labels<B: AutodiffBackend>(
 
     // Train base model
     let image_size = 128;
-    let batch_size = 32;
+    let batch_size = 64;
     let learning_rate = 0.0001;
 
     let train_dataset =
@@ -973,7 +973,7 @@ fn train_with_n_images_per_class<B: AutodiffBackend>(
 
     // Train
     let image_size = 128;
-    let batch_size = 32;
+    let batch_size = 64;
     let learning_rate = 0.0001;
 
     let train_dataset =
@@ -1087,7 +1087,7 @@ fn run_incremental_experiment<B: AutodiffBackend>(
 
     // Train base model
     let image_size = 128;
-    let batch_size = 32;
+    let batch_size = 64;
     let learning_rate = 0.0001;
 
     let train_dataset =
@@ -2018,7 +2018,7 @@ fn run_ssl_incremental(
         max_pseudo_labels_per_class: 100,
         base_epochs: 30,
         incremental_epochs: 20,
-        batch_size: 32,
+        batch_size: 64,
         learning_rate: 0.0001,
         seed,
         use_distillation: true,

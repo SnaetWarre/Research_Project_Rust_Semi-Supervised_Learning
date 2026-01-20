@@ -15,21 +15,7 @@ from PIL import Image
 
 # Add mobile_export to path
 sys.path.insert(0, str(Path(__file__).parent))
-from load_weights import PlantClassifier, load_weights_from_json
-
-# Class names (alphabetical order as in training)
-CLASS_NAMES = [
-    "Apple___Apple_scab", "Apple___Black_rot", "Apple___Cedar_apple_rust", "Apple___healthy",
-    "Blueberry___healthy", "Cherry___healthy", "Cherry___Powdery_mildew",
-    "Corn___Cercospora_leaf_spot", "Corn___Common_rust", "Corn___healthy", "Corn___Northern_Leaf_Blight",
-    "Grape___Black_rot", "Grape___Esca", "Grape___healthy", "Grape___Leaf_blight",
-    "Orange___Citrus_greening", "Peach___Bacterial_spot", "Peach___healthy",
-    "Pepper___Bacterial_spot", "Pepper___healthy", "Potato___Early_blight", "Potato___healthy",
-    "Potato___Late_blight", "Raspberry___healthy", "Soybean___healthy", "Squash___Powdery_mildew",
-    "Strawberry___healthy", "Strawberry___Leaf_scorch", "Tomato___Bacterial_spot", "Tomato___Early_blight",
-    "Tomato___healthy", "Tomato___Late_blight", "Tomato___Leaf_Mold", "Tomato___Septoria_leaf_spot",
-    "Tomato___Spider_mites", "Tomato___Target_Spot", "Tomato___mosaic_virus", "Tomato___Yellow_Leaf_Curl_Virus"
-]
+from load_weights import CLASS_NAMES, IMAGE_SIZE, PlantClassifier, load_weights_from_json
 
 
 def preprocess_image(image_path: Path, method="bilinear") -> np.ndarray:
@@ -40,31 +26,31 @@ def preprocess_image(image_path: Path, method="bilinear") -> np.ndarray:
     """
     # Load image
     img = Image.open(image_path)
-    
-    # Resize to 128x128 (same as model expects)
-    if method == "bilinear":
-        img = img.resize((128, 128), Image.BILINEAR)
-    elif method == "lanczos":
-        img = img.resize((128, 128), Image.LANCZOS)
-    
+
     # Convert to RGB if needed
-    if img.mode != 'RGB':
-        img = img.convert('RGB')
-    
+    if img.mode != "RGB":
+        img = img.convert("RGB")
+
+    # Resize to 128x128 (same as model expects)
+    if method == "lanczos":
+        img = img.resize((IMAGE_SIZE, IMAGE_SIZE), Image.Resampling.LANCZOS)
+    else:
+        img = img.resize((IMAGE_SIZE, IMAGE_SIZE), Image.Resampling.BILINEAR)
+
     # Convert to numpy array [H, W, C]
     img = np.array(img).astype(np.float32) / 255.0
-    
+
     # ImageNet normalization
     mean = np.array([0.485, 0.456, 0.406])
     std = np.array([0.229, 0.224, 0.225])
     img = (img - mean) / std
-    
+
     # Convert to CHW format
     img = img.transpose(2, 0, 1)  # HWC -> CHW
-    
+
     # Add batch dimension
     img = np.expand_dims(img, 0)
-    
+
     return img
 
 
@@ -111,7 +97,7 @@ def test_pytorch_model(image_path: Path, weights_path: Path):
 def test_onnx_model(image_path: Path, onnx_path: Path):
     """Test ONNX model."""
     try:
-        import onnxruntime as ort
+        import onnxruntime as ort  # type: ignore[import-not-found]
     except ImportError:
         print("\n⚠️  onnxruntime not installed. Skipping ONNX test.")
         print("   Install with: pip install onnxruntime")
@@ -191,15 +177,135 @@ def compare_results(pytorch_probs, onnx_probs):
         print("❌ Significant differences detected (max diff >= 5%)")
 
 
+def evaluate_folder(
+    folder_path: Path,
+    weights_path: Path,
+    onnx_path: Path,
+    method: str,
+    max_images: int | None,
+) -> dict:
+    try:
+        import onnxruntime as ort  # type: ignore[import-not-found]
+    except ImportError:
+        print("\n⚠️  onnxruntime not installed. Skipping ONNX test.")
+        print("   Install with: pip install onnxruntime")
+        sys.exit(1)
+
+    model = PlantClassifier(num_classes=38)
+    load_weights_from_json(model, weights_path)
+    model.eval()
+
+    session = ort.InferenceSession(str(onnx_path))
+
+    image_paths = sorted(
+        [p for p in folder_path.rglob("*") if p.suffix.lower() in {".jpg", ".jpeg", ".png"}]
+    )
+    if max_images is not None:
+        image_paths = image_paths[:max_images]
+
+    if not image_paths:
+        print(f"⚠️  No images found in {folder_path}")
+        return {}
+
+    expected_name = folder_path.name
+    expected_idx = CLASS_NAMES.index(expected_name) if expected_name in CLASS_NAMES else None
+
+    results = {
+        "folder": str(folder_path),
+        "total": 0,
+        "correct": 0,
+        "expected_idx": expected_idx,
+        "top_mismatch": {},
+    }
+
+    for image_path in image_paths:
+        img = preprocess_image(image_path, method=method)
+        img_tensor = torch.from_numpy(img).float()
+
+        with torch.no_grad():
+            logits = model(img_tensor)
+            probs = F.softmax(logits, dim=1)[0].numpy()
+        top_idx = int(np.argmax(probs))
+
+        results["total"] += 1
+        if expected_idx is not None and top_idx == expected_idx:
+            results["correct"] += 1
+        else:
+            results["top_mismatch"][top_idx] = results["top_mismatch"].get(top_idx, 0) + 1
+
+        outputs = session.run(None, {"image": img.astype(np.float32)})
+        onnx_logits = outputs[0][0]
+        exp = np.exp(onnx_logits - np.max(onnx_logits))
+        onnx_probs = exp / exp.sum()
+        onnx_top = int(np.argmax(onnx_probs))
+
+        if onnx_top != top_idx:
+            results["top_mismatch"][f"onnx_vs_torch_{onnx_top}"] = (
+                results["top_mismatch"].get(f"onnx_vs_torch_{onnx_top}", 0) + 1
+            )
+
+    return results
+
+
+def print_folder_results(results: dict) -> None:
+    if not results:
+        return
+
+    total = results["total"]
+    correct = results["correct"]
+    expected_idx = results["expected_idx"]
+    expected_name = CLASS_NAMES[expected_idx] if expected_idx is not None else "Unknown"
+    accuracy = (correct / total * 100.0) if total else 0.0
+
+    print("\n" + "=" * 60)
+    print(f"Folder: {results['folder']}")
+    print(f"Expected class: {expected_name} (idx {expected_idx})")
+    print(f"Total images: {total}")
+    print(f"Correct top-1: {correct} ({accuracy:.2f}%)")
+
+    if results["top_mismatch"]:
+        print("Top mismatches:")
+        for key, count in sorted(results["top_mismatch"].items(), key=lambda x: x[1], reverse=True)[:5]:
+            if isinstance(key, int):
+                name = CLASS_NAMES[key] if key < len(CLASS_NAMES) else f"Unknown_{key}"
+                print(f"  {name}: {count}")
+            else:
+                print(f"  {key}: {count}")
+
+
 def main():
     import argparse
-    
+
     parser = argparse.ArgumentParser(description="Test ONNX model inference")
     parser.add_argument(
         "--image",
         type=Path,
-        default=Path("../data/plantvillage/balanced/Peach___healthy/Peach___healthy_0000.jpg"),
+        default=None,
         help="Path to test image",
+    )
+    parser.add_argument(
+        "--folder",
+        type=Path,
+        default=None,
+        help="Path to a folder to evaluate",
+    )
+    parser.add_argument(
+        "--data-dir",
+        type=Path,
+        default=None,
+        help="Evaluate every class folder under this directory",
+    )
+    parser.add_argument(
+        "--max-images",
+        type=int,
+        default=None,
+        help="Limit images per folder",
+    )
+    parser.add_argument(
+        "--preprocess",
+        choices=["bilinear", "lanczos"],
+        default="bilinear",
+        help="Resize method",
     )
     parser.add_argument(
         "--weights",
@@ -214,34 +320,81 @@ def main():
         help="Path to ONNX model",
     )
     args = parser.parse_args()
-    
-    if not args.image.exists():
-        print(f"❌ Image not found: {args.image}")
-        sys.exit(1)
-    
+
     if not args.weights.exists():
         print(f"❌ Weights not found: {args.weights}")
         sys.exit(1)
-    
+
     if not args.onnx.exists():
         print(f"❌ ONNX model not found: {args.onnx}")
         sys.exit(1)
-    
-    print(f"Testing with image: {args.image}")
-    print(f"Expected class: {args.image.parent.name}\n")
-    
-    # Test PyTorch
-    pytorch_probs, pytorch_top = test_pytorch_model(args.image, args.weights)
-    
-    # Test ONNX
-    onnx_probs, onnx_top = test_onnx_model(args.image, args.onnx)
-    
-    # Compare
-    compare_results(pytorch_probs, onnx_probs)
-    
-    print("\n" + "=" * 60)
-    print("Test Complete")
-    print("=" * 60)
+
+    if args.image:
+        if not args.image.exists():
+            print(f"❌ Image not found: {args.image}")
+            sys.exit(1)
+
+        print(f"Testing with image: {args.image}")
+        print(f"Expected class: {args.image.parent.name}\n")
+
+        pytorch_probs, _ = test_pytorch_model(args.image, args.weights)
+        onnx_probs, _ = test_onnx_model(args.image, args.onnx)
+        compare_results(pytorch_probs, onnx_probs)
+        print("\n" + "=" * 60)
+        print("Test Complete")
+        print("=" * 60)
+        return
+
+    if args.folder:
+        if not args.folder.exists():
+            print(f"❌ Folder not found: {args.folder}")
+            sys.exit(1)
+
+        results = evaluate_folder(args.folder, args.weights, args.onnx, args.preprocess, args.max_images)
+        print_folder_results(results)
+        return
+
+    if args.data_dir:
+        if not args.data_dir.exists():
+            print(f"❌ Data directory not found: {args.data_dir}")
+            sys.exit(1)
+
+        class_folders = [p for p in args.data_dir.iterdir() if p.is_dir()]
+        if not class_folders:
+            print(f"❌ No class folders found in {args.data_dir}")
+            sys.exit(1)
+
+        overall_total = 0
+        overall_correct = 0
+        mismatch_totals = {}
+
+        for folder in sorted(class_folders):
+            results = evaluate_folder(folder, args.weights, args.onnx, args.preprocess, args.max_images)
+            print_folder_results(results)
+
+            overall_total += results.get("total", 0)
+            overall_correct += results.get("correct", 0)
+            for key, count in results.get("top_mismatch", {}).items():
+                mismatch_totals[key] = mismatch_totals.get(key, 0) + count
+
+        accuracy = (overall_correct / overall_total * 100.0) if overall_total else 0.0
+        print("\n" + "=" * 60)
+        print("Overall")
+        print("=" * 60)
+        print(f"Total images: {overall_total}")
+        print(f"Correct top-1: {overall_correct} ({accuracy:.2f}%)")
+
+        if mismatch_totals:
+            print("Top overall mismatches:")
+            for key, count in sorted(mismatch_totals.items(), key=lambda x: x[1], reverse=True)[:10]:
+                if isinstance(key, int):
+                    name = CLASS_NAMES[key] if key < len(CLASS_NAMES) else f"Unknown_{key}"
+                    print(f"  {name}: {count}")
+                else:
+                    print(f"  {key}: {count}")
+        return
+
+    parser.print_help()
 
 
 if __name__ == "__main__":

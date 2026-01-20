@@ -31,5 +31,7 @@ plantvillage_ssl/mobile_export/pwa/
 venv/
 .venv/
 
+.venv311/
+
 # Node.js
 node_modules/

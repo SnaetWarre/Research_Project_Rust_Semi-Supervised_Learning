@@ -30,7 +30,8 @@
         labels: chartLabels,
         datasets: [{
           label,
-          data,
+          // Create a plain copy to avoid Svelte 5 $state proxy issues
+          data: [...data],
           borderColor: color,
           backgroundColor: showArea ? `${color}20` : 'transparent',
           fill: showArea,
@@ -83,7 +84,8 @@
 
     const chartLabels = labels || data.map((_, i) => String(i + 1));
     chart.data.labels = chartLabels;
-    chart.data.datasets[0].data = data;
+    // Create a plain copy to avoid Svelte 5 $state proxy issues
+    chart.data.datasets[0].data = [...data];
     chart.update('none');
   }
 

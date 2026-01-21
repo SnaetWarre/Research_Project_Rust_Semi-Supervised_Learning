@@ -11,25 +11,37 @@ use tokio::sync::Mutex;
 use tauri::Manager;
 use state::AppState;
 use commands::incremental::IncrementalProgress;
+use commands::demo::DemoSessionGlobal;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+    // Initialize tracing for console logging
+    tracing_subscriber::fmt()
+        .with_env_filter("plantvillage_gui=info,demo=info")
+        .with_target(false)
+        .init();
+    
+    tracing::info!("=== PlantVillage SSL Dashboard Starting ===");
+
     // Initialize application state
     let app_state = Arc::new(AppState::new());
 
     // Initialize incremental learning progress state
     let incremental_progress_state: Arc<Mutex<Option<IncrementalProgress>>> = Arc::new(Mutex::new(None));
 
+    // Initialize demo session state
+    let demo_session_state: DemoSessionGlobal = Arc::new(Mutex::new(None));
+
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_dialog::init())
         .manage(app_state)
         .manage(incremental_progress_state)
+        .manage(demo_session_state)
         .setup(|app| {
-            #[cfg(debug_assertions)]
-            {
-                let window = app.get_webview_window("main").unwrap();
-                window.open_devtools();
+            // Always open devtools for debugging
+            if let Some(window) = app.get_webview_window("main") {
+                let _ = window.open_devtools();
             }
             Ok(())
         })
@@ -78,6 +90,13 @@ pub fn run() {
             commands::load_all_experiment_results,
             commands::load_experiment_conclusions,
             commands::get_available_experiments,
+            // Demo commands
+            commands::init_demo_session,
+            commands::advance_demo_day,
+            commands::get_demo_session_state,
+            commands::reset_demo_session,
+            commands::process_farmer_images,
+            commands::manual_retrain_demo,
             // Exit app command
             exit_app,
         ])

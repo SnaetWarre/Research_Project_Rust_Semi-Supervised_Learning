@@ -6,10 +6,12 @@
         Leaf,
         FlaskConical,
         Activity,
+        Sparkles,
     } from "lucide-svelte";
 
     const navItems = [
         { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
+        { id: "demo", label: "SSL Demo", icon: Sparkles },
         { id: "experiment", label: "Experiments", icon: FlaskConical },
         { id: "inference", label: "Inference", icon: ScanLine },
         { id: "diagnostics", label: "Diagnostics", icon: Activity },

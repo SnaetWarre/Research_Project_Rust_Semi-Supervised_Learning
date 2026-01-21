@@ -10,7 +10,7 @@
     "check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
     "check:watch": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --watch",
     "tauri": "tauri",
-    "tauri:dev": "bun tauri dev",
+    "tauri:dev": "bun tauri dev --release",
     "tauri:build": "bun tauri build"
   },
   "license": "MIT",

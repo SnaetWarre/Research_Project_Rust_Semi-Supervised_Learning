@@ -15,6 +15,7 @@
     import IncrementalLearning from "$lib/pages/IncrementalLearning.svelte";
     import Experiment from "$lib/pages/Experiment.svelte";
     import Diagnostics from "$lib/pages/Diagnostics.svelte";
+    import InteractiveSSL from "$lib/pages/InteractiveSSL.svelte";
 
     import type { Snippet } from "svelte";
 
@@ -27,6 +28,7 @@
 
     const pages: Record<string, typeof Dashboard> = {
         dashboard: Dashboard,
+        demo: InteractiveSSL,
         training: Training,
         inference: Inference,
         diagnostics: Diagnostics,
@@ -102,21 +104,8 @@
                 }
             }
 
-            // Auto-load model if not loaded
-            if (!$modelInfo.loaded) {
-                try {
-                    const result = await invoke<any>("load_model", { modelPath: "best_model.mpk" });
-                    modelInfo.set({
-                        loaded: result.loaded,
-                        path: result.path,
-                        numClasses: result.num_classes,
-                        inputSize: result.input_size,
-                    });
-                    addActivity("success", `Auto-loaded model: ${result.path}`);
-                } catch (e) {
-                    // Silent fail for model
-                }
-            }
+            // No auto-load - user selects SSL model via Dashboard for inference
+            // This keeps things simple and explicit
         }, 100);
     });
 </script>

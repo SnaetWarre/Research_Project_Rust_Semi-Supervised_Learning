@@ -108,6 +108,72 @@ export const diagnosticsState = writable<DiagnosticsState>({
   },
 });
 
+// Interactive Demo state
+export interface DemoState {
+  status: 'idle' | 'initialized' | 'running' | 'completed' | 'error';
+  currentDay: number;
+  totalImagesAvailable: number;
+  imagesProcessed: number;
+  pseudoLabelsAccumulated: number;
+  totalPseudoLabelsGenerated: number;
+  retrainingCount: number;
+  currentAccuracy: number;
+  initialAccuracy: number;
+  pseudoLabelPrecision: number;
+  accuracyHistory: { day: number; accuracy: number }[];
+  lastDayResult: DayResult | null;
+  errorMessage?: string;
+}
+
+export interface DayResult {
+  day: number;
+  images_processed_today: number;
+  pseudo_labels_accepted_today: number;
+  pseudo_labels_accumulated: number;
+  did_retrain: boolean;
+  accuracy_before_retrain: number | null;
+  accuracy_after_retrain: number | null;
+  current_accuracy: number;
+  pseudo_label_precision: number;
+  sample_images: DayImage[];
+  remaining_images: number;
+}
+
+export interface DayImage {
+  path: string;
+  predicted_label: number;
+  confidence: number;
+  accepted: boolean;
+  ground_truth: number;
+  is_correct: boolean;
+  base64_thumbnail?: string; // Base64 encoded thumbnail for display
+  is_farmer_image?: boolean; // Whether this is from farmer demo upload
+}
+
+export interface FarmerImportResult {
+  images_processed: number;
+  pseudo_labels_accepted: number;
+  pseudo_labels_accumulated: number;
+  sample_images: DayImage[];
+  current_accuracy: number;
+  pseudo_label_precision: number;
+}
+
+export const demoState = writable<DemoState>({
+  status: 'idle',
+  currentDay: 0,
+  totalImagesAvailable: 0,
+  imagesProcessed: 0,
+  pseudoLabelsAccumulated: 0,
+  totalPseudoLabelsGenerated: 0,
+  retrainingCount: 0,
+  currentAccuracy: 0,
+  initialAccuracy: 0,
+  pseudoLabelPrecision: 0,
+  accuracyHistory: [],
+  lastDayResult: null,
+});
+
 // Activity log
 export interface ActivityItem {
   id: number;

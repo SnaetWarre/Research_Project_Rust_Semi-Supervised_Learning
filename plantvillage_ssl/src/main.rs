@@ -11,7 +11,7 @@ use clap::{Parser, Subcommand};
 use colored::Colorize;
 use tracing::info;
 
-use plantvillage_ssl::backend::{DefaultBackend, TrainingBackend, backend_name};
+use plantvillage_ssl::backend::{backend_name, DefaultBackend, TrainingBackend};
 use plantvillage_ssl::utils::logging::{init_logging, LogConfig};
 
 /// PlantVillage Semi-Supervised Plant Disease Classification
@@ -85,7 +85,7 @@ enum Commands {
         quick: bool,
 
         /// Enable data augmentation during training (improves generalization)
-        #[arg(long, default_value = "true")]
+        #[arg(long, default_value = "false")]
         augmentation: bool,
 
         /// Disable early stopping at target validation accuracy
@@ -251,7 +251,10 @@ fn main() -> Result<()> {
             let _ = cuda; // Ignore flag, always GPU
 
             let max_samples = if quick {
-                println!("{}", "🚀 Quick test mode: using only 500 samples".yellow().bold());
+                println!(
+                    "{}",
+                    "🚀 Quick test mode: using only 500 samples".yellow().bold()
+                );
                 Some(500usize)
             } else {
                 None
@@ -261,11 +264,13 @@ fn main() -> Result<()> {
             let early_stopping = if no_early_stop {
                 None
             } else {
-                Some(plantvillage_ssl::training::supervised::EarlyStoppingConfig {
-                    target_accuracy,
-                    patience: early_stop_patience,
-                    enabled: true,
-                })
+                Some(
+                    plantvillage_ssl::training::supervised::EarlyStoppingConfig {
+                        target_accuracy,
+                        patience: early_stop_patience,
+                        enabled: true,
+                    },
+                )
             };
 
             plantvillage_ssl::training::supervised::run_training::<TrainingBackend>(
@@ -283,7 +288,11 @@ fn main() -> Result<()> {
             )?;
         }
 
-        Commands::Infer { input, model, cuda: _cuda } => {
+        Commands::Infer {
+            input,
+            model,
+            cuda: _cuda,
+        } => {
             cmd_infer(&input, &model, true)?;
         }
 
@@ -296,7 +305,15 @@ fn main() -> Result<()> {
             output,
             verbose,
         } => {
-            cmd_benchmark(model.as_deref(), iterations, warmup, batch_size, image_size, output.as_deref(), verbose)?;
+            cmd_benchmark(
+                model.as_deref(),
+                iterations,
+                warmup,
+                batch_size,
+                image_size,
+                output.as_deref(),
+                verbose,
+            )?;
         }
 
         Commands::Simulate {
@@ -352,8 +369,8 @@ fn print_banner() {
  ║   Designed for GPU Training with CUDA                               ║
  ╚════════════════════════════════════════════════════════════════╝
   "#
-          .green()
-      );
+        .green()
+    );
 }
 
 fn cmd_download(output_dir: &str) -> Result<()> {
@@ -420,16 +437,34 @@ fn cmd_stats(data_dir: &str, show_splits: bool) -> Result<()> {
                 let labeled_size = (remaining as f64 * 0.20) as usize;
                 let stream_size = remaining - labeled_size;
 
-                println!("  🧪 Test set:        {} ({:.1}%)", test_size, 100.0 * test_size as f64 / total as f64);
-                println!("  ✅ Validation set:  {} ({:.1}%)", val_size, 100.0 * val_size as f64 / total as f64);
-                println!("  🏷️  Labeled pool:    {} ({:.1}%)", labeled_size, 100.0 * labeled_size as f64 / total as f64);
-                println!("  📷 Stream pool:     {} ({:.1}%)", stream_size, 100.0 * stream_size as f64 / total as f64);
+                println!(
+                    "  🧪 Test set:        {} ({:.1}%)",
+                    test_size,
+                    100.0 * test_size as f64 / total as f64
+                );
+                println!(
+                    "  ✅ Validation set:  {} ({:.1}%)",
+                    val_size,
+                    100.0 * val_size as f64 / total as f64
+                );
+                println!(
+                    "  🏷️  Labeled pool:    {} ({:.1}%)",
+                    labeled_size,
+                    100.0 * labeled_size as f64 / total as f64
+                );
+                println!(
+                    "  📷 Stream pool:     {} ({:.1}%)",
+                    stream_size,
+                    100.0 * stream_size as f64 / total as f64
+                );
                 println!();
             }
 
             println!("{}", "Class Distribution:".cyan().bold());
             for (idx, count) in stats.class_counts.iter().enumerate() {
-                let class_name = stats.class_names.get(&idx)
+                let class_name = stats
+                    .class_names
+                    .get(&idx)
                     .map(|s| s.as_str())
                     .unwrap_or("Unknown");
                 let pct = 100.0 * *count as f64 / stats.total_samples as f64;
@@ -447,12 +482,12 @@ fn cmd_stats(data_dir: &str, show_splits: bool) -> Result<()> {
 fn cmd_infer(input: &str, model: &str, _cuda: bool) -> Result<()> {
     use burn::module::Module;
     use burn::record::CompactRecorder;
-    use burn::tensor::Tensor;
     use burn::tensor::activation::softmax;
+    use burn::tensor::Tensor;
     use image::imageops::FilterType;
-    use plantvillage_ssl::model::cnn::{PlantClassifier, PlantClassifierConfig};
+    use plantvillage_ssl::backend::{backend_name, default_device, DefaultBackend};
     use plantvillage_ssl::dataset::CLASS_NAMES;
-    use plantvillage_ssl::backend::{DefaultBackend, default_device, backend_name};
+    use plantvillage_ssl::model::cnn::{PlantClassifier, PlantClassifierConfig};
 
     info!("Running inference");
     info!("  Input: {}", input);
@@ -516,50 +551,59 @@ fn cmd_infer(input: &str, model: &str, _cuda: bool) -> Result<()> {
         let img = image::open(file_path)?;
         let img = img.resize_exact(128, 128, FilterType::Lanczos3);
         let rgb = img.to_rgb8();
-        
+
         // Normalize to tensor (CHW format)
         let mut data = vec![0.0f32; 3 * 128 * 128];
         let mean = [0.485f32, 0.456, 0.406];
         let std = [0.229f32, 0.224, 0.225];
-        
+
         for (i, pixel) in rgb.pixels().enumerate() {
             data[i] = (pixel[0] as f32 / 255.0 - mean[0]) / std[0];
             data[128 * 128 + i] = (pixel[1] as f32 / 255.0 - mean[1]) / std[1];
             data[2 * 128 * 128 + i] = (pixel[2] as f32 / 255.0 - mean[2]) / std[2];
         }
-        
+
         // Create tensor [1, 3, 128, 128]
         let tensor: Tensor<DefaultBackend, 1> = Tensor::from_floats(&data[..], &device);
         let tensor: Tensor<DefaultBackend, 4> = tensor.reshape([1, 3, 128, 128]);
-        
+
         // Run inference
         let start = std::time::Instant::now();
         let output = model_instance.forward(tensor);
         let probs = softmax(output, 1);
         let inference_time = start.elapsed();
-        
+
         // Get predictions
         let probs_vec: Vec<f32> = probs.into_data().to_vec().unwrap();
-        
+
         // Find top-5
-        let mut indexed: Vec<(usize, f32)> = probs_vec.iter().enumerate().map(|(i, &p)| (i, p)).collect();
+        let mut indexed: Vec<(usize, f32)> =
+            probs_vec.iter().enumerate().map(|(i, &p)| (i, p)).collect();
         indexed.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap());
-        
+
         // Get actual class from filename
         let actual_class = file_path
             .parent()
             .and_then(|p| p.file_name())
             .and_then(|n| n.to_str())
             .unwrap_or("Unknown");
-        
+
         let predicted_class = CLASS_NAMES.get(indexed[0].0).unwrap_or(&"Unknown");
         let is_correct = actual_class == *predicted_class;
-        
-        println!("📷 {}", file_path.file_name().unwrap_or_default().to_string_lossy());
+
+        println!(
+            "📷 {}",
+            file_path.file_name().unwrap_or_default().to_string_lossy()
+        );
         println!("  Actual:    {}", actual_class.yellow());
-        println!("  Predicted: {} {}", 
+        println!(
+            "  Predicted: {} {}",
             predicted_class,
-            if is_correct { "✅".green() } else { "❌".red() }
+            if is_correct {
+                "✅".green()
+            } else {
+                "❌".red()
+            }
         );
         println!("  Confidence: {:.1}%", indexed[0].1 * 100.0);
         println!("  Time: {:.2}ms", inference_time.as_secs_f64() * 1000.0);
@@ -583,8 +627,8 @@ fn cmd_benchmark(
     output: Option<&str>,
     verbose: bool,
 ) -> Result<()> {
-    use plantvillage_ssl::inference::{BenchmarkConfig, run_benchmark};
-    use plantvillage_ssl::backend::{DefaultBackend, default_device};
+    use plantvillage_ssl::backend::{default_device, DefaultBackend};
+    use plantvillage_ssl::inference::{run_benchmark, BenchmarkConfig};
     use std::path::PathBuf;
 
     info!("Running benchmark");
@@ -630,8 +674,8 @@ fn cmd_simulate(
     output_dir: &str,
     _cuda: bool,
 ) -> Result<()> {
+    use plantvillage_ssl::backend::{backend_name, TrainingBackend};
     use plantvillage_ssl::training::{run_simulation, SimulationConfig};
-    use plantvillage_ssl::backend::{TrainingBackend, backend_name};
 
     info!("Starting stream simulation");
     info!("  Days: {} (0 = unlimited)", days);
@@ -647,7 +691,11 @@ fn cmd_simulate(
     println!("  📷 Images per day:   {}", images_per_day);
     println!("  🎯 Confidence threshold: {}", confidence_threshold);
     println!("  🔄 Retrain threshold:  {} images", retrain_threshold);
-    println!("  🏷️  Labeled ratio:     {:.0}% (SSL stream: {:.0}%)", labeled_ratio * 100.0, (1.0 - labeled_ratio - 0.20) * 100.0);
+    println!(
+        "  🏷️  Labeled ratio:     {:.0}% (SSL stream: {:.0}%)",
+        labeled_ratio * 100.0,
+        (1.0 - labeled_ratio - 0.20) * 100.0
+    );
     println!("  💾 Output directory:   {}", output_dir);
     println!("  🖥️  Backend:          {}", backend_name());
     println!();
@@ -662,7 +710,7 @@ fn cmd_simulate(
         labeled_ratio,
         output_dir: output_dir.to_string(),
         seed: 42,
-        batch_size: 64,  // Standard batch size for GPU training
+        batch_size: 64, // Standard batch size for GPU training
         learning_rate: 0.0001,
         retrain_epochs: 5,
     };

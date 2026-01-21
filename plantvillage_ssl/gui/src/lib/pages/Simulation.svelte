@@ -32,6 +32,10 @@
 
   let result = $state<SimulationResult | null>(null);
 
+  // Derived states for chart data (fixes Svelte 5 state proxy issue)
+  let accuracyHistoryData = $derived(result?.accuracy_history?.map(([_, acc]) => acc) ?? []);
+  let accuracyHistoryLabels = $derived(result?.accuracy_history?.map(([day, _]) => `Day ${day}`) ?? []);
+
   onMount(async () => {
     const completeUnlisten = await listen<SimulationResult>('simulation:complete', (event) => {
       result = event.payload;
@@ -235,8 +239,8 @@
       <div class="h-72">
         {#if result.accuracy_history.length > 0}
           <LineChart 
-            data={result.accuracy_history.map(([_, acc]) => acc)}
-            labels={result.accuracy_history.map(([day, _]) => `Day ${day}`)}
+            data={accuracyHistoryData}
+            labels={accuracyHistoryLabels}
             label="Validation Accuracy"
             color="#2142f1"
             yAxisLabel="Accuracy (%)"

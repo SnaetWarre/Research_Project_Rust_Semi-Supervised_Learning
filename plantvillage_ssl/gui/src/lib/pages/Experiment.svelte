@@ -15,6 +15,11 @@
     let sslIncremental: any = $state(null);
     let newClassPosition: any = $state(null);
 
+    // Derived states for chart labels (fixes Svelte 5 state proxy issue)
+    let labelEfficiencyLabels = $derived(
+        labelEfficiency?.images_per_class?.map((n: number) => `${n}`) ?? []
+    );
+
     onMount(async () => {
         await loadExperiments();
     });
@@ -203,7 +208,7 @@
                     <div class="chart-wrapper">
                         <BarChart
                             data={labelEfficiency.accuracies}
-                            labels={labelEfficiency.images_per_class.map((n: number) => `${n}`)}
+                            labels={labelEfficiencyLabels}
                             label="Validation Accuracy (%)"
                             color="#2142f1"
                         />

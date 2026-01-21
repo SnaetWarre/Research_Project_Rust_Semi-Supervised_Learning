@@ -156,9 +156,12 @@
                 disabled={isLoadingModel}
             >
                 <Upload style="width: 16px; height: 16px;" />
-                {isLoadingModel ? "Loading..." : "Load Model"}
+                {isLoadingModel ? "Loading..." : "Load SSL Model"}
             </button>
         </div>
+        <p class="text-xs text-gray-400 mt-2">
+            For inference, select from output/simulation/ (SSL-trained models)
+        </p>
     </div>
 
     <!-- Stats Grid -->
@@ -194,9 +197,11 @@
                     {$modelInfo.loaded ? "Ready" : "Not loaded"}
                 </p>
                 <p class="stat-desc">
-                    {$modelInfo.loaded
-                        ? `${$modelInfo.numClasses} classes`
-                        : "Load a model to start"}
+                    {#if $modelInfo.loaded}
+                        {$modelInfo.path?.includes('ssl') ? 'SSL-trained' : 'Base CNN'} • {$modelInfo.numClasses} classes
+                    {:else}
+                        Load a model to start
+                    {/if}
                 </p>
             </div>
         </div>

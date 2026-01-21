@@ -282,6 +282,11 @@ impl PseudoLabeler {
         self.pseudo_labels.len()
     }
 
+    /// Get the retrain threshold
+    pub fn retrain_threshold(&self) -> usize {
+        self.config.retrain_threshold
+    }
+
     /// Get pseudo-labeling statistics
     pub fn stats(&self) -> &PseudoLabelStats {
         &self.stats
@@ -363,7 +368,11 @@ impl std::fmt::Display for PseudoLabelStats {
             self.total_accepted,
             self.acceptance_rate() * 100.0
         )?;
-        writeln!(f, "  Rejected (low confidence): {}", self.rejected_low_confidence)?;
+        writeln!(
+            f,
+            "  Rejected (low confidence): {}",
+            self.rejected_low_confidence
+        )?;
         writeln!(f, "  Rejected (class limit): {}", self.rejected_class_limit)?;
         writeln!(
             f,

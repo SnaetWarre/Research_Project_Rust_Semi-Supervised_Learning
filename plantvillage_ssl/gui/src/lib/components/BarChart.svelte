@@ -27,7 +27,8 @@
         labels,
         datasets: [{
           label,
-          data,
+          // Create a plain copy to avoid Svelte 5 $state proxy issues
+          data: [...data],
           backgroundColor: `${color}80`,
           borderColor: color,
           borderWidth: 1,
@@ -68,7 +69,8 @@
     if (!chart) return;
 
     chart.data.labels = labels;
-    chart.data.datasets[0].data = data;
+    // Create a plain copy to avoid Svelte 5 $state proxy issues
+    chart.data.datasets[0].data = [...data];
     chart.update('none');
   }
 

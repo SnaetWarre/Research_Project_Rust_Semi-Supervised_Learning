@@ -19,6 +19,9 @@
     let labelEfficiencyLabels = $derived(
         labelEfficiency?.images_per_class?.map((n: number) => `${n}`) ?? []
     );
+    let labelEfficiencyData = $derived(
+        labelEfficiency?.accuracies ?? []
+    );
 
     onMount(async () => {
         await loadExperiments();
@@ -207,7 +210,7 @@
                 <Card title="Accuracy vs Images per Class">
                     <div class="chart-wrapper">
                         <BarChart
-                            data={labelEfficiency.accuracies}
+                            data={labelEfficiencyData}
                             labels={labelEfficiencyLabels}
                             label="Validation Accuracy (%)"
                             color="#2142f1"

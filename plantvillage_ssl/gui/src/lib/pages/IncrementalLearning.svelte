@@ -31,6 +31,11 @@
     let bwtHistory = $state<number[]>([]);
     let lossHistory = $state<number[]>([]);
 
+    // Derived states for charts (fixes Svelte 5 state proxy issue)
+    let accuracyHistoryData = $derived([...accuracyHistory]);
+    let bwtHistoryData = $derived([...bwtHistory]);
+    let lossHistoryData = $derived([...lossHistory]);
+
     // Available methods
     let methods = $state<any[]>([]);
 
@@ -338,23 +343,23 @@
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <Card title="Accuracy History">
                 <div class="h-64">
-                    <LineChart
-                        data={accuracyHistory}
-                        label="Task Accuracy"
-                        color="#10B981"
-                        yAxisLabel="Accuracy (%)"
-                    />
+                     <LineChart
+                         data={accuracyHistoryData}
+                         label="Task Accuracy"
+                         color="#10B981"
+                         yAxisLabel="Accuracy (%)"
+                     />
                 </div>
             </Card>
 
             <Card title="Backward Transfer">
                 <div class="h-64">
-                    <LineChart
-                        data={bwtHistory}
-                        label="Backward Transfer"
-                        color="#EF4444"
-                        yAxisLabel="BWT"
-                    />
+                     <LineChart
+                         data={bwtHistoryData}
+                         label="Backward Transfer"
+                         color="#EF4444"
+                         yAxisLabel="BWT"
+                     />
                 </div>
             </Card>
         </div>

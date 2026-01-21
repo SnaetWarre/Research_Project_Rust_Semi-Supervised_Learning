@@ -58,7 +58,7 @@ impl Default for DemoConfig {
             images_per_day: 100,
             confidence_threshold: 0.9,
             retrain_threshold: 200,
-            labeled_ratio: 0.2,
+            labeled_ratio: 0.25,
             seed: 42,
         }
     }
@@ -653,7 +653,7 @@ where
         .map(|s| (s.path.clone(), s.label, s.class_name.clone()))
         .collect();
 
-    let stream_fraction = 1.0 - config.labeled_ratio - 0.10;
+    let stream_fraction = 1.0 - config.labeled_ratio;
     let split_config = SplitConfig {
         test_fraction: 0.10,
         validation_fraction: 0.10,
@@ -1102,6 +1102,23 @@ fn retrain_model_with_augmentation<B: AutodiffBackend>(
                 .forward(output, batch.targets);
 
             let loss_value: f64 = loss.clone().into_scalar().elem();
+            
+            // CRITICAL: Detect NaN/Inf immediately
+            if loss_value.is_nan() {
+                tracing::error!(
+                    "Loss became NaN at epoch {} batch {}. Aborting retrain.",
+                    epoch + 1, batch_count + 1
+                );
+                return; // Abort this retraining cycle
+            }
+            if loss_value.is_infinite() {
+                tracing::error!(
+                    "Loss became infinite at epoch {} batch {}. Aborting retrain.",
+                    epoch + 1, batch_count + 1
+                );
+                return; // Abort this retraining cycle
+            }
+            
             epoch_loss += loss_value;
             batch_count += 1;
 

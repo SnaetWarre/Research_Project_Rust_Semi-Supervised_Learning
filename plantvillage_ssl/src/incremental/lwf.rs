@@ -82,11 +82,7 @@ impl<B: Backend> LwFLearner<B> {
     }
 
     /// Compute distillation loss
-    fn compute_distillation_loss(
-        &self,
-        student_logits: &[f32],
-        teacher_logits: &[f32],
-    ) -> f32 {
+    fn compute_distillation_loss(&self, student_logits: &[f32], teacher_logits: &[f32]) -> f32 {
         if student_logits.len() != teacher_logits.len() {
             return 0.0;
         }
@@ -201,7 +197,7 @@ impl<B: Backend> IncrementalLearner<B> for LwFLearner<B> {
         &mut self,
         train_data: &[(Vec<f32>, usize)],
         val_data: &[(Vec<f32>, usize)],
-        config: &IncrementalConfig,
+        _config: &IncrementalConfig,
     ) -> Result<TrainingMetrics> {
         if train_data.is_empty() {
             return Err(anyhow!("Training data is empty"));
@@ -307,7 +303,10 @@ impl<B: Backend> IncrementalLearner<B> for LwFLearner<B> {
             self.clear_teacher_outputs();
         }
 
-        println!("LwF: Finalized step {} with {} total classes", step, self.num_classes);
+        println!(
+            "LwF: Finalized step {} with {} total classes",
+            step, self.num_classes
+        );
 
         Ok(())
     }
@@ -432,7 +431,9 @@ mod tests {
             seed: 42,
         };
 
-        let metrics = learner.train_incremental(&train_data, &val_data, &inc_config).unwrap();
+        let metrics = learner
+            .train_incremental(&train_data, &val_data, &inc_config)
+            .unwrap();
 
         assert!(metrics.train_loss.len() > 0);
         assert!(metrics.val_accuracy.len() > 0);
@@ -455,12 +456,7 @@ mod tests {
         let student_logits = vec![1.0, 2.0, 3.0, 0.5, 0.5];
         let teacher_logits = vec![1.5, 2.5, 2.0];
 
-        let loss = learner.compute_combined_loss(
-            &student_logits,
-            Some(&teacher_logits),
-            2,
-            5,
-        );
+        let loss = learner.compute_combined_loss(&student_logits, Some(&teacher_logits), 2, 5);
 
         assert!(loss > 0.0);
         assert!(loss.is_finite());

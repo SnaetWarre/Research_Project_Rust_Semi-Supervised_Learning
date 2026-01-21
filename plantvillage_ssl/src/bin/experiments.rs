@@ -12,7 +12,6 @@ use std::path::{Path, PathBuf};
 use std::time::Instant;
 
 use anyhow::Result;
-use burn::backend::Autodiff;
 use burn::data::dataloader::batcher::Batcher;
 use burn::data::dataset::Dataset;
 use burn::module::AutodiffModule;
@@ -329,7 +328,14 @@ fn main() -> Result<()> {
             confidence_threshold,
             seed,
         } => {
-            run_ssl_incremental(&data_dir, &output_dir, base_classes, labeled_samples, confidence_threshold, seed)?;
+            run_ssl_incremental(
+                &data_dir,
+                &output_dir,
+                base_classes,
+                labeled_samples,
+                confidence_threshold,
+                seed,
+            )?;
         }
         Commands::NewClassPosition {
             data_dir,
@@ -347,7 +353,14 @@ fn main() -> Result<()> {
             batch_size,
             image_size,
         } => {
-            run_inference_benchmark(model_path.as_deref(), &output_dir, warmup, iterations, batch_size, image_size)?;
+            run_inference_benchmark(
+                model_path.as_deref(),
+                &output_dir,
+                warmup,
+                iterations,
+                batch_size,
+                image_size,
+            )?;
         }
     }
 
@@ -472,11 +485,12 @@ fn run_class_scaling(data_dir: &str, output_dir: &str, epochs: usize, seed: u64)
     let small_base = run_incremental_experiment::<Backend>(&dataset, 5, 1, epochs, seed)?;
     println!(
         "  Base accuracy: {:.2}% → {:.2}% (forgetting: {:.2}%)",
-        small_base.base_accuracy_before,
-        small_base.base_accuracy_after,
-        small_base.forgetting
+        small_base.base_accuracy_before, small_base.base_accuracy_after, small_base.forgetting
     );
-    println!("  New class accuracy: {:.2}%", small_base.new_class_accuracy);
+    println!(
+        "  New class accuracy: {:.2}%",
+        small_base.new_class_accuracy
+    );
     println!("  Overall accuracy: {:.2}%", small_base.overall_accuracy);
     println!();
 
@@ -485,11 +499,12 @@ fn run_class_scaling(data_dir: &str, output_dir: &str, epochs: usize, seed: u64)
     let large_base = run_incremental_experiment::<Backend>(&dataset, 30, 1, epochs, seed)?;
     println!(
         "  Base accuracy: {:.2}% → {:.2}% (forgetting: {:.2}%)",
-        large_base.base_accuracy_before,
-        large_base.base_accuracy_after,
-        large_base.forgetting
+        large_base.base_accuracy_before, large_base.base_accuracy_after, large_base.forgetting
     );
-    println!("  New class accuracy: {:.2}%", large_base.new_class_accuracy);
+    println!(
+        "  New class accuracy: {:.2}%",
+        large_base.new_class_accuracy
+    );
     println!("  Overall accuracy: {:.2}%", large_base.overall_accuracy);
     println!();
 
@@ -530,8 +545,16 @@ fn run_class_scaling(data_dir: &str, output_dir: &str, epochs: usize, seed: u64)
 }
 
 /// Run new class position experiment: Does adding a class as 6th vs 31st need different amounts of labels?
-fn run_new_class_position(data_dir: &str, output_dir: &str, epochs: usize, seed: u64) -> Result<()> {
-    println!("{}", "EXPERIMENT 4: New Class Position Effect".yellow().bold());
+fn run_new_class_position(
+    data_dir: &str,
+    output_dir: &str,
+    epochs: usize,
+    seed: u64,
+) -> Result<()> {
+    println!(
+        "{}",
+        "EXPERIMENT 4: New Class Position Effect".yellow().bold()
+    );
     println!("Question: Does adding a class as 6th vs 31st require different amounts of labeled samples?");
     println!("Sub-question: How does the number of existing classes affect label efficiency for new classes?");
     println!();
@@ -548,21 +571,24 @@ fn run_new_class_position(data_dir: &str, output_dir: &str, epochs: usize, seed:
 
     // Test different numbers of labeled samples for the new class
     let labeled_samples_tests = vec![5, 10, 25, 50, 100];
-    
+
     let mut small_base_results: Vec<PositionLabelResult> = Vec::new();
     let mut large_base_results: Vec<PositionLabelResult> = Vec::new();
 
     // Part A: 5 → 6 classes with varying labeled samples
-    println!("{}", "Part A: Adding 6th class (5 base classes)".yellow().bold());
+    println!(
+        "{}",
+        "Part A: Adding 6th class (5 base classes)".yellow().bold()
+    );
     println!();
-    
+
     for &n_samples in &labeled_samples_tests {
         println!(
             "  Testing with {} labeled samples for new class...",
             n_samples
         );
         let result = run_incremental_with_limited_labels::<Backend>(
-            &dataset, 5, 1, n_samples, epochs, seed
+            &dataset, 5, 1, n_samples, epochs, seed,
         )?;
         println!(
             "    New class: {:.2}%, Base after: {:.2}%, Forgetting: {:.2}%",
@@ -581,16 +607,21 @@ fn run_new_class_position(data_dir: &str, output_dir: &str, epochs: usize, seed:
     println!();
 
     // Part B: 30 → 31 classes with varying labeled samples
-    println!("{}", "Part B: Adding 31st class (30 base classes)".yellow().bold());
+    println!(
+        "{}",
+        "Part B: Adding 31st class (30 base classes)"
+            .yellow()
+            .bold()
+    );
     println!();
-    
+
     for &n_samples in &labeled_samples_tests {
         println!(
             "  Testing with {} labeled samples for new class...",
             n_samples
         );
         let result = run_incremental_with_limited_labels::<Backend>(
-            &dataset, 30, 1, n_samples, epochs, seed
+            &dataset, 30, 1, n_samples, epochs, seed,
         )?;
         println!(
             "    New class: {:.2}%, Base after: {:.2}%, Forgetting: {:.2}%",
@@ -681,7 +712,10 @@ fn run_incremental_with_limited_labels<B: AutodiffBackend>(
         if let Some(samples) = by_class.get_mut(&class_idx) {
             samples.shuffle(&mut rng);
             let split = (samples.len() as f64 * 0.8) as usize;
-            let new_label = base_class_indices.iter().position(|&x| x == class_idx).unwrap();
+            let new_label = base_class_indices
+                .iter()
+                .position(|&x| x == class_idx)
+                .unwrap();
             for s in samples.iter().take(split) {
                 base_train.push((s.path.clone(), new_label));
             }
@@ -750,7 +784,8 @@ fn run_incremental_with_limited_labels<B: AutodiffBackend>(
     }
 
     // Evaluate base model on base classes
-    let base_accuracy_before = evaluate::<B>(&model, &val_dataset, &batcher, batch_size, image_size);
+    let base_accuracy_before =
+        evaluate::<B>(&model, &val_dataset, &batcher, batch_size, image_size);
 
     // Now add new class with LIMITED labels
     let total_classes = base_classes + new_classes;
@@ -763,15 +798,15 @@ fn run_incremental_with_limited_labels<B: AutodiffBackend>(
     for (i, &class_idx) in new_class_indices.iter().enumerate() {
         if let Some(samples) = by_class.get_mut(&class_idx) {
             samples.shuffle(&mut rng);
-            
+
             // Limit training samples to max_labels_per_new_class
             let available_train = (samples.len() as f64 * 0.8) as usize;
             let train_n = max_labels_per_new_class.min(available_train);
-            
+
             // Use remaining as validation
             let val_start = train_n;
             let new_label = base_classes + i;
-            
+
             for s in samples.iter().take(train_n) {
                 combined_train.push((s.path.clone(), new_label));
             }
@@ -836,21 +871,37 @@ fn run_incremental_with_limited_labels<B: AutodiffBackend>(
     // Evaluate on base classes only (to measure forgetting)
     let base_val_dataset =
         PlantVillageBurnDataset::new_cached(base_val, image_size).expect("Failed");
-    let base_accuracy_after =
-        evaluate::<B>(&new_model, &base_val_dataset, &new_batcher, batch_size, image_size);
+    let base_accuracy_after = evaluate::<B>(
+        &new_model,
+        &base_val_dataset,
+        &new_batcher,
+        batch_size,
+        image_size,
+    );
 
     // Evaluate on new class only
     let new_class_accuracy = if !new_class_val.is_empty() {
         let new_class_val_dataset =
             PlantVillageBurnDataset::new_cached(new_class_val, image_size).expect("Failed");
-        evaluate::<B>(&new_model, &new_class_val_dataset, &new_batcher, batch_size, image_size)
+        evaluate::<B>(
+            &new_model,
+            &new_class_val_dataset,
+            &new_batcher,
+            batch_size,
+            image_size,
+        )
     } else {
         0.0
     };
 
     // Overall accuracy
-    let overall_accuracy =
-        evaluate::<B>(&new_model, &combined_val_dataset, &new_batcher, batch_size, image_size);
+    let overall_accuracy = evaluate::<B>(
+        &new_model,
+        &combined_val_dataset,
+        &new_batcher,
+        batch_size,
+        image_size,
+    );
 
     let forgetting = base_accuracy_before - base_accuracy_after;
     let training_time = start.elapsed().as_secs_f64();
@@ -878,7 +929,7 @@ fn calculate_position_summary(
         .filter(|r| r.new_class_accuracy >= 70.0)
         .map(|r| r.labeled_samples)
         .min();
-    
+
     let min_samples_large_70pct = large_results
         .iter()
         .filter(|r| r.new_class_accuracy >= 70.0)
@@ -891,7 +942,7 @@ fn calculate_position_summary(
         .filter(|r| r.new_class_accuracy >= 80.0)
         .map(|r| r.labeled_samples)
         .min();
-    
+
     let min_samples_large_80pct = large_results
         .iter()
         .filter(|r| r.new_class_accuracy >= 80.0)
@@ -904,13 +955,13 @@ fn calculate_position_summary(
     } else {
         0.0
     };
-    
+
     let avg_large_forgetting: f64 = if !large_results.is_empty() {
         large_results.iter().map(|r| r.forgetting).sum::<f64>() / large_results.len() as f64
     } else {
         0.0
     };
-    
+
     let avg_forgetting_difference = avg_large_forgetting - avg_small_forgetting;
 
     // Compare equivalent accuracy levels to determine if harder as 31st
@@ -1075,7 +1126,10 @@ fn run_incremental_experiment<B: AutodiffBackend>(
             samples.shuffle(&mut rng);
             let split = (samples.len() as f64 * 0.8) as usize;
             // Remap to 0..base_classes
-            let new_label = base_class_indices.iter().position(|&x| x == class_idx).unwrap();
+            let new_label = base_class_indices
+                .iter()
+                .position(|&x| x == class_idx)
+                .unwrap();
             for s in samples.iter().take(split) {
                 base_train.push((s.path.clone(), new_label));
             }
@@ -1144,7 +1198,8 @@ fn run_incremental_experiment<B: AutodiffBackend>(
     }
 
     // Evaluate base model on base classes
-    let base_accuracy_before = evaluate::<B>(&model, &val_dataset, &batcher, batch_size, image_size);
+    let base_accuracy_before =
+        evaluate::<B>(&model, &val_dataset, &batcher, batch_size, image_size);
 
     // Now add new class and retrain with simple fine-tuning
     // For simplicity, we'll create a new model with more classes and train on all data
@@ -1224,18 +1279,33 @@ fn run_incremental_experiment<B: AutodiffBackend>(
     // Evaluate on base classes only (to measure forgetting)
     let base_val_dataset =
         PlantVillageBurnDataset::new_cached(base_val, image_size).expect("Failed");
-    let base_accuracy_after =
-        evaluate::<B>(&new_model, &base_val_dataset, &new_batcher, batch_size, image_size);
+    let base_accuracy_after = evaluate::<B>(
+        &new_model,
+        &base_val_dataset,
+        &new_batcher,
+        batch_size,
+        image_size,
+    );
 
     // Evaluate on new class only
     let new_class_val_dataset =
         PlantVillageBurnDataset::new_cached(new_class_val, image_size).expect("Failed");
-    let new_class_accuracy =
-        evaluate::<B>(&new_model, &new_class_val_dataset, &new_batcher, batch_size, image_size);
+    let new_class_accuracy = evaluate::<B>(
+        &new_model,
+        &new_class_val_dataset,
+        &new_batcher,
+        batch_size,
+        image_size,
+    );
 
     // Overall accuracy
-    let overall_accuracy =
-        evaluate::<B>(&new_model, &combined_val_dataset, &new_batcher, batch_size, image_size);
+    let overall_accuracy = evaluate::<B>(
+        &new_model,
+        &combined_val_dataset,
+        &new_batcher,
+        batch_size,
+        image_size,
+    );
 
     let forgetting = base_accuracy_before - base_accuracy_after;
     let training_time = start.elapsed().as_secs_f64();
@@ -1264,15 +1334,16 @@ fn evaluate<B: AutodiffBackend>(
     use burn::tensor::Tensor;
 
     let device = <B::InnerBackend as Backend>::Device::default();
-    let inner_batcher = PlantVillageBatcher::<B::InnerBackend>::with_image_size(device.clone(), image_size);
+    let inner_batcher =
+        PlantVillageBatcher::<B::InnerBackend>::with_image_size(device.clone(), image_size);
 
     let inner_model = model.clone().valid();
     let len = dataset.len();
-    
+
     if len == 0 {
         return 0.0;
     }
-    
+
     let mut correct = 0usize;
     let mut total = 0usize;
 
@@ -1286,14 +1357,15 @@ fn evaluate<B: AutodiffBackend>(
 
         let batch = inner_batcher.batch(items, &device);
         let output = inner_model.forward(batch.images);
-        
+
         // Get predictions - handle both single sample and batch cases
         let predictions = output.argmax(1);
         let [batch_dim, _] = predictions.dims();
-        
+
         // Flatten predictions to 1D
-        let predictions_flat: Tensor<B::InnerBackend, 1, burn::tensor::Int> = predictions.reshape([batch_dim]);
-        
+        let predictions_flat: Tensor<B::InnerBackend, 1, burn::tensor::Int> =
+            predictions.reshape([batch_dim]);
+
         let batch_correct: i64 = predictions_flat
             .equal(batch.targets)
             .int()
@@ -1323,10 +1395,7 @@ fn generate_label_efficiency_conclusions(results: &LabelEfficiencyResults) -> St
     text.push_str(&format!(
         "EXPERIMENT 1: Label Efficiency Curve - Conclusions\n"
     ));
-    text.push_str(&format!(
-        "Generated: {}\n",
-        timestamp
-    ));
+    text.push_str(&format!("Generated: {}\n", timestamp));
     text.push_str(&format!(
         "========================================================================\n\n"
     ));
@@ -1335,7 +1404,10 @@ fn generate_label_efficiency_conclusions(results: &LabelEfficiencyResults) -> St
     text.push_str("How many labeled images per class are needed for acceptable accuracy?\n\n");
 
     text.push_str("RESULTS:\n");
-    text.push_str(&format!("{:>12} | {:>12} | {:>12}\n", "Images/Class", "Accuracy (%)", "Time (s)"));
+    text.push_str(&format!(
+        "{:>12} | {:>12} | {:>12}\n",
+        "Images/Class", "Accuracy (%)", "Time (s)"
+    ));
     text.push_str(&format!("{}\n", "-".repeat(42)));
 
     for i in 0..results.images_per_class.len() {
@@ -1374,17 +1446,25 @@ fn generate_label_efficiency_conclusions(results: &LabelEfficiencyResults) -> St
     }
 
     text.push_str("\nCONCLUSIONS:\n");
-    
+
     if let Some(min) = results.min_acceptable_images {
         if min <= 25 {
-            text.push_str("• The model achieves acceptable accuracy with very few labeled samples.\n");
-            text.push_str("• This indicates good potential for semi-supervised learning scenarios.\n");
+            text.push_str(
+                "• The model achieves acceptable accuracy with very few labeled samples.\n",
+            );
+            text.push_str(
+                "• This indicates good potential for semi-supervised learning scenarios.\n",
+            );
         } else if min <= 50 {
-            text.push_str("• A moderate number of labeled samples is needed for acceptable accuracy.\n");
+            text.push_str(
+                "• A moderate number of labeled samples is needed for acceptable accuracy.\n",
+            );
             text.push_str("• Semi-supervised learning can help reduce this requirement.\n");
         } else {
             text.push_str("• Many labeled samples are needed for acceptable accuracy.\n");
-            text.push_str("• SSL methods like pseudo-labeling are crucial for practical deployment.\n");
+            text.push_str(
+                "• SSL methods like pseudo-labeling are crucial for practical deployment.\n",
+            );
         }
     }
 
@@ -1395,7 +1475,9 @@ fn generate_label_efficiency_conclusions(results: &LabelEfficiencyResults) -> St
             min
         ));
     }
-    text.push_str("Use semi-supervised learning to leverage unlabeled data for improved accuracy.\n");
+    text.push_str(
+        "Use semi-supervised learning to leverage unlabeled data for improved accuracy.\n",
+    );
 
     text
 }
@@ -1411,44 +1493,75 @@ fn generate_class_scaling_conclusions(results: &ClassScalingResults) -> String {
     text.push_str(&format!(
         "EXPERIMENT 2: Class Scaling Effect - Conclusions\n"
     ));
-    text.push_str(&format!(
-        "Generated: {}\n",
-        timestamp
-    ));
+    text.push_str(&format!("Generated: {}\n", timestamp));
     text.push_str(&format!(
         "========================================================================\n\n"
     ));
 
     text.push_str("RESEARCH QUESTION:\n");
     text.push_str("Is adding a class to 5 classes harder than adding to 30 classes?\n");
-    text.push_str("Does the model become more biased toward existing classes with a larger base?\n\n");
+    text.push_str(
+        "Does the model become more biased toward existing classes with a larger base?\n\n",
+    );
 
     text.push_str("RESULTS:\n\n");
 
-    text.push_str(&format!("Scenario A: {} → {} classes\n", 
-        results.small_base.base_classes, results.small_base.total_classes));
-    text.push_str(&format!("  Base accuracy:      {:.2}% → {:.2}%\n", 
-        results.small_base.base_accuracy_before, results.small_base.base_accuracy_after));
-    text.push_str(&format!("  New class accuracy: {:.2}%\n", results.small_base.new_class_accuracy));
-    text.push_str(&format!("  Overall accuracy:   {:.2}%\n", results.small_base.overall_accuracy));
-    text.push_str(&format!("  Forgetting:         {:.2}% points\n", results.small_base.forgetting));
+    text.push_str(&format!(
+        "Scenario A: {} → {} classes\n",
+        results.small_base.base_classes, results.small_base.total_classes
+    ));
+    text.push_str(&format!(
+        "  Base accuracy:      {:.2}% → {:.2}%\n",
+        results.small_base.base_accuracy_before, results.small_base.base_accuracy_after
+    ));
+    text.push_str(&format!(
+        "  New class accuracy: {:.2}%\n",
+        results.small_base.new_class_accuracy
+    ));
+    text.push_str(&format!(
+        "  Overall accuracy:   {:.2}%\n",
+        results.small_base.overall_accuracy
+    ));
+    text.push_str(&format!(
+        "  Forgetting:         {:.2}% points\n",
+        results.small_base.forgetting
+    ));
     text.push_str("\n");
 
-    text.push_str(&format!("Scenario B: {} → {} classes\n", 
-        results.large_base.base_classes, results.large_base.total_classes));
-    text.push_str(&format!("  Base accuracy:      {:.2}% → {:.2}%\n", 
-        results.large_base.base_accuracy_before, results.large_base.base_accuracy_after));
-    text.push_str(&format!("  New class accuracy: {:.2}%\n", results.large_base.new_class_accuracy));
-    text.push_str(&format!("  Overall accuracy:   {:.2}%\n", results.large_base.overall_accuracy));
-    text.push_str(&format!("  Forgetting:         {:.2}% points\n", results.large_base.forgetting));
+    text.push_str(&format!(
+        "Scenario B: {} → {} classes\n",
+        results.large_base.base_classes, results.large_base.total_classes
+    ));
+    text.push_str(&format!(
+        "  Base accuracy:      {:.2}% → {:.2}%\n",
+        results.large_base.base_accuracy_before, results.large_base.base_accuracy_after
+    ));
+    text.push_str(&format!(
+        "  New class accuracy: {:.2}%\n",
+        results.large_base.new_class_accuracy
+    ));
+    text.push_str(&format!(
+        "  Overall accuracy:   {:.2}%\n",
+        results.large_base.overall_accuracy
+    ));
+    text.push_str(&format!(
+        "  Forgetting:         {:.2}% points\n",
+        results.large_base.forgetting
+    ));
     text.push_str("\n");
 
     text.push_str("COMPARATIVE ANALYSIS:\n");
-    text.push_str(&format!("  Relative difficulty (large/small forgetting): {:.2}x\n", 
-        results.relative_difficulty));
-    
-    let new_class_diff = results.large_base.new_class_accuracy - results.small_base.new_class_accuracy;
-    text.push_str(&format!("  New class accuracy difference: {:.2}% points\n", new_class_diff));
+    text.push_str(&format!(
+        "  Relative difficulty (large/small forgetting): {:.2}x\n",
+        results.relative_difficulty
+    ));
+
+    let new_class_diff =
+        results.large_base.new_class_accuracy - results.small_base.new_class_accuracy;
+    text.push_str(&format!(
+        "  New class accuracy difference: {:.2}% points\n",
+        new_class_diff
+    ));
 
     text.push_str("\nKEY FINDINGS:\n");
 
@@ -1458,7 +1571,9 @@ fn generate_class_scaling_conclusions(results: &ClassScalingResults) -> String {
             "1. Larger base (30 classes) shows MORE forgetting ({:.2}% vs {:.2}%)\n",
             results.large_base.forgetting, results.small_base.forgetting
         ));
-        text.push_str("   → The model is more biased toward existing classes with a larger base.\n");
+        text.push_str(
+            "   → The model is more biased toward existing classes with a larger base.\n",
+        );
     } else if results.large_base.forgetting < results.small_base.forgetting {
         text.push_str(&format!(
             "1. Larger base (30 classes) shows LESS forgetting ({:.2}% vs {:.2}%)\n",
@@ -1485,7 +1600,7 @@ fn generate_class_scaling_conclusions(results: &ClassScalingResults) -> String {
     }
 
     text.push_str("\nCONCLUSIONS:\n");
-    
+
     if results.relative_difficulty > 1.5 {
         text.push_str("• Adding classes to larger models requires careful management.\n");
         text.push_str("• Consider using incremental learning methods (LwF, EWC, Rehearsal).\n");
@@ -1517,27 +1632,32 @@ fn generate_new_class_position_conclusions(results: &NewClassPositionResults) ->
     text.push_str(&format!(
         "EXPERIMENT 4: New Class Position Effect - Conclusions\n"
     ));
-    text.push_str(&format!(
-        "Generated: {}\n",
-        timestamp
-    ));
+    text.push_str(&format!("Generated: {}\n", timestamp));
     text.push_str(&format!(
         "========================================================================\n\n"
     ));
 
     text.push_str("RESEARCH QUESTION:\n");
-    text.push_str("Does adding a class as the 6th class (small base) require different amounts of\n");
+    text.push_str(
+        "Does adding a class as the 6th class (small base) require different amounts of\n",
+    );
     text.push_str("labeled samples compared to adding as the 31st class (large base)?\n\n");
 
     text.push_str("RESULTS:\n\n");
 
     // Table header
-    text.push_str(&format!("{:>8} | {:>12} | {:>12} | {:>12} | {:>12}\n", 
-        "Labels", "6th Class", "31st Class", "Difference", "Ratio"));
+    text.push_str(&format!(
+        "{:>8} | {:>12} | {:>12} | {:>12} | {:>12}\n",
+        "Labels", "6th Class", "31st Class", "Difference", "Ratio"
+    ));
     text.push_str(&format!("{}\n", "-".repeat(68)));
 
     // Compare results at each label count
-    for (small, large) in results.small_base_results.iter().zip(results.large_base_results.iter()) {
+    for (small, large) in results
+        .small_base_results
+        .iter()
+        .zip(results.large_base_results.iter())
+    {
         let diff = large.new_class_accuracy - small.new_class_accuracy;
         let ratio = if small.new_class_accuracy > 0.0 {
             large.new_class_accuracy / small.new_class_accuracy
@@ -1546,27 +1666,26 @@ fn generate_new_class_position_conclusions(results: &NewClassPositionResults) ->
         };
         text.push_str(&format!(
             "{:>8} | {:>11.2}% | {:>11.2}% | {:>+11.2}% | {:>11.2}x\n",
-            small.labeled_samples,
-            small.new_class_accuracy,
-            large.new_class_accuracy,
-            diff,
-            ratio
+            small.labeled_samples, small.new_class_accuracy, large.new_class_accuracy, diff, ratio
         ));
     }
 
     text.push_str("\nFORGETTING ANALYSIS:\n\n");
-    text.push_str(&format!("{:>8} | {:>12} | {:>12} | {:>12}\n", 
-        "Labels", "5→6 Forget", "30→31 Forget", "Difference"));
+    text.push_str(&format!(
+        "{:>8} | {:>12} | {:>12} | {:>12}\n",
+        "Labels", "5→6 Forget", "30→31 Forget", "Difference"
+    ));
     text.push_str(&format!("{}\n", "-".repeat(56)));
 
-    for (small, large) in results.small_base_results.iter().zip(results.large_base_results.iter()) {
+    for (small, large) in results
+        .small_base_results
+        .iter()
+        .zip(results.large_base_results.iter())
+    {
         let diff = large.forgetting - small.forgetting;
         text.push_str(&format!(
             "{:>8} | {:>11.2}% | {:>11.2}% | {:>+11.2}%\n",
-            small.labeled_samples,
-            small.forgetting,
-            large.forgetting,
-            diff
+            small.labeled_samples, small.forgetting, large.forgetting, diff
         ));
     }
 
@@ -1642,21 +1761,21 @@ fn generate_new_class_position_conclusions(results: &NewClassPositionResults) ->
     }
 
     text.push_str("\nPRACTICAL RECOMMENDATIONS:\n");
-    
+
     if let Some(min_70) = results.summary.min_samples_small_70pct {
         text.push_str(&format!(
             "• For new deployments (few classes): Collect at least {} labeled samples\n",
             min_70
         ));
     }
-    
+
     if let Some(min_70) = results.summary.min_samples_large_70pct {
         text.push_str(&format!(
             "• For mature systems (many classes): Collect at least {} labeled samples\n",
             min_70
         ));
     }
-    
+
     text.push_str("• Use SSL pseudo-labeling to augment limited labeled data\n");
     text.push_str("• Monitor forgetting on existing classes after each update\n");
 
@@ -1664,8 +1783,13 @@ fn generate_new_class_position_conclusions(results: &NewClassPositionResults) ->
 }
 
 /// Generate SVG chart for label efficiency results
-fn generate_label_efficiency_chart(results: &LabelEfficiencyResults, output_dir: &str) -> Result<()> {
-    use plantvillage_ssl::utils::charts::{DataPoint, DataSeries, generate_line_chart, generate_bar_chart, BarData};
+fn generate_label_efficiency_chart(
+    results: &LabelEfficiencyResults,
+    output_dir: &str,
+) -> Result<()> {
+    use plantvillage_ssl::utils::charts::{
+        generate_bar_chart, generate_line_chart, BarData, DataPoint, DataSeries,
+    };
 
     // Line chart: accuracy vs images per class
     let series = vec![DataSeries {
@@ -1701,7 +1825,11 @@ fn generate_label_efficiency_chart(results: &LabelEfficiencyResults, output_dir:
         .map(|(&images, &acc)| BarData {
             label: format!("{}", images),
             value: acc,
-            color: if acc >= 80.0 { "#2ecc71".to_string() } else { "#3498db".to_string() },
+            color: if acc >= 80.0 {
+                "#2ecc71".to_string()
+            } else {
+                "#3498db".to_string()
+            },
         })
         .collect();
 
@@ -1725,35 +1853,58 @@ fn generate_class_scaling_chart(results: &ClassScalingResults, output_dir: &str)
         (
             "5 → 6 Classes",
             vec![
-                ("Base Before", results.small_base.base_accuracy_before, "#3498db"),
-                ("Base After", results.small_base.base_accuracy_after, "#2ecc71"),
-                ("New Class", results.small_base.new_class_accuracy, "#9b59b6"),
+                (
+                    "Base Before",
+                    results.small_base.base_accuracy_before,
+                    "#3498db",
+                ),
+                (
+                    "Base After",
+                    results.small_base.base_accuracy_after,
+                    "#2ecc71",
+                ),
+                (
+                    "New Class",
+                    results.small_base.new_class_accuracy,
+                    "#9b59b6",
+                ),
             ],
         ),
         (
             "30 → 31 Classes",
             vec![
-                ("Base Before", results.large_base.base_accuracy_before, "#3498db"),
-                ("Base After", results.large_base.base_accuracy_after, "#2ecc71"),
-                ("New Class", results.large_base.new_class_accuracy, "#9b59b6"),
+                (
+                    "Base Before",
+                    results.large_base.base_accuracy_before,
+                    "#3498db",
+                ),
+                (
+                    "Base After",
+                    results.large_base.base_accuracy_after,
+                    "#2ecc71",
+                ),
+                (
+                    "New Class",
+                    results.large_base.new_class_accuracy,
+                    "#9b59b6",
+                ),
             ],
         ),
     ];
 
     let chart_path = Path::new(output_dir).join("class_scaling_comparison.svg");
-    generate_comparison_chart(
-        "Class Scaling: 5→6 vs 30→31 Classes",
-        &groups,
-        &chart_path,
-    )?;
+    generate_comparison_chart("Class Scaling: 5→6 vs 30→31 Classes", &groups, &chart_path)?;
     println!("Chart saved to: {:?}", chart_path);
 
     Ok(())
 }
 
 /// Generate SVG charts for new class position experiment
-fn generate_new_class_position_charts(results: &NewClassPositionResults, output_dir: &str) -> Result<()> {
-    use plantvillage_ssl::utils::charts::{DataPoint, DataSeries, generate_line_chart, BarData};
+fn generate_new_class_position_charts(
+    results: &NewClassPositionResults,
+    output_dir: &str,
+) -> Result<()> {
+    use plantvillage_ssl::utils::charts::{generate_line_chart, DataPoint, DataSeries};
 
     // Line chart: New class accuracy vs labeled samples for both positions
     let series = vec![
@@ -1836,8 +1987,14 @@ fn generate_new_class_position_charts(results: &NewClassPositionResults, output_
     println!("Forgetting chart saved to: {:?}", forgetting_path);
 
     // Generate comparison bar chart at 50 samples
-    let fifty_sample_small = results.small_base_results.iter().find(|r| r.labeled_samples == 50);
-    let fifty_sample_large = results.large_base_results.iter().find(|r| r.labeled_samples == 50);
+    let fifty_sample_small = results
+        .small_base_results
+        .iter()
+        .find(|r| r.labeled_samples == 50);
+    let fifty_sample_large = results
+        .large_base_results
+        .iter()
+        .find(|r| r.labeled_samples == 50);
 
     if let (Some(small), Some(large)) = (fifty_sample_small, fifty_sample_large) {
         let comparison_path = Path::new(output_dir).join("position_comparison_50.svg");
@@ -1873,10 +2030,34 @@ fn generate_position_comparison_chart(
     let plot_height = CHART_HEIGHT - MARGIN_TOP - MARGIN_BOTTOM;
 
     let metrics = vec![
-        ("New Class Acc", small.new_class_accuracy, large.new_class_accuracy, "#3498db", "#e74c3c"),
-        ("Base After", small.base_accuracy_after, large.base_accuracy_after, "#2ecc71", "#27ae60"),
-        ("Overall", small.overall_accuracy, large.overall_accuracy, "#9b59b6", "#8e44ad"),
-        ("Forgetting", small.forgetting, large.forgetting, "#f39c12", "#d35400"),
+        (
+            "New Class Acc",
+            small.new_class_accuracy,
+            large.new_class_accuracy,
+            "#3498db",
+            "#e74c3c",
+        ),
+        (
+            "Base After",
+            small.base_accuracy_after,
+            large.base_accuracy_after,
+            "#2ecc71",
+            "#27ae60",
+        ),
+        (
+            "Overall",
+            small.overall_accuracy,
+            large.overall_accuracy,
+            "#9b59b6",
+            "#8e44ad",
+        ),
+        (
+            "Forgetting",
+            small.forgetting,
+            large.forgetting,
+            "#f39c12",
+            "#d35400",
+        ),
     ];
 
     let y_max = 100.0;
@@ -1907,7 +2088,11 @@ fn generate_position_comparison_chart(
 
         svg.push_str(&format!(
             r#"<line x1="{}" y1="{}" x2="{}" y2="{}" stroke="{}" stroke-width="1"/>"#,
-            MARGIN_LEFT, y, MARGIN_LEFT + plot_width, y, COLOR_GRID
+            MARGIN_LEFT,
+            y,
+            MARGIN_LEFT + plot_width,
+            y,
+            COLOR_GRID
         ));
 
         svg.push_str(&format!(
@@ -1925,7 +2110,11 @@ fn generate_position_comparison_chart(
         let y = MARGIN_TOP + plot_height - bar_height;
         svg.push_str(&format!(
             r#"<rect x="{}" y="{}" width="{}" height="{}" fill="{}" rx="4"/>"#,
-            group_x, y, bar_width, bar_height.max(2.0), small_color
+            group_x,
+            y,
+            bar_width,
+            bar_height.max(2.0),
+            small_color
         ));
         svg.push_str(&format!(
             r#"<text x="{}" y="{}" text-anchor="middle" font-family="Arial, sans-serif" font-size="11" font-weight="bold" fill="{}">{:.1}%</text>"#,
@@ -1937,7 +2126,11 @@ fn generate_position_comparison_chart(
         let y = MARGIN_TOP + plot_height - bar_height;
         svg.push_str(&format!(
             r#"<rect x="{}" y="{}" width="{}" height="{}" fill="{}" rx="4"/>"#,
-            group_x + bar_width + 5.0, y, bar_width, bar_height.max(2.0), large_color
+            group_x + bar_width + 5.0,
+            y,
+            bar_width,
+            bar_height.max(2.0),
+            large_color
         ));
         svg.push_str(&format!(
             r#"<text x="{}" y="{}" text-anchor="middle" font-family="Arial, sans-serif" font-size="11" font-weight="bold" fill="{}">{:.1}%</text>"#,
@@ -1955,7 +2148,8 @@ fn generate_position_comparison_chart(
     let legend_y = CHART_HEIGHT - 30.0;
     svg.push_str(&format!(
         r##"<rect x="{}" y="{}" width="15" height="15" fill="#3498db" rx="2"/>"##,
-        CHART_WIDTH / 2.0 - 120.0, legend_y - 12.0
+        CHART_WIDTH / 2.0 - 120.0,
+        legend_y - 12.0
     ));
     svg.push_str(&format!(
         r#"<text x="{}" y="{}" font-family="Arial, sans-serif" font-size="12" fill="{}">6th Class (5 base)</text>"#,
@@ -1963,7 +2157,8 @@ fn generate_position_comparison_chart(
     ));
     svg.push_str(&format!(
         r##"<rect x="{}" y="{}" width="15" height="15" fill="#e74c3c" rx="2"/>"##,
-        CHART_WIDTH / 2.0 + 50.0, legend_y - 12.0
+        CHART_WIDTH / 2.0 + 50.0,
+        legend_y - 12.0
     ));
     svg.push_str(&format!(
         r#"<text x="{}" y="{}" font-family="Arial, sans-serif" font-size="12" fill="{}">31st Class (30 base)</text>"#,
@@ -1985,10 +2180,13 @@ fn run_ssl_incremental(
     seed: u64,
 ) -> Result<()> {
     use plantvillage_ssl::training::ssl_incremental::{
-        SSLIncrementalConfig, run_ssl_incremental_experiment, generate_ssl_incremental_conclusions
+        generate_ssl_incremental_conclusions, run_ssl_incremental_experiment, SSLIncrementalConfig,
     };
 
-    println!("{}", "EXPERIMENT 3: SSL + Incremental Learning".yellow().bold());
+    println!(
+        "{}",
+        "EXPERIMENT 3: SSL + Incremental Learning".yellow().bold()
+    );
     println!("Question: Can pseudo-labeling reduce labeled samples needed for new classes?");
     println!();
 
@@ -2028,7 +2226,10 @@ fn run_ssl_incremental(
 
     println!("{}", "Configuration:".cyan());
     println!("  Base classes: {}", config.base_classes);
-    println!("  Labeled samples per new class: {}", config.labeled_samples_per_new_class);
+    println!(
+        "  Labeled samples per new class: {}",
+        config.labeled_samples_per_new_class
+    );
     println!("  Confidence threshold: {}", config.confidence_threshold);
     println!();
 
@@ -2071,15 +2272,27 @@ fn generate_ssl_incremental_chart(
         (
             "Without SSL",
             vec![
-                ("Old Classes", results.without_ssl.old_class_accuracy, "#3498db"),
-                ("New Class", results.without_ssl.new_class_accuracy, "#e74c3c"),
+                (
+                    "Old Classes",
+                    results.without_ssl.old_class_accuracy,
+                    "#3498db",
+                ),
+                (
+                    "New Class",
+                    results.without_ssl.new_class_accuracy,
+                    "#e74c3c",
+                ),
                 ("Overall", results.without_ssl.overall_accuracy, "#9b59b6"),
             ],
         ),
         (
             "With SSL",
             vec![
-                ("Old Classes", results.with_ssl.old_class_accuracy, "#3498db"),
+                (
+                    "Old Classes",
+                    results.with_ssl.old_class_accuracy,
+                    "#3498db",
+                ),
                 ("New Class", results.with_ssl.new_class_accuracy, "#2ecc71"),
                 ("Overall", results.with_ssl.overall_accuracy, "#9b59b6"),
             ],
@@ -2099,7 +2312,8 @@ fn generate_ssl_incremental_chart(
         BarData {
             label: "Old Class".to_string(),
             value: results.with_ssl.old_class_accuracy - results.without_ssl.old_class_accuracy,
-            color: if results.with_ssl.old_class_accuracy >= results.without_ssl.old_class_accuracy {
+            color: if results.with_ssl.old_class_accuracy >= results.without_ssl.old_class_accuracy
+            {
                 "#2ecc71".to_string()
             } else {
                 "#e74c3c".to_string()
@@ -2157,7 +2371,11 @@ fn generate_improvement_chart(
     let plot_height = CHART_HEIGHT - MARGIN_TOP - MARGIN_BOTTOM;
 
     let y_min = bars.iter().map(|b| b.value).fold(0.0f64, f64::min).min(0.0);
-    let y_max = bars.iter().map(|b| b.value).fold(0.0f64, f64::max).max(10.0);
+    let y_max = bars
+        .iter()
+        .map(|b| b.value)
+        .fold(0.0f64, f64::max)
+        .max(10.0);
     let y_range = (y_max - y_min).max(1.0);
     let y_min_padded = y_min - y_range * 0.1;
     let y_max_padded = y_max + y_range * 0.1;
@@ -2182,7 +2400,8 @@ fn generate_improvement_chart(
         CHART_WIDTH / 2.0, COLOR_TEXT, title
     ));
 
-    let zero_y = MARGIN_TOP + plot_height - ((0.0 - y_min_padded) / (y_max_padded - y_min_padded)) * plot_height;
+    let zero_y = MARGIN_TOP + plot_height
+        - ((0.0 - y_min_padded) / (y_max_padded - y_min_padded)) * plot_height;
 
     // Grid lines
     for i in 0..=5 {
@@ -2191,7 +2410,11 @@ fn generate_improvement_chart(
 
         svg.push_str(&format!(
             r#"<line x1="{}" y1="{}" x2="{}" y2="{}" stroke="{}" stroke-width="1"/>"#,
-            MARGIN_LEFT, y, MARGIN_LEFT + plot_width, y, COLOR_GRID
+            MARGIN_LEFT,
+            y,
+            MARGIN_LEFT + plot_width,
+            y,
+            COLOR_GRID
         ));
 
         svg.push_str(&format!(
@@ -2203,7 +2426,11 @@ fn generate_improvement_chart(
     // Zero line
     svg.push_str(&format!(
         r#"<line x1="{}" y1="{}" x2="{}" y2="{}" stroke="{}" stroke-width="2"/>"#,
-        MARGIN_LEFT, zero_y, MARGIN_LEFT + plot_width, zero_y, COLOR_AXIS
+        MARGIN_LEFT,
+        zero_y,
+        MARGIN_LEFT + plot_width,
+        zero_y,
+        COLOR_AXIS
     ));
 
     // Bars
@@ -2219,10 +2446,18 @@ fn generate_improvement_chart(
 
         svg.push_str(&format!(
             r#"<rect x="{}" y="{}" width="{}" height="{}" fill="{}" rx="4"/>"#,
-            x, y, bar_width, bar_height.max(2.0), bar.color
+            x,
+            y,
+            bar_width,
+            bar_height.max(2.0),
+            bar.color
         ));
 
-        let label_y = if bar.value >= 0.0 { y - 8.0 } else { y + bar_height + 18.0 };
+        let label_y = if bar.value >= 0.0 {
+            y - 8.0
+        } else {
+            y + bar_height + 18.0
+        };
         svg.push_str(&format!(
             r#"<text x="{}" y="{}" text-anchor="middle" font-family="Arial, sans-serif" font-size="14" font-weight="bold" fill="{}">{:+.1}%</text>"#,
             x + bar_width / 2.0, label_y, COLOR_TEXT, bar.value
@@ -2248,9 +2483,8 @@ fn run_inference_benchmark(
     batch_size: usize,
     image_size: usize,
 ) -> Result<()> {
-    use plantvillage_ssl::inference::{BenchmarkConfig, run_benchmark};
-    use plantvillage_ssl::backend::{DefaultBackend, default_device};
-    use burn::tensor::Tensor;
+    use plantvillage_ssl::backend::{default_device, DefaultBackend};
+    use plantvillage_ssl::inference::{run_benchmark, BenchmarkConfig};
 
     println!("{}", "BENCHMARK: Inference Performance".yellow().bold());
     println!();
@@ -2272,7 +2506,8 @@ fn run_inference_benchmark(
     let device = default_device();
     let model_path_ref = model_path.map(Path::new);
 
-    let result = run_benchmark::<DefaultBackend>(config.clone(), model_path_ref, image_size, &device)?;
+    let result =
+        run_benchmark::<DefaultBackend>(config.clone(), model_path_ref, image_size, &device)?;
 
     // Save standard results
     let json = serde_json::to_string_pretty(&result)?;
@@ -2301,7 +2536,8 @@ fn generate_benchmark_summary(result: &plantvillage_ssl::inference::BenchmarkOut
 
     summary.push_str("========================================================================\n");
     summary.push_str("INFERENCE BENCHMARK RESULTS\n");
-    summary.push_str("========================================================================\n\n");
+    summary
+        .push_str("========================================================================\n\n");
 
     summary.push_str(&format!("Framework: {}\n", result.framework));
     summary.push_str(&format!("Device: {}\n", result.device));
@@ -2310,10 +2546,19 @@ fn generate_benchmark_summary(result: &plantvillage_ssl::inference::BenchmarkOut
     summary.push_str("\n");
 
     summary.push_str("CONFIGURATION:\n");
-    summary.push_str(&format!("  Image Size: {}x{}\n", result.image_size, result.image_size));
+    summary.push_str(&format!(
+        "  Image Size: {}x{}\n",
+        result.image_size, result.image_size
+    ));
     summary.push_str(&format!("  Batch Size: {}\n", result.batch_size));
-    summary.push_str(&format!("  Warmup Iterations: {}\n", result.warmup_iterations));
-    summary.push_str(&format!("  Benchmark Iterations: {}\n", result.num_iterations));
+    summary.push_str(&format!(
+        "  Warmup Iterations: {}\n",
+        result.warmup_iterations
+    ));
+    summary.push_str(&format!(
+        "  Benchmark Iterations: {}\n",
+        result.num_iterations
+    ));
     summary.push_str("\n");
 
     summary.push_str("LATENCY METRICS:\n");
@@ -2340,15 +2585,24 @@ fn generate_benchmark_summary(result: &plantvillage_ssl::inference::BenchmarkOut
     summary.push_str("TARGET COMPLIANCE:\n");
     let target_200ms = result.mean_ms <= 200.0;
     let target_500ms = result.mean_ms <= 500.0;
-    summary.push_str(&format!("  200ms target: {}\n", if target_200ms { "PASS" } else { "FAIL" }));
-    summary.push_str(&format!("  500ms target: {}\n", if target_500ms { "PASS" } else { "FAIL" }));
+    summary.push_str(&format!(
+        "  200ms target: {}\n",
+        if target_200ms { "PASS" } else { "FAIL" }
+    ));
+    summary.push_str(&format!(
+        "  500ms target: {}\n",
+        if target_500ms { "PASS" } else { "FAIL" }
+    ));
 
     summary
 }
 
 /// Generate benchmark visualization chart
-fn generate_benchmark_chart(result: &plantvillage_ssl::inference::BenchmarkOutput, output_dir: &str) -> Result<()> {
-    use plantvillage_ssl::utils::charts::{generate_bar_chart, BarData};
+fn generate_benchmark_chart(
+    result: &plantvillage_ssl::inference::BenchmarkOutput,
+    output_dir: &str,
+) -> Result<()> {
+    use plantvillage_ssl::utils::charts::BarData;
 
     let bars = vec![
         BarData {
@@ -2435,7 +2689,11 @@ fn generate_latency_chart(
 
         svg.push_str(&format!(
             r#"<line x1="{}" y1="{}" x2="{}" y2="{}" stroke="{}" stroke-width="1"/>"#,
-            MARGIN_LEFT, y, MARGIN_LEFT + plot_width, y, COLOR_GRID
+            MARGIN_LEFT,
+            y,
+            MARGIN_LEFT + plot_width,
+            y,
+            COLOR_GRID
         ));
 
         svg.push_str(&format!(
@@ -2447,7 +2705,11 @@ fn generate_latency_chart(
     // Axes
     svg.push_str(&format!(
         r#"<line x1="{}" y1="{}" x2="{}" y2="{}" stroke="{}" stroke-width="2"/>"#,
-        MARGIN_LEFT, MARGIN_TOP + plot_height, MARGIN_LEFT + plot_width, MARGIN_TOP + plot_height, COLOR_AXIS
+        MARGIN_LEFT,
+        MARGIN_TOP + plot_height,
+        MARGIN_LEFT + plot_width,
+        MARGIN_TOP + plot_height,
+        COLOR_AXIS
     ));
 
     // Y-axis label

@@ -30,10 +30,9 @@ use std::path::PathBuf;
 use anyhow::Result;
 use burn::data::dataloader::batcher::Batcher;
 use burn::data::dataset::Dataset;
-use burn::module::{AutodiffModule, Module};
+use burn::module::AutodiffModule;
 use burn::nn::loss::CrossEntropyLossConfig;
 use burn::optim::{AdamConfig, GradientsParams, Optimizer};
-use burn::record::CompactRecorder;
 use burn::tensor::backend::AutodiffBackend;
 use burn::tensor::ElementConversion;
 use rand::prelude::*;
@@ -42,7 +41,6 @@ use serde::{Deserialize, Serialize};
 
 use crate::dataset::burn_dataset::{PlantVillageBatcher, PlantVillageBurnDataset};
 use crate::model::cnn::{PlantClassifier, PlantClassifierConfig};
-use crate::training::pseudo_label::PseudoLabelConfig;
 
 /// Configuration for SSL-enhanced incremental learning
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -97,19 +95,19 @@ impl Default for SSLIncrementalConfig {
 pub struct SSLIncrementalResults {
     /// Base model accuracy before adding new class
     pub base_accuracy: f64,
-    
+
     /// Results with SSL enhancement
     pub with_ssl: IncrementalStepResult,
-    
+
     /// Results without SSL (for comparison)
     pub without_ssl: IncrementalStepResult,
-    
+
     /// Improvement from using SSL
     pub ssl_improvement: f64,
-    
+
     /// Number of pseudo-labels generated
     pub pseudo_labels_generated: usize,
-    
+
     /// Accuracy of pseudo-labels (how many were correct)
     pub pseudo_label_accuracy: f64,
 }
@@ -144,8 +142,14 @@ pub fn run_ssl_incremental_experiment<B: AutodiffBackend>(
     let mut class_indices: Vec<usize> = samples_by_class.keys().cloned().collect();
     class_indices.sort();
 
-    let base_classes: Vec<usize> = class_indices.iter().take(config.base_classes).cloned().collect();
-    let new_class_idx = class_indices.get(config.base_classes).cloned()
+    let base_classes: Vec<usize> = class_indices
+        .iter()
+        .take(config.base_classes)
+        .cloned()
+        .collect();
+    let new_class_idx = class_indices
+        .get(config.base_classes)
+        .cloned()
         .ok_or_else(|| anyhow::anyhow!("Not enough classes for experiment"))?;
 
     // Prepare base training data
@@ -158,7 +162,7 @@ pub fn run_ssl_incremental_experiment<B: AutodiffBackend>(
             shuffled.shuffle(&mut rng);
             let split = (shuffled.len() as f64 * 0.8) as usize;
             let new_label = base_classes.iter().position(|&x| x == class_idx).unwrap();
-            
+
             for (path, _) in shuffled.iter().take(split) {
                 base_train.push((path.clone(), new_label));
             }
@@ -172,7 +176,7 @@ pub fn run_ssl_incremental_experiment<B: AutodiffBackend>(
     tracing::info!("Training base model on {} classes...", config.base_classes);
     let base_dataset = PlantVillageBurnDataset::new_cached(base_train.clone(), image_size)?;
     let base_val_dataset = PlantVillageBurnDataset::new_cached(base_val.clone(), image_size)?;
-    let batcher = PlantVillageBatcher::<B>::with_image_size(device.clone(), image_size);
+    let _batcher = PlantVillageBatcher::<B>::with_image_size(device.clone(), image_size);
 
     let model_config = PlantClassifierConfig {
         num_classes: config.base_classes,
@@ -191,11 +195,17 @@ pub fn run_ssl_incremental_experiment<B: AutodiffBackend>(
         &device,
     )?;
 
-    let base_accuracy = evaluate_model::<B>(&base_model, &base_val_dataset, config.batch_size, image_size);
+    let base_accuracy = evaluate_model::<B>(
+        &base_model,
+        &base_val_dataset,
+        config.batch_size,
+        image_size,
+    );
     tracing::info!("Base model accuracy: {:.2}%", base_accuracy);
 
     // Prepare new class data
-    let new_class_samples = samples_by_class.get(&new_class_idx)
+    let new_class_samples = samples_by_class
+        .get(&new_class_idx)
         .ok_or_else(|| anyhow::anyhow!("New class not found"))?;
     let mut shuffled_new = new_class_samples.clone();
     shuffled_new.shuffle(&mut rng);
@@ -253,21 +263,32 @@ pub fn run_ssl_incremental_experiment<B: AutodiffBackend>(
     let time_without_ssl = start_a.elapsed().as_secs_f64();
 
     // Evaluate without SSL
-    let old_acc_without = evaluate_model::<B>(&model_without_ssl, &base_val_dataset, config.batch_size, image_size);
-    
+    let old_acc_without = evaluate_model::<B>(
+        &model_without_ssl,
+        &base_val_dataset,
+        config.batch_size,
+        image_size,
+    );
+
     let new_val_dataset = PlantVillageBurnDataset::new_cached(new_class_val.clone(), image_size)?;
     let new_acc_without = evaluate_model_on_new_class::<B>(
-        &model_without_ssl, 
-        &new_val_dataset, 
+        &model_without_ssl,
+        &new_val_dataset,
         config.base_classes,
-        config.batch_size, 
-        image_size
+        config.batch_size,
+        image_size,
     );
 
     let mut combined_val = base_val.clone();
     combined_val.extend(new_class_val.clone());
-    let combined_val_dataset = PlantVillageBurnDataset::new_cached(combined_val.clone(), image_size)?;
-    let overall_without = evaluate_model::<B>(&model_without_ssl, &combined_val_dataset, config.batch_size, image_size);
+    let combined_val_dataset =
+        PlantVillageBurnDataset::new_cached(combined_val.clone(), image_size)?;
+    let overall_without = evaluate_model::<B>(
+        &model_without_ssl,
+        &combined_val_dataset,
+        config.batch_size,
+        image_size,
+    );
 
     let without_ssl_result = IncrementalStepResult {
         old_class_accuracy: old_acc_without,
@@ -277,8 +298,12 @@ pub fn run_ssl_incremental_experiment<B: AutodiffBackend>(
         training_time: time_without_ssl,
     };
 
-    tracing::info!("  Without SSL - Old: {:.2}%, New: {:.2}%, Overall: {:.2}%",
-        old_acc_without, new_acc_without, overall_without);
+    tracing::info!(
+        "  Without SSL - Old: {:.2}%, New: {:.2}%, Overall: {:.2}%",
+        old_acc_without,
+        new_acc_without,
+        overall_without
+    );
 
     // ============================================================
     // EXPERIMENT B: WITH SSL (use pseudo-labeling)
@@ -297,8 +322,11 @@ pub fn run_ssl_incremental_experiment<B: AutodiffBackend>(
         &device,
     )?;
 
-    tracing::info!("Generated {} pseudo-labels with {:.1}% accuracy",
-        pseudo_labels.len(), pseudo_label_accuracy * 100.0);
+    tracing::info!(
+        "Generated {} pseudo-labels with {:.1}% accuracy",
+        pseudo_labels.len(),
+        pseudo_label_accuracy * 100.0
+    );
 
     // Combine base + labeled new + pseudo-labeled
     let mut train_with_ssl = base_train.clone();
@@ -320,15 +348,25 @@ pub fn run_ssl_incremental_experiment<B: AutodiffBackend>(
     let time_with_ssl = start_b.elapsed().as_secs_f64();
 
     // Evaluate with SSL
-    let old_acc_with = evaluate_model::<B>(&model_with_ssl, &base_val_dataset, config.batch_size, image_size);
-    let new_acc_with = evaluate_model_on_new_class::<B>(
-        &model_with_ssl, 
-        &new_val_dataset, 
-        config.base_classes,
-        config.batch_size, 
-        image_size
+    let old_acc_with = evaluate_model::<B>(
+        &model_with_ssl,
+        &base_val_dataset,
+        config.batch_size,
+        image_size,
     );
-    let overall_with = evaluate_model::<B>(&model_with_ssl, &combined_val_dataset, config.batch_size, image_size);
+    let new_acc_with = evaluate_model_on_new_class::<B>(
+        &model_with_ssl,
+        &new_val_dataset,
+        config.base_classes,
+        config.batch_size,
+        image_size,
+    );
+    let overall_with = evaluate_model::<B>(
+        &model_with_ssl,
+        &combined_val_dataset,
+        config.batch_size,
+        image_size,
+    );
 
     let with_ssl_result = IncrementalStepResult {
         old_class_accuracy: old_acc_with,
@@ -338,8 +376,12 @@ pub fn run_ssl_incremental_experiment<B: AutodiffBackend>(
         training_time: time_with_ssl,
     };
 
-    tracing::info!("  With SSL - Old: {:.2}%, New: {:.2}%, Overall: {:.2}%",
-        old_acc_with, new_acc_with, overall_with);
+    tracing::info!(
+        "  With SSL - Old: {:.2}%, New: {:.2}%, Overall: {:.2}%",
+        old_acc_with,
+        new_acc_with,
+        overall_with
+    );
 
     // Calculate improvement
     let ssl_improvement = new_acc_with - new_acc_without;
@@ -417,11 +459,12 @@ fn evaluate_model<B: AutodiffBackend>(
     use burn::tensor::Tensor;
 
     let device = <B::InnerBackend as Backend>::Device::default();
-    let batcher = PlantVillageBatcher::<B::InnerBackend>::with_image_size(device.clone(), image_size);
+    let batcher =
+        PlantVillageBatcher::<B::InnerBackend>::with_image_size(device.clone(), image_size);
 
     let inner_model = model.clone().valid();
     let len = dataset.len();
-    
+
     if len == 0 {
         return 0.0;
     }
@@ -441,7 +484,8 @@ fn evaluate_model<B: AutodiffBackend>(
         let output = inner_model.forward(batch.images);
         let predictions = output.argmax(1);
         let [batch_dim, _] = predictions.dims();
-        let predictions_flat: Tensor<B::InnerBackend, 1, burn::tensor::Int> = predictions.reshape([batch_dim]);
+        let predictions_flat: Tensor<B::InnerBackend, 1, burn::tensor::Int> =
+            predictions.reshape([batch_dim]);
 
         let batch_correct: i64 = predictions_flat
             .equal(batch.targets)
@@ -454,14 +498,18 @@ fn evaluate_model<B: AutodiffBackend>(
         total += end - start;
     }
 
-    if total == 0 { 0.0 } else { 100.0 * correct as f64 / total as f64 }
+    if total == 0 {
+        0.0
+    } else {
+        100.0 * correct as f64 / total as f64
+    }
 }
 
 /// Evaluate model specifically on new class samples
 fn evaluate_model_on_new_class<B: AutodiffBackend>(
     model: &PlantClassifier<B>,
     dataset: &PlantVillageBurnDataset,
-    new_class_label: usize,
+    _new_class_label: usize,
     batch_size: usize,
     image_size: usize,
 ) -> f64 {
@@ -475,13 +523,13 @@ fn generate_pseudo_labels<B: AutodiffBackend>(
     model: &PlantClassifier<B>,
     unlabeled: &[(PathBuf, usize)],
     expected_label: usize,
-    confidence_threshold: f64,
+    _confidence_threshold: f64,
     max_labels: usize,
     image_size: usize,
-    device: &B::Device,
+    _device: &B::Device,
 ) -> Result<(Vec<(PathBuf, usize)>, f64)> {
-    use burn::tensor::backend::Backend;
     use burn::tensor::activation::softmax;
+    use burn::tensor::backend::Backend;
 
     // Note: We're using the base model to find samples that look "novel"
     // In practice, for new classes, we'd use a different approach
@@ -489,7 +537,8 @@ fn generate_pseudo_labels<B: AutodiffBackend>(
     // (indicating they might be a new class)
 
     let inner_device = <B::InnerBackend as Backend>::Device::default();
-    let batcher = PlantVillageBatcher::<B::InnerBackend>::with_image_size(inner_device.clone(), image_size);
+    let batcher =
+        PlantVillageBatcher::<B::InnerBackend>::with_image_size(inner_device.clone(), image_size);
     let inner_model = model.clone().valid();
 
     let dataset = PlantVillageBurnDataset::new_cached(unlabeled.to_vec(), image_size)?;
@@ -520,8 +569,7 @@ fn generate_pseudo_labels<B: AutodiffBackend>(
             if let Some((path, _)) = unlabeled.get(sample_idx) {
                 // For new class pseudo-labeling: accept samples where the model is uncertain
                 // (low max confidence on existing classes suggests novelty)
-                // OR in our simulation, we accept with threshold since we know it's new class
-                if confidence as f64 >= confidence_threshold || confidence < 0.5 {
+                if confidence < 0.5 {
                     pseudo_labels.push((path.clone(), expected_label, confidence as f64));
                 }
             }
@@ -547,39 +595,60 @@ fn generate_pseudo_labels<B: AutodiffBackend>(
 /// Generate conclusions for SSL+IL experiment
 pub fn generate_ssl_incremental_conclusions(results: &SSLIncrementalResults) -> String {
     let mut text = String::new();
-    
+
     text.push_str("========================================================================\n");
     text.push_str("SSL + Incremental Learning Combined Pipeline - Results\n");
     text.push_str("========================================================================\n\n");
 
     text.push_str("RESEARCH QUESTION:\n");
-    text.push_str("Can pseudo-labeling reduce the labeled samples needed when adding new classes?\n\n");
+    text.push_str(
+        "Can pseudo-labeling reduce the labeled samples needed when adding new classes?\n\n",
+    );
 
-    text.push_str(&format!("BASE MODEL ACCURACY: {:.2}%\n\n", results.base_accuracy));
+    text.push_str(&format!(
+        "BASE MODEL ACCURACY: {:.2}%\n\n",
+        results.base_accuracy
+    ));
 
     text.push_str("RESULTS COMPARISON:\n");
-    text.push_str(&format!("{:30} | {:>15} | {:>15}\n", "", "WITHOUT SSL", "WITH SSL"));
+    text.push_str(&format!(
+        "{:30} | {:>15} | {:>15}\n",
+        "", "WITHOUT SSL", "WITH SSL"
+    ));
     text.push_str(&format!("{:-<30} | {:->15} | {:->15}\n", "", "", ""));
-    text.push_str(&format!("{:30} | {:>14.2}% | {:>14.2}%\n", 
-        "Old Class Accuracy", 
-        results.without_ssl.old_class_accuracy, 
-        results.with_ssl.old_class_accuracy));
-    text.push_str(&format!("{:30} | {:>14.2}% | {:>14.2}%\n", 
-        "New Class Accuracy", 
-        results.without_ssl.new_class_accuracy, 
-        results.with_ssl.new_class_accuracy));
-    text.push_str(&format!("{:30} | {:>14.2}% | {:>14.2}%\n", 
-        "Overall Accuracy", 
-        results.without_ssl.overall_accuracy, 
-        results.with_ssl.overall_accuracy));
-    text.push_str(&format!("{:30} | {:>14.2}% | {:>14.2}%\n", 
-        "Forgetting", 
-        results.without_ssl.forgetting, 
-        results.with_ssl.forgetting));
+    text.push_str(&format!(
+        "{:30} | {:>14.2}% | {:>14.2}%\n",
+        "Old Class Accuracy",
+        results.without_ssl.old_class_accuracy,
+        results.with_ssl.old_class_accuracy
+    ));
+    text.push_str(&format!(
+        "{:30} | {:>14.2}% | {:>14.2}%\n",
+        "New Class Accuracy",
+        results.without_ssl.new_class_accuracy,
+        results.with_ssl.new_class_accuracy
+    ));
+    text.push_str(&format!(
+        "{:30} | {:>14.2}% | {:>14.2}%\n",
+        "Overall Accuracy", results.without_ssl.overall_accuracy, results.with_ssl.overall_accuracy
+    ));
+    text.push_str(&format!(
+        "{:30} | {:>14.2}% | {:>14.2}%\n",
+        "Forgetting", results.without_ssl.forgetting, results.with_ssl.forgetting
+    ));
 
-    text.push_str(&format!("\nPSEUDO-LABELS GENERATED: {}\n", results.pseudo_labels_generated));
-    text.push_str(&format!("PSEUDO-LABEL ACCURACY: {:.1}%\n", results.pseudo_label_accuracy * 100.0));
-    text.push_str(&format!("\nSSL IMPROVEMENT ON NEW CLASS: {:+.2}% points\n", results.ssl_improvement));
+    text.push_str(&format!(
+        "\nPSEUDO-LABELS GENERATED: {}\n",
+        results.pseudo_labels_generated
+    ));
+    text.push_str(&format!(
+        "PSEUDO-LABEL ACCURACY: {:.1}%\n",
+        results.pseudo_label_accuracy * 100.0
+    ));
+    text.push_str(&format!(
+        "\nSSL IMPROVEMENT ON NEW CLASS: {:+.2}% points\n",
+        results.ssl_improvement
+    ));
 
     text.push_str("\nCONCLUSION:\n");
     if results.ssl_improvement > 5.0 {

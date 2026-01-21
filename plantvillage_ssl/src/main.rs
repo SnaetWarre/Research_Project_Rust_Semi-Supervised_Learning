@@ -6,12 +6,11 @@
 use std::path::Path;
 
 use anyhow::Result;
-use burn::backend::Autodiff;
 use clap::{Parser, Subcommand};
 use colored::Colorize;
 use tracing::info;
 
-use plantvillage_ssl::backend::{backend_name, DefaultBackend, TrainingBackend};
+use plantvillage_ssl::backend::TrainingBackend;
 use plantvillage_ssl::utils::logging::{init_logging, LogConfig};
 
 /// PlantVillage Semi-Supervised Plant Disease Classification
@@ -694,7 +693,7 @@ fn cmd_simulate(
     println!(
         "  🏷️  Labeled ratio:     {:.0}% (SSL stream: {:.0}%)",
         labeled_ratio * 100.0,
-        (1.0 - labeled_ratio - 0.20) * 100.0
+        (1.0 - labeled_ratio) * 100.0
     );
     println!("  💾 Output directory:   {}", output_dir);
     println!("  🖥️  Backend:          {}", backend_name());

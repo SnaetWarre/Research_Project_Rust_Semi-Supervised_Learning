@@ -29,18 +29,18 @@ python:
 # Dataset Configuration
 # ------------------------------------------------------------------------------
 # PlantVillage dataset split strategy:
-#   - 30% Labeled Training (for initial supervised learning)
+#   - 20% Labeled Training (for initial supervised learning)
 #   - 10% Validation (monitor training progress)
 #   - 10% Test (final evaluation only)
-#   - 50% SSL Stream Pool (all remaining images for semi-supervised learning)
+#   - 60% SSL Stream Pool (all remaining images for semi-supervised learning)
 #
 dataset:
-  num_classes: 39                    # PlantVillage has 39 disease classes
+  num_classes: 38                    # PlantVillage has 38 disease classes
   image_size: 224                    # Input image size (square)
-  labeled_ratio: 0.30                # 30% of data used as labeled training set
+  labeled_ratio: 0.25                # 25% of remaining data (20% total) used as labeled training set
   validation_split: 0.10             # 10% for validation
   test_split: 0.10                   # 10% held out for final testing
-  # Remaining 50% goes to SSL stream pool (calculated automatically)
+  # Remaining 75% goes to SSL stream pool (60% total)
 
 # ------------------------------------------------------------------------------
 # Training Settings

@@ -33,7 +33,7 @@ impl Default for TrainingParams {
             epochs: 50,
             batch_size: 32,
             learning_rate: 0.0001,
-            labeled_ratio: 0.2,
+            labeled_ratio: 0.25,
             confidence_threshold: 0.9,
             output_dir: "output/models".to_string(),
             class_weighted: false, // Not needed with balanced dataset
@@ -274,6 +274,23 @@ where
 
             use burn::tensor::ElementConversion;
             let loss_value: f64 = loss.clone().into_scalar().elem();
+            
+            // CRITICAL: Detect NaN/Inf immediately to avoid wasting training time
+            if loss_value.is_nan() {
+                return Err(format!(
+                    "Loss became NaN at epoch {} batch {}. Training aborted. \
+                    This usually indicates learning rate too high or gradient explosion.",
+                    epoch + 1, batch_idx + 1
+                ));
+            }
+            if loss_value.is_infinite() {
+                return Err(format!(
+                    "Loss became infinite at epoch {} batch {}. Training aborted. \
+                    Try reducing learning rate.",
+                    epoch + 1, batch_idx + 1
+                ));
+            }
+            
             epoch_loss += loss_value;
             batch_count += 1;
 

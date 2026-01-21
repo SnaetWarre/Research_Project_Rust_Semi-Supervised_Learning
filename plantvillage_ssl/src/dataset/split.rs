@@ -11,8 +11,8 @@
 //! The PlantVillage dataset is divided into:
 //! 1. **Test Set (10%)** - Held out, NEVER seen during training (for honest evaluation)
 //! 2. **Validation Set (10%)** - Used for hyperparameter tuning and early stopping
-//! 3. **Labeled Pool (30% of remaining)** - Initial labeled data (simulating manual labeling)
-//! 4. **Stream Pool (70% of remaining)** - "Incoming" unlabeled images for SSL pipeline
+//! 3. **Labeled Pool (25% of remaining)** - Initial labeled data (simulating manual labeling)
+//! 4. **Stream Pool (75% of remaining)** - "Incoming" unlabeled images for SSL pipeline
 //!
 //! This split is deterministic and reproducible using a fixed random seed.
 
@@ -47,10 +47,10 @@ pub struct SplitConfig {
 impl Default for SplitConfig {
     fn default() -> Self {
         Self {
-            test_fraction: 0.10,      // 10% for honest evaluation
+            test_fraction: 0.10,       // 10% for honest evaluation
             validation_fraction: 0.10, // 10% for validation
-            labeled_fraction: 0.30,    // 30% labeled (of remaining 80%)
-            stream_fraction: 0.70,     // 70% for SSL stream (of remaining 80%)
+            labeled_fraction: 0.25,    // 25% labeled (of remaining 80% = 20% total)
+            stream_fraction: 0.75,     // 75% for SSL stream (of remaining 80% = 60% total)
             seed: 42,                  // Fixed seed for reproducibility
             stratified: true,          // Maintain class balance
         }
@@ -90,7 +90,16 @@ impl SplitConfig {
             ));
         }
 
-        let stream_fraction = 1.0 - labeled_fraction - 0.10; // Reserve 10% for future pool
+        let stream_fraction = 1.0 - labeled_fraction;
+
+        // Validate that labeled + stream fractions sum to ~1.0 (allowing small floating point error)
+        let sum = labeled_fraction + stream_fraction;
+        if (sum - 1.0).abs() > 1e-6 {
+            return Err(PlantVillageError::Config(format!(
+                "Labeled + stream fractions must sum to 1.0, got {:.6}",
+                sum
+            )));
+        }
 
         Ok(Self {
             test_fraction,
@@ -194,10 +203,7 @@ pub struct DatasetSplits {
 
 impl DatasetSplits {
     /// Create dataset splits from a list of (image_path, class_index, class_name) tuples
-    pub fn from_images(
-        images: Vec<(PathBuf, usize, String)>,
-        config: SplitConfig,
-    ) -> Result<Self> {
+    pub fn from_images(images: Vec<(PathBuf, usize, String)>, config: SplitConfig) -> Result<Self> {
         let total_images = images.len();
 
         if total_images == 0 {
@@ -228,12 +234,12 @@ impl DatasetSplits {
         // Shuffle deterministically
         images_with_ids.shuffle(&mut rng);
 
-        let (test_set, validation_set, labeled_pool, stream_pool, future_pool) = if config.stratified
-        {
-            Self::stratified_split(&images_with_ids, &config, &mut rng)?
-        } else {
-            Self::random_split(&images_with_ids, &config)?
-        };
+        let (test_set, validation_set, labeled_pool, stream_pool, future_pool) =
+            if config.stratified {
+                Self::stratified_split(&images_with_ids, &config, &mut rng)?
+            } else {
+                Self::random_split(&images_with_ids, &config)?
+            };
 
         Ok(Self {
             test_set,
@@ -275,11 +281,11 @@ impl DatasetSplits {
         // Split each class proportionally
         for (_, class_images) in by_class.iter_mut() {
             let n = class_images.len();
-            let n_test = (n as f64 * config.test_fraction).ceil() as usize;
-            let n_val = (n as f64 * config.validation_fraction).ceil() as usize;
+            let n_test = (n as f64 * config.test_fraction).round() as usize;
+            let n_val = (n as f64 * config.validation_fraction).round() as usize;
             let remaining = n.saturating_sub(n_test + n_val);
-            let n_labeled = (remaining as f64 * config.labeled_fraction).ceil() as usize;
-            let n_stream = (remaining as f64 * config.stream_fraction).ceil() as usize;
+            let n_labeled = (remaining as f64 * config.labeled_fraction).round() as usize;
+            let n_stream = (remaining as f64 * config.stream_fraction).round() as usize;
 
             // Shuffle class images
             class_images.shuffle(rng);
@@ -347,7 +353,13 @@ impl DatasetSplits {
             }
         }
 
-        Ok((test_set, validation_set, labeled_pool, stream_pool, future_pool))
+        Ok((
+            test_set,
+            validation_set,
+            labeled_pool,
+            stream_pool,
+            future_pool,
+        ))
     }
 
     /// Perform simple random split (not stratified)
@@ -362,11 +374,11 @@ impl DatasetSplits {
         Vec<HiddenLabelImage>,
     )> {
         let n = images.len();
-        let n_test = (n as f64 * config.test_fraction).ceil() as usize;
-        let n_val = (n as f64 * config.validation_fraction).ceil() as usize;
+        let n_test = (n as f64 * config.test_fraction).round() as usize;
+        let n_val = (n as f64 * config.validation_fraction).round() as usize;
         let remaining = n.saturating_sub(n_test + n_val);
-        let n_labeled = (remaining as f64 * config.labeled_fraction).ceil() as usize;
-        let n_stream = (remaining as f64 * config.stream_fraction).ceil() as usize;
+        let n_labeled = (remaining as f64 * config.labeled_fraction).round() as usize;
+        let n_stream = (remaining as f64 * config.stream_fraction).round() as usize;
 
         let mut idx = 0;
 
@@ -424,7 +436,13 @@ impl DatasetSplits {
             })
             .collect();
 
-        Ok((test_set, validation_set, labeled_pool, stream_pool, future_pool))
+        Ok((
+            test_set,
+            validation_set,
+            labeled_pool,
+            stream_pool,
+            future_pool,
+        ))
     }
 
     /// Add a pseudo-labeled image from the stream
@@ -472,7 +490,10 @@ impl DatasetSplits {
     /// Save splits to a JSON file for reproducibility
     pub fn save(&self, path: &std::path::Path) -> Result<()> {
         let json = serde_json::to_string_pretty(self).map_err(|e| {
-            PlantVillageError::Io(std::io::Error::new(std::io::ErrorKind::Other, e.to_string()))
+            PlantVillageError::Io(std::io::Error::new(
+                std::io::ErrorKind::Other,
+                e.to_string(),
+            ))
         })?;
         std::fs::write(path, json)?;
         Ok(())
@@ -482,7 +503,10 @@ impl DatasetSplits {
     pub fn load(path: &std::path::Path) -> Result<Self> {
         let json = std::fs::read_to_string(path)?;
         let splits: Self = serde_json::from_str(&json).map_err(|e| {
-            PlantVillageError::Io(std::io::Error::new(std::io::ErrorKind::Other, e.to_string()))
+            PlantVillageError::Io(std::io::Error::new(
+                std::io::ErrorKind::Other,
+                e.to_string(),
+            ))
         })?;
         Ok(splits)
     }
@@ -507,19 +531,43 @@ impl std::fmt::Display for SplitStats {
         writeln!(f, "Dataset Split Statistics:")?;
         writeln!(f, "  Total images: {}", self.total_images)?;
         writeln!(f, "  Number of classes: {}", self.num_classes)?;
-        writeln!(f, "  Test set: {} ({:.1}%)", self.test_size,
-            100.0 * self.test_size as f64 / self.total_images as f64)?;
-        writeln!(f, "  Validation set: {} ({:.1}%)", self.validation_size,
-            100.0 * self.validation_size as f64 / self.total_images as f64)?;
-        writeln!(f, "  Labeled pool: {} ({:.1}%)", self.labeled_pool_size,
-            100.0 * self.labeled_pool_size as f64 / self.total_images as f64)?;
-        writeln!(f, "  Stream pool: {} ({:.1}%)", self.stream_pool_size,
-            100.0 * self.stream_pool_size as f64 / self.total_images as f64)?;
-        writeln!(f, "  Future pool: {} ({:.1}%)", self.future_pool_size,
-            100.0 * self.future_pool_size as f64 / self.total_images as f64)?;
+        writeln!(
+            f,
+            "  Test set: {} ({:.1}%)",
+            self.test_size,
+            100.0 * self.test_size as f64 / self.total_images as f64
+        )?;
+        writeln!(
+            f,
+            "  Validation set: {} ({:.1}%)",
+            self.validation_size,
+            100.0 * self.validation_size as f64 / self.total_images as f64
+        )?;
+        writeln!(
+            f,
+            "  Labeled pool: {} ({:.1}%)",
+            self.labeled_pool_size,
+            100.0 * self.labeled_pool_size as f64 / self.total_images as f64
+        )?;
+        writeln!(
+            f,
+            "  Stream pool: {} ({:.1}%)",
+            self.stream_pool_size,
+            100.0 * self.stream_pool_size as f64 / self.total_images as f64
+        )?;
+        writeln!(
+            f,
+            "  Future pool: {} ({:.1}%)",
+            self.future_pool_size,
+            100.0 * self.future_pool_size as f64 / self.total_images as f64
+        )?;
         writeln!(f, "  Pseudo-labeled: {}", self.pseudo_labeled_size)?;
         if self.pseudo_labeled_size > 0 {
-            writeln!(f, "  Pseudo-label accuracy: {:.1}%", self.pseudo_label_accuracy * 100.0)?;
+            writeln!(
+                f,
+                "  Pseudo-label accuracy: {:.1}%",
+                self.pseudo_label_accuracy * 100.0
+            )?;
         }
         Ok(())
     }

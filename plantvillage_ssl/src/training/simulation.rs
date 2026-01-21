@@ -13,7 +13,6 @@
 use std::path::{Path, PathBuf};
 
 use anyhow::Result;
-use chrono::Local;
 use burn::{
     data::dataloader::batcher::Batcher,
     module::{AutodiffModule, Module},
@@ -22,15 +21,20 @@ use burn::{
     record::CompactRecorder,
     tensor::{backend::AutodiffBackend, ElementConversion},
 };
+use chrono::Local;
 use colored::Colorize;
 use rand::seq::SliceRandom;
 use rand::SeedableRng;
 use rand_chacha::ChaCha8Rng;
 
-use crate::dataset::burn_dataset::{PlantVillageBurnDataset, PlantVillageItem, RawPlantVillageDataset, AugmentingBatcher};
+use crate::dataset::burn_dataset::{
+    AugmentingBatcher, PlantVillageBurnDataset, PlantVillageItem, RawPlantVillageDataset,
+};
 use crate::dataset::split::{DatasetSplits, HiddenLabelImage, SplitConfig};
 use crate::model::cnn::PlantClassifierConfig;
-use crate::training::pseudo_label::{Prediction, PseudoLabelConfig, PseudoLabeler, StreamSimulator};
+use crate::training::pseudo_label::{
+    Prediction, PseudoLabelConfig, PseudoLabeler, StreamSimulator,
+};
 use crate::{PlantClassifier, PlantVillageBatcher, PlantVillageDataset};
 
 /// Configuration for the simulation
@@ -55,14 +59,14 @@ impl Default for SimulationConfig {
         Self {
             data_dir: "data/plantvillage".to_string(),
             model_path: "output/models/plant_classifier".to_string(),
-            days: 0,  // 0 = unlimited (use all available data)
+            days: 0, // 0 = unlimited (use all available data)
             images_per_day: 100,
             confidence_threshold: 0.9,
             retrain_threshold: 200,
-            labeled_ratio: 0.2,  // 20% for CNN, 60% for SSL stream, 10% val, 10% test
+            labeled_ratio: 0.25, // 25% for CNN, 75% for SSL stream, 10% val, 10% test
             output_dir: "output/simulation".to_string(),
             seed: 42,
-            batch_size: 64,  // Standard batch size for GPU training
+            batch_size: 64, // Standard batch size for GPU training
             learning_rate: 0.0001,
             retrain_epochs: 5,
         }
@@ -74,7 +78,12 @@ pub fn run_simulation<B>(config: SimulationConfig) -> Result<SimulationResults>
 where
     B: AutodiffBackend,
 {
-    println!("{}", "Starting Semi-Supervised Learning Simulation...".green().bold());
+    println!(
+        "{}",
+        "Starting Semi-Supervised Learning Simulation..."
+            .green()
+            .bold()
+    );
     println!();
 
     let device = B::Device::default();
@@ -103,13 +112,13 @@ where
         .collect();
 
     // Calculate stream fraction: remaining after test (10%), validation (10%), and labeled
-    let stream_fraction = 1.0 - config.labeled_ratio - 0.10; // Reserve 10% for future pool
-    
+    let stream_fraction = 1.0 - config.labeled_ratio; // Maximize for SSL!
+
     let split_config = SplitConfig {
         test_fraction: 0.10,
         validation_fraction: 0.10,
-        labeled_fraction: config.labeled_ratio,  // Use CLI-configured ratio!
-        stream_fraction,                         // Maximize for SSL!
+        labeled_fraction: config.labeled_ratio, // Use CLI-configured ratio!
+        stream_fraction,                        // Maximize for SSL!
         seed: config.seed,
         stratified: true,
     };
@@ -120,21 +129,30 @@ where
     let split_stats = splits.stats();
     println!("  Test set: {} samples", split_stats.test_size);
     println!("  Validation set: {} samples", split_stats.validation_size);
-    println!("  Labeled pool (CNN): {} samples", split_stats.labeled_pool_size);
-    println!("  Stream pool (SSL): {} samples", split_stats.stream_pool_size);
+    println!(
+        "  Labeled pool (CNN): {} samples",
+        split_stats.labeled_pool_size
+    );
+    println!(
+        "  Stream pool (SSL): {} samples",
+        split_stats.stream_pool_size
+    );
 
     // Use stream pool directly for SSL (no separate future pool anymore)
     let unlabeled_pool = splits.stream_pool.clone();
-    println!("  Total unlabeled for SSL: {} samples", unlabeled_pool.len());
+    println!(
+        "  Total unlabeled for SSL: {} samples",
+        unlabeled_pool.len()
+    );
 
     // Load or create model
     println!("{}", "Loading Model...".cyan());
     let model_config = PlantClassifierConfig {
         num_classes: 38,
         input_size: 128,
-        dropout_rate: 0.3,  // Moderate dropout
+        dropout_rate: 0.3, // Moderate dropout
         in_channels: 3,
-        base_filters: 32,   // Proper sized model
+        base_filters: 32, // Proper sized model
     };
 
     let mut model: PlantClassifier<B> = PlantClassifier::new(&model_config, &device);
@@ -143,7 +161,7 @@ where
     // CompactRecorder adds .mpk extension, so check both with and without
     let model_path = Path::new(&config.model_path);
     let model_path_mpk = PathBuf::from(format!("{}.mpk", config.model_path));
-    
+
     let actual_model_path = if model_path_mpk.exists() {
         Some(model_path.to_path_buf()) // Use path without extension for load_file (Burn adds it)
     } else if model_path.exists() {
@@ -151,7 +169,7 @@ where
     } else {
         None
     };
-    
+
     if let Some(load_path) = actual_model_path {
         println!("  Loading checkpoint from: {:?}", load_path);
         let recorder = CompactRecorder::new();
@@ -171,11 +189,7 @@ where
 
     // Create stream simulator with combined unlabeled pool
     println!("{}", "Initializing Stream Simulator...".cyan());
-    let mut stream = StreamSimulator::new(
-        unlabeled_pool,
-        config.seed,
-        config.images_per_day,
-    );
+    let mut stream = StreamSimulator::new(unlabeled_pool, config.seed, config.images_per_day);
     println!("  Images per day: {}", config.images_per_day);
     println!("  Total unlabeled images: {}", stream.total());
 
@@ -254,9 +268,13 @@ where
             println!();
             println!(
                 "{}",
-                format!("Retraining #{} (accumulated {} pseudo-labels)", retraining_count, pseudo_labeler.num_pseudo_labels())
-                    .yellow()
-                    .bold()
+                format!(
+                    "Retraining #{} (accumulated {} pseudo-labels)",
+                    retraining_count,
+                    pseudo_labeler.num_pseudo_labels()
+                )
+                .yellow()
+                .bold()
             );
 
             // Get pseudo-labels and convert to training data
@@ -330,10 +348,7 @@ where
     println!();
     println!("  Initial accuracy: {:.2}%", initial_acc);
     println!("  Final accuracy: {:.2}%", final_acc);
-    println!(
-        "  Improvement: {:.2}%",
-        final_acc - initial_acc
-    );
+    println!("  Improvement: {:.2}%", final_acc - initial_acc);
 
     results.days_simulated = day;
     results.total_pseudo_labels = total_pseudo_labels;
@@ -344,7 +359,8 @@ where
 
     // Save final model with timestamp
     let timestamp = Local::now().format("%Y%m%d_%H%M%S");
-    let final_model_path = PathBuf::from(&config.output_dir).join(format!("plant_classifier_ssl_{}", timestamp));
+    let final_model_path =
+        PathBuf::from(&config.output_dir).join(format!("plant_classifier_ssl_{}", timestamp));
     println!();
     println!("  Saving model to: {:?}", final_model_path);
     let recorder = CompactRecorder::new();
@@ -357,7 +373,7 @@ where
 }
 
 /// Run inference on a batch of hidden-label images
-/// 
+///
 /// Note: Processes in smaller batches to avoid cubecl-runtime memory management issues
 fn run_inference_batch<B: AutodiffBackend>(
     model: &PlantClassifier<B>,
@@ -380,7 +396,9 @@ fn run_inference_batch<B: AutodiffBackend>(
         // Load images for this chunk, keeping track of which ones succeeded
         let mut loaded_items: Vec<(usize, PlantVillageItem)> = Vec::new();
         for (idx, hidden) in chunk_images.iter().enumerate() {
-            if let Ok(item) = PlantVillageItem::from_path(&hidden.image_path, hidden.hidden_label, image_size) {
+            if let Ok(item) =
+                PlantVillageItem::from_path(&hidden.image_path, hidden.hidden_label, image_size)
+            {
                 loaded_items.push((idx, item));
             }
         }
@@ -389,7 +407,8 @@ fn run_inference_batch<B: AutodiffBackend>(
             continue;
         }
 
-        let items: Vec<PlantVillageItem> = loaded_items.iter().map(|(_, item)| item.clone()).collect();
+        let items: Vec<PlantVillageItem> =
+            loaded_items.iter().map(|(_, item)| item.clone()).collect();
 
         // Create batch and run inference
         let batch = batcher.batch(items, &inner_device);
@@ -400,14 +419,14 @@ fn run_inference_batch<B: AutodiffBackend>(
         // Extract predictions for this chunk
         for (i, (chunk_idx, _)) in loaded_items.iter().enumerate() {
             let hidden = &chunk_images[*chunk_idx];
-            
+
             let start = i * num_classes;
             let end = start + num_classes;
-            
+
             if end > probs.len() {
                 break;
             }
-            
+
             let item_probs: Vec<f32> = probs[start..end].to_vec();
 
             // Find max
@@ -478,12 +497,16 @@ fn evaluate_model<B: AutodiffBackend>(
 }
 
 /// Retrain model with augmentation on combined labeled and pseudo-labeled data
-/// 
+///
 /// This uses the same augmentation strategy as initial training to ensure
 /// consistency and prevent overfitting to pseudo-labeled samples.
 fn retrain_model_with_augmentation<B: AutodiffBackend>(
     mut model: PlantClassifier<B>,
-    optimizer: &mut burn::optim::adaptor::OptimizerAdaptor<burn::optim::Adam, PlantClassifier<B>, B>,
+    optimizer: &mut burn::optim::adaptor::OptimizerAdaptor<
+        burn::optim::Adam,
+        PlantClassifier<B>,
+        B,
+    >,
     dataset: &RawPlantVillageDataset,
     epochs: usize,
     batch_size: usize,
@@ -542,8 +565,17 @@ fn retrain_model_with_augmentation<B: AutodiffBackend>(
             model = optimizer.step(learning_rate, model, grads);
         }
 
-        let avg_loss = if batch_count > 0 { epoch_loss / batch_count as f64 } else { 0.0 };
-        println!("    Epoch {}/{}: avg_loss = {:.4}", epoch + 1, epochs, avg_loss);
+        let avg_loss = if batch_count > 0 {
+            epoch_loss / batch_count as f64
+        } else {
+            0.0
+        };
+        println!(
+            "    Epoch {}/{}: avg_loss = {:.4}",
+            epoch + 1,
+            epochs,
+            avg_loss
+        );
     }
 
     model
@@ -584,4 +616,3 @@ impl Default for SimulationResults {
         Self::new()
     }
 }
-

@@ -141,8 +141,7 @@ impl ModelConfig {
     /// Load configuration from a JSON file
     pub fn load(path: &std::path::Path) -> std::io::Result<Self> {
         let json = std::fs::read_to_string(path)?;
-        serde_json::from_str(&json)
-            .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e))
+        serde_json::from_str(&json).map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e))
     }
 }
 
@@ -365,8 +364,8 @@ mod tests {
     #[test]
     fn test_model_config_default() {
         let config = ModelConfig::default();
-        assert_eq!(config.num_classes, 39);
-        assert_eq!(config.input_size, 256);
+        assert_eq!(config.num_classes, 38);
+        assert_eq!(config.input_size, 128);
         assert!(config.validate().is_ok());
     }
 

@@ -18,9 +18,12 @@ use std::path::PathBuf;
 use rand::prelude::*;
 use rand_chacha::ChaCha8Rng;
 use serde::{Deserialize, Serialize};
-use tracing::debug;
+use tracing::{debug, warn};
 
 use crate::dataset::split::{HiddenLabelImage, PseudoLabeledImage};
+
+/// Maximum number of pseudo-labels to keep in buffer (prevents OOM during long simulations)
+const MAX_PSEUDO_LABELS: usize = 100_000;
 
 /// Configuration for pseudo-labeling
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -194,6 +197,15 @@ impl PseudoLabeler {
     ) -> Vec<PseudoLabeledImage> {
         let threshold = self.current_threshold();
         let mut new_pseudo_labels = Vec::new();
+
+        // Check if buffer is at capacity
+        if self.pseudo_labels.len() >= MAX_PSEUDO_LABELS {
+            warn!(
+                "Pseudo-label buffer at max capacity ({} labels). Skipping new predictions. Trigger retraining to clear buffer.",
+                MAX_PSEUDO_LABELS
+            );
+            return new_pseudo_labels;
+        }
 
         for (pred, hidden) in predictions.iter().zip(hidden_labels.iter()) {
             self.stats.total_processed += 1;

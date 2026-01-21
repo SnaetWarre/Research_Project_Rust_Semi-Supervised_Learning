@@ -145,7 +145,7 @@ where
         images_per_day: params.images_per_day,
         confidence_threshold: params.confidence_threshold,
         retrain_threshold: params.retrain_threshold,
-        labeled_ratio: 0.2,  // 20% labeled, 60% for SSL stream
+        labeled_ratio: 0.25,  // 25% labeled, 75% for SSL stream
         output_dir: params.output_dir.clone(),
         seed: 42,
         batch_size: 32,

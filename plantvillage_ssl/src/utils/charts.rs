@@ -14,8 +14,11 @@ const MARGIN_RIGHT: f64 = 40.0;
 const MARGIN_BOTTOM: f64 = 80.0;
 const MARGIN_LEFT: f64 = 80.0;
 
+#[allow(dead_code)]
 const COLOR_PRIMARY: &str = "#3498db";
+#[allow(dead_code)]
 const COLOR_SECONDARY: &str = "#2ecc71";
+#[allow(dead_code)]
 const COLOR_TERTIARY: &str = "#e74c3c";
 const COLOR_GRID: &str = "#ecf0f1";
 const COLOR_AXIS: &str = "#2c3e50";
@@ -57,7 +60,7 @@ pub fn generate_line_chart(
     let plot_height = CHART_HEIGHT - MARGIN_TOP - MARGIN_BOTTOM;
 
     // Find data ranges
-    let (x_min, x_max, y_min, y_max) = find_ranges(series);
+    let (x_min, x_max, _y_min, y_max) = find_ranges(series);
     let y_min = 0.0; // Always start Y at 0 for accuracy charts
     let y_max = 100.0_f64.max(y_max); // Cap at 100 for percentage
 
@@ -85,13 +88,17 @@ pub fn generate_line_chart(
     for i in 0..=5 {
         let y = MARGIN_TOP + plot_height - (i as f64 / 5.0) * plot_height;
         let value = y_min + (i as f64 / 5.0) * (y_max - y_min);
-        
+
         // Grid line
         svg.push_str(&format!(
             r#"<line x1="{}" y1="{}" x2="{}" y2="{}" stroke="{}" stroke-width="1"/>"#,
-            MARGIN_LEFT, y, MARGIN_LEFT + plot_width, y, COLOR_GRID
+            MARGIN_LEFT,
+            y,
+            MARGIN_LEFT + plot_width,
+            y,
+            COLOR_GRID
         ));
-        
+
         // Y-axis label
         svg.push_str(&format!(
             r#"<text x="{}" y="{}" text-anchor="end" font-family="Arial, sans-serif" font-size="12" fill="{}">{:.0}%</text>"#,
@@ -102,11 +109,19 @@ pub fn generate_line_chart(
     // Axes
     svg.push_str(&format!(
         r#"<line x1="{}" y1="{}" x2="{}" y2="{}" stroke="{}" stroke-width="2"/>"#,
-        MARGIN_LEFT, MARGIN_TOP + plot_height, MARGIN_LEFT + plot_width, MARGIN_TOP + plot_height, COLOR_AXIS
+        MARGIN_LEFT,
+        MARGIN_TOP + plot_height,
+        MARGIN_LEFT + plot_width,
+        MARGIN_TOP + plot_height,
+        COLOR_AXIS
     ));
     svg.push_str(&format!(
         r#"<line x1="{}" y1="{}" x2="{}" y2="{}" stroke="{}" stroke-width="2"/>"#,
-        MARGIN_LEFT, MARGIN_TOP, MARGIN_LEFT, MARGIN_TOP + plot_height, COLOR_AXIS
+        MARGIN_LEFT,
+        MARGIN_TOP,
+        MARGIN_LEFT,
+        MARGIN_TOP + plot_height,
+        COLOR_AXIS
     ));
 
     // Axis labels
@@ -130,7 +145,7 @@ pub fn generate_line_chart(
         for (i, point) in series_data.points.iter().enumerate() {
             let x = MARGIN_LEFT + ((point.x - x_min) / (x_max - x_min)) * plot_width;
             let y = MARGIN_TOP + plot_height - ((point.y - y_min) / (y_max - y_min)) * plot_height;
-            
+
             if i == 0 {
                 path.push_str(&format!("M {} {}", x, y));
             } else {
@@ -180,7 +195,9 @@ pub fn generate_line_chart(
     for series_data in series {
         svg.push_str(&format!(
             r#"<rect x="{}" y="{}" width="15" height="15" fill="{}"/>"#,
-            CHART_WIDTH - MARGIN_RIGHT - 100.0, legend_y, series_data.color
+            CHART_WIDTH - MARGIN_RIGHT - 100.0,
+            legend_y,
+            series_data.color
         ));
         svg.push_str(&format!(
             r#"<text x="{}" y="{}" font-family="Arial, sans-serif" font-size="12" fill="{}">{}</text>"#,
@@ -204,7 +221,11 @@ pub fn generate_bar_chart(
     let plot_width = CHART_WIDTH - MARGIN_LEFT - MARGIN_RIGHT;
     let plot_height = CHART_HEIGHT - MARGIN_TOP - MARGIN_BOTTOM;
 
-    let y_max = bars.iter().map(|b| b.value).fold(0.0f64, f64::max).max(100.0);
+    let y_max = bars
+        .iter()
+        .map(|b| b.value)
+        .fold(0.0f64, f64::max)
+        .max(100.0);
 
     let bar_width = (plot_width / bars.len() as f64) * 0.7;
     let bar_gap = (plot_width / bars.len() as f64) * 0.3;
@@ -233,12 +254,16 @@ pub fn generate_bar_chart(
     for i in 0..=5 {
         let y = MARGIN_TOP + plot_height - (i as f64 / 5.0) * plot_height;
         let value = (i as f64 / 5.0) * y_max;
-        
+
         svg.push_str(&format!(
             r#"<line x1="{}" y1="{}" x2="{}" y2="{}" stroke="{}" stroke-width="1"/>"#,
-            MARGIN_LEFT, y, MARGIN_LEFT + plot_width, y, COLOR_GRID
+            MARGIN_LEFT,
+            y,
+            MARGIN_LEFT + plot_width,
+            y,
+            COLOR_GRID
         ));
-        
+
         svg.push_str(&format!(
             r#"<text x="{}" y="{}" text-anchor="end" font-family="Arial, sans-serif" font-size="12" fill="{}">{:.0}%</text>"#,
             MARGIN_LEFT - 10.0, y + 4.0, COLOR_TEXT, value
@@ -248,7 +273,11 @@ pub fn generate_bar_chart(
     // Axes
     svg.push_str(&format!(
         r#"<line x1="{}" y1="{}" x2="{}" y2="{}" stroke="{}" stroke-width="2"/>"#,
-        MARGIN_LEFT, MARGIN_TOP + plot_height, MARGIN_LEFT + plot_width, MARGIN_TOP + plot_height, COLOR_AXIS
+        MARGIN_LEFT,
+        MARGIN_TOP + plot_height,
+        MARGIN_LEFT + plot_width,
+        MARGIN_TOP + plot_height,
+        COLOR_AXIS
     ));
 
     // Y-axis label
@@ -327,12 +356,16 @@ pub fn generate_comparison_chart(
     for i in 0..=5 {
         let y = MARGIN_TOP + plot_height - (i as f64 / 5.0) * plot_height;
         let value = (i as f64 / 5.0) * y_max;
-        
+
         svg.push_str(&format!(
             r#"<line x1="{}" y1="{}" x2="{}" y2="{}" stroke="{}" stroke-width="1"/>"#,
-            MARGIN_LEFT, y, MARGIN_LEFT + plot_width, y, COLOR_GRID
+            MARGIN_LEFT,
+            y,
+            MARGIN_LEFT + plot_width,
+            y,
+            COLOR_GRID
         ));
-        
+
         svg.push_str(&format!(
             r#"<text x="{}" y="{}" text-anchor="end" font-family="Arial, sans-serif" font-size="12" fill="{}">{:.0}%</text>"#,
             MARGIN_LEFT - 10.0, y + 4.0, COLOR_TEXT, value
@@ -342,21 +375,29 @@ pub fn generate_comparison_chart(
     // Axes
     svg.push_str(&format!(
         r#"<line x1="{}" y1="{}" x2="{}" y2="{}" stroke="{}" stroke-width="2"/>"#,
-        MARGIN_LEFT, MARGIN_TOP + plot_height, MARGIN_LEFT + plot_width, MARGIN_TOP + plot_height, COLOR_AXIS
+        MARGIN_LEFT,
+        MARGIN_TOP + plot_height,
+        MARGIN_LEFT + plot_width,
+        MARGIN_TOP + plot_height,
+        COLOR_AXIS
     ));
 
     // Groups
     for (group_idx, (group_label, bars)) in groups.iter().enumerate() {
         let group_x = MARGIN_LEFT + group_idx as f64 * group_width + group_padding;
 
-        for (bar_idx, (label, value, color)) in bars.iter().enumerate() {
+        for (bar_idx, (_label, value, color)) in bars.iter().enumerate() {
             let x = group_x + bar_idx as f64 * bar_width;
             let bar_height = (*value / y_max) * plot_height;
             let y = MARGIN_TOP + plot_height - bar_height;
 
             svg.push_str(&format!(
                 r#"<rect x="{}" y="{}" width="{}" height="{}" fill="{}" rx="3"/>"#,
-                x, y, bar_width * 0.9, bar_height, color
+                x,
+                y,
+                bar_width * 0.9,
+                bar_height,
+                color
             ));
 
             svg.push_str(&format!(
@@ -378,7 +419,9 @@ pub fn generate_comparison_chart(
         for (label, _, color) in first_bars {
             svg.push_str(&format!(
                 r#"<rect x="{}" y="{}" width="12" height="12" fill="{}"/>"#,
-                legend_x, CHART_HEIGHT - 35.0, color
+                legend_x,
+                CHART_HEIGHT - 35.0,
+                color
             ));
             svg.push_str(&format!(
                 r#"<text x="{}" y="{}" font-family="Arial, sans-serif" font-size="11" fill="{}">{}</text>"#,
@@ -429,9 +472,21 @@ mod tests {
         let series = vec![DataSeries {
             name: "Test".to_string(),
             points: vec![
-                DataPoint { x: 5.0, y: 36.84, label: Some("36.8%".to_string()) },
-                DataPoint { x: 10.0, y: 61.84, label: Some("61.8%".to_string()) },
-                DataPoint { x: 25.0, y: 65.79, label: Some("65.8%".to_string()) },
+                DataPoint {
+                    x: 5.0,
+                    y: 36.84,
+                    label: Some("36.8%".to_string()),
+                },
+                DataPoint {
+                    x: 10.0,
+                    y: 61.84,
+                    label: Some("61.8%".to_string()),
+                },
+                DataPoint {
+                    x: 25.0,
+                    y: 65.79,
+                    label: Some("65.8%".to_string()),
+                },
             ],
             color: COLOR_PRIMARY.to_string(),
         }];

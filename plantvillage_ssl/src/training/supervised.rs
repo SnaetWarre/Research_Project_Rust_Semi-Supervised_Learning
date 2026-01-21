@@ -8,8 +8,8 @@
 //! - On-the-fly data augmentation for better generalization
 //! - Early stopping at target validation accuracy (leaves room for SSL improvement)
 
-use std::path::PathBuf;
 use chrono::Local;
+use std::path::PathBuf;
 
 use anyhow::Result;
 use burn::{
@@ -25,12 +25,10 @@ use rand::seq::SliceRandom;
 use rand::SeedableRng;
 use rand_chacha::ChaCha8Rng;
 
-use crate::{
-    PlantVillageBatcher, PlantVillageBurnDataset, PlantVillageDataset, PlantClassifier,
-};
-use crate::dataset::burn_dataset::{RawPlantVillageDataset, AugmentingBatcher};
+use crate::dataset::burn_dataset::{AugmentingBatcher, RawPlantVillageDataset};
 use crate::dataset::split::{DatasetSplits, SplitConfig};
 use crate::model::cnn::PlantClassifierConfig;
+use crate::{PlantClassifier, PlantVillageBatcher, PlantVillageBurnDataset, PlantVillageDataset};
 
 /// Configuration for early stopping based on validation accuracy
 #[derive(Clone, Debug)]
@@ -124,13 +122,16 @@ where
         println!("Please download the PlantVillage dataset first:");
         println!("  1. Visit: https://www.kaggle.com/datasets/abdallahalidev/plantvillage-dataset");
         println!("  2. Download and extract to: {}", data_dir);
-        println!("  3. Ensure directory structure: {}/{{class_name}}/*.jpg", data_dir);
+        println!(
+            "  3. Ensure directory structure: {}/{{class_name}}/*.jpg",
+            data_dir
+        );
         return Ok(());
     }
 
     // Use stratified splitting for proper train/val distribution
     println!("{}", "Creating Stratified Data Splits...".cyan());
-    
+
     // Prepare all images with class names for stratified splitting
     let all_images: Vec<(PathBuf, usize, String)> = dataset
         .samples
@@ -152,10 +153,10 @@ where
 
     // Create stratified splits using the proper splitting logic
     let split_config = SplitConfig {
-        test_fraction: 0.0,  // We'll use validation as our held-out set for now
+        test_fraction: 0.0, // We'll use validation as our held-out set for now
         validation_fraction: 0.10,
         labeled_fraction: labeled_ratio,
-        stream_fraction: 1.0 - labeled_ratio - 0.10, // Remaining for stream pool
+        stream_fraction: 1.0 - labeled_ratio, // Remaining for stream pool
         seed,
         stratified: true,
     };
@@ -166,9 +167,18 @@ where
     let split_stats = splits.stats();
     println!("  📊 Stratified split created:");
     println!("    Classes represented: {}", split_stats.num_classes);
-    println!("    Labeled pool: {} samples", split_stats.labeled_pool_size);
-    println!("    Validation set: {} samples", split_stats.validation_size);
-    println!("    Stream pool: {} samples (for SSL)", split_stats.stream_pool_size);
+    println!(
+        "    Labeled pool: {} samples",
+        split_stats.labeled_pool_size
+    );
+    println!(
+        "    Validation set: {} samples",
+        split_stats.validation_size
+    );
+    println!(
+        "    Stream pool: {} samples (for SSL)",
+        split_stats.stream_pool_size
+    );
 
     // Convert splits to samples format
     let train_samples: Vec<(PathBuf, usize)> = splits
@@ -204,25 +214,34 @@ where
 
     // Determine augmentation settings
     let early_stop_config = early_stopping.unwrap_or_else(EarlyStoppingConfig::default);
-    
+
     println!();
     if use_augmentation {
-        println!("{}", "Pre-loading Training Data (with augmentation)...".cyan().bold());
+        println!(
+            "{}",
+            "Pre-loading Training Data (with augmentation)..."
+                .cyan()
+                .bold()
+        );
     } else {
         println!("{}", "Pre-loading Training Data...".cyan().bold());
     }
 
     // For augmentation, we need raw images; otherwise use preprocessed cache
     let train_dataset_raw = if use_augmentation {
-        Some(RawPlantVillageDataset::new_cached(train_samples.clone())
-            .expect("Failed to load raw training dataset"))
+        Some(
+            RawPlantVillageDataset::new_cached(train_samples.clone())
+                .expect("Failed to load raw training dataset"),
+        )
     } else {
         None
     };
 
     let train_dataset = if !use_augmentation {
-        Some(PlantVillageBurnDataset::new_cached(train_samples.clone(), image_size)
-            .expect("Failed to load training dataset"))
+        Some(
+            PlantVillageBurnDataset::new_cached(train_samples.clone(), image_size)
+                .expect("Failed to load training dataset"),
+        )
     } else {
         None
     };
@@ -233,7 +252,11 @@ where
 
     let batcher = PlantVillageBatcher::<B>::with_image_size(device.clone(), image_size);
     let aug_batcher = if use_augmentation {
-        Some(AugmentingBatcher::<B>::new(device.clone(), image_size, seed))
+        Some(AugmentingBatcher::<B>::new(
+            device.clone(),
+            image_size,
+            seed,
+        ))
     } else {
         None
     };
@@ -246,7 +269,7 @@ where
         input_size: image_size,
         dropout_rate: 0.3, // Moderate dropout
         in_channels: 3,
-        base_filters: 32,  // Proper sized model for good accuracy
+        base_filters: 32, // Proper sized model for good accuracy
     };
     let mut model = PlantClassifier::<B>::new(&model_config, &device);
 
@@ -265,11 +288,20 @@ where
     println!("  🔄 Epochs:            {}", epochs);
     println!("  📦 Batch size:        {}", batch_size);
     println!("  📈 Learning rate:     {}", learning_rate);
-    println!("  🎨 Augmentation:      {}", if use_augmentation { "enabled" } else { "disabled" });
+    println!(
+        "  🎨 Augmentation:      {}",
+        if use_augmentation {
+            "enabled"
+        } else {
+            "disabled"
+        }
+    );
     if early_stop_config.enabled {
-        println!("  🛑 Early stopping:    at {:.0}% val acc ({} epochs)", 
-                 early_stop_config.target_accuracy * 100.0, 
-                 early_stop_config.patience);
+        println!(
+            "  🛑 Early stopping:    at {:.0}% val acc ({} epochs)",
+            early_stop_config.target_accuracy * 100.0,
+            early_stop_config.patience
+        );
     } else {
         println!("  🛑 Early stopping:    disabled");
     }
@@ -280,8 +312,8 @@ where
     println!();
 
     let mut best_val_acc = 0.0f64;
-    let mut epochs_at_target = 0usize;  // Counter for early stopping
-    
+    let mut epochs_at_target = 0usize; // Counter for early stopping
+
     // Create RNG for epoch shuffling
     let mut epoch_rng = ChaCha8Rng::seed_from_u64(seed);
 
@@ -316,7 +348,7 @@ where
             let start = batch_idx * batch_size;
             let end = (start + batch_size).min(shuffled_indices.len());
             let batch_indices = &shuffled_indices[start..end];
-            
+
             // Create batch based on whether augmentation is enabled
             let batch = if use_augmentation {
                 use burn::data::dataset::Dataset;
@@ -324,11 +356,11 @@ where
                     .iter()
                     .filter_map(|&i| train_dataset_raw.as_ref().unwrap().get(i))
                     .collect();
-                
+
                 if items.is_empty() {
                     continue;
                 }
-                
+
                 aug_batcher.as_ref().unwrap().batch(items, &device)
             } else {
                 use burn::data::dataset::Dataset;
@@ -336,11 +368,11 @@ where
                     .iter()
                     .filter_map(|&i| train_dataset.as_ref().unwrap().get(i))
                     .collect();
-                
+
                 if items.is_empty() {
                     continue;
                 }
-                
+
                 batcher.batch(items, &device)
             };
 
@@ -353,6 +385,32 @@ where
                 .forward(output.clone(), batch.targets.clone());
 
             let loss_value: f64 = loss.clone().into_scalar().elem();
+
+            // CRITICAL: Detect NaN/Inf immediately to avoid wasting training time
+            if loss_value.is_nan() {
+                anyhow::bail!(
+                    "Loss became NaN at epoch {} batch {}. Training aborted. \
+                    This usually indicates:\n  \
+                    - Learning rate too high\n  \
+                    - Gradient explosion\n  \
+                    - Corrupted input data\n  \
+                    Try reducing learning rate or adding gradient clipping.",
+                    epoch + 1,
+                    batch_idx + 1
+                );
+            }
+            if loss_value.is_infinite() {
+                anyhow::bail!(
+                    "Loss became infinite at epoch {} batch {}. Training aborted. \
+                    This usually indicates:\n  \
+                    - Learning rate too high\n  \
+                    - Numerical instability in loss calculation\n  \
+                    Try reducing learning rate.",
+                    epoch + 1,
+                    batch_idx + 1
+                );
+            }
+
             epoch_loss += loss_value;
 
             // Calculate batch accuracy
@@ -384,7 +442,7 @@ where
                     running_acc
                 );
             }
-            
+
             // Drop batch explicitly to free GPU memory before next iteration
             drop(batch);
         }
@@ -404,14 +462,14 @@ where
         // Check for early stopping at target accuracy
         let val_acc_ratio = val_acc / 100.0;
         let mut early_stop_triggered = false;
-        
+
         if early_stop_config.enabled && val_acc_ratio >= early_stop_config.target_accuracy {
             epochs_at_target += 1;
             if epochs_at_target >= early_stop_config.patience {
                 early_stop_triggered = true;
             }
         } else {
-            epochs_at_target = 0;  // Reset counter if we drop below target
+            epochs_at_target = 0; // Reset counter if we drop below target
         }
 
         // Build status string
@@ -420,7 +478,14 @@ where
             status_parts.push(" (best)".green().to_string());
         }
         if early_stop_config.enabled && val_acc_ratio >= early_stop_config.target_accuracy {
-            status_parts.push(format!(" [target: {}/{}]", epochs_at_target, early_stop_config.patience).yellow().to_string());
+            status_parts.push(
+                format!(
+                    " [target: {}/{}]",
+                    epochs_at_target, early_stop_config.patience
+                )
+                .yellow()
+                .to_string(),
+            );
         }
 
         println!(
@@ -501,7 +566,8 @@ fn evaluate<B: AutodiffBackend>(
     let device = <B::InnerBackend as Backend>::Device::default();
 
     // Create a batcher for the inner backend with correct image size
-    let inner_batcher = PlantVillageBatcher::<B::InnerBackend>::with_image_size(device.clone(), image_size);
+    let inner_batcher =
+        PlantVillageBatcher::<B::InnerBackend>::with_image_size(device.clone(), image_size);
 
     let inner_model = model.clone().valid();
     let len = dataset.len();

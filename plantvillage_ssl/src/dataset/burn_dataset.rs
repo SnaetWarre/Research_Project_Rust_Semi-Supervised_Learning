@@ -10,7 +10,6 @@
 
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicUsize, Ordering};
-use std::sync::Mutex;
 
 use burn::data::dataloader::batcher::Batcher;
 use burn::data::dataset::Dataset;
@@ -18,7 +17,6 @@ use burn::prelude::*;
 use image::imageops::FilterType;
 use image::{DynamicImage, ImageReader};
 use indicatif::{ProgressBar, ProgressStyle};
-use rand::SeedableRng;
 use rand_chacha::ChaCha8Rng;
 use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
@@ -42,11 +40,7 @@ impl PlantVillageItem {
     pub fn from_path(path: &PathBuf, label: usize, image_size: usize) -> anyhow::Result<Self> {
         let img = ImageReader::open(path)?
             .decode()?
-            .resize_exact(
-                image_size as u32,
-                image_size as u32,
-                FilterType::Triangle,
-            )
+            .resize_exact(image_size as u32, image_size as u32, FilterType::Triangle)
             .to_rgb8();
 
         let (width, height) = (image_size, image_size);
@@ -91,7 +85,7 @@ impl RawPlantVillageItem {
     /// Create a new raw item by loading an image without preprocessing
     pub fn from_path(path: &PathBuf, label: usize) -> anyhow::Result<Self> {
         let img = ImageReader::open(path)?.decode()?;
-        
+
         Ok(Self {
             image: img,
             label,
@@ -105,7 +99,10 @@ impl std::fmt::Debug for RawPlantVillageItem {
         f.debug_struct("RawPlantVillageItem")
             .field("label", &self.label)
             .field("path", &self.path)
-            .field("image_size", &format!("{}x{}", self.image.width(), self.image.height()))
+            .field(
+                "image_size",
+                &format!("{}x{}", self.image.width(), self.image.height()),
+            )
             .finish()
     }
 }
@@ -155,7 +152,10 @@ impl RawPlantVillageDataset {
             .collect();
 
         pb.finish_with_message(format!("Loaded {} raw images", items.len()));
-        println!("  ✅ Loaded {} raw images for on-the-fly augmentation", items.len());
+        println!(
+            "  ✅ Loaded {} raw images for on-the-fly augmentation",
+            items.len()
+        );
 
         Ok(Self { items })
     }
@@ -212,7 +212,10 @@ impl PlantVillageBurnDataset {
     /// Uses parallel loading with rayon for maximum speed
     pub fn new_cached(samples: Vec<(PathBuf, usize)>, image_size: usize) -> anyhow::Result<Self> {
         let total = samples.len();
-        println!("  📦 Pre-loading {} images into memory (parallel)...", total);
+        println!(
+            "  📦 Pre-loading {} images into memory (parallel)...",
+            total
+        );
 
         let pb = ProgressBar::new(total as u64);
         pb.set_style(
@@ -238,7 +241,10 @@ impl PlantVillageBurnDataset {
             .collect();
 
         pb.finish_with_message(format!("Loaded {} images", cached_items.len()));
-        println!("  ✅ Loaded {} images into GPU-ready format", cached_items.len());
+        println!(
+            "  ✅ Loaded {} images into GPU-ready format",
+            cached_items.len()
+        );
 
         // Update samples to match successfully loaded items
         let loaded_samples: Vec<_> = cached_items
@@ -321,6 +327,7 @@ pub struct PlantVillageBatch<B: Backend> {
 /// Batcher for creating PlantVillage training batches
 #[derive(Clone, Debug)]
 pub struct PlantVillageBatcher<B: Backend> {
+    #[allow(dead_code)]
     device: B::Device,
     image_size: usize,
 }
@@ -360,17 +367,11 @@ impl<B: Backend> Batcher<B, PlantVillageItem, PlantVillageBatch<B>> for PlantVil
         // ImageNet mean: [0.485, 0.456, 0.406]
         // ImageNet std: [0.229, 0.224, 0.225]
         let mean = Tensor::<B, 4>::from_floats(
-            TensorData::new(
-                vec![0.485f32, 0.456, 0.406],
-                [1, 3, 1, 1],
-            ),
+            TensorData::new(vec![0.485f32, 0.456, 0.406], [1, 3, 1, 1]),
             device,
         );
         let std = Tensor::<B, 4>::from_floats(
-            TensorData::new(
-                vec![0.229f32, 0.224, 0.225],
-                [1, 3, 1, 1],
-            ),
+            TensorData::new(vec![0.229f32, 0.224, 0.225], [1, 3, 1, 1]),
             device,
         );
 
@@ -378,10 +379,8 @@ impl<B: Backend> Batcher<B, PlantVillageItem, PlantVillageBatch<B>> for PlantVil
 
         // Create targets tensor
         let targets_data: Vec<i64> = items.iter().map(|item| item.label as i64).collect();
-        let targets = Tensor::<B, 1, Int>::from_data(
-            TensorData::new(targets_data, [batch_size]),
-            device,
-        );
+        let targets =
+            Tensor::<B, 1, Int>::from_data(TensorData::new(targets_data, [batch_size]), device);
 
         PlantVillageBatch { images, targets }
     }
@@ -395,19 +394,17 @@ pub struct AugmentingBatcher<B: Backend> {
     device: B::Device,
     image_size: usize,
     augmenter: Augmenter,
-    /// Thread-local RNG wrapped in Mutex for interior mutability
-    rng: Mutex<ChaCha8Rng>,
+    /// Seed for creating thread-local RNGs (avoids lock contention)
+    seed: u64,
 }
 
 impl<B: Backend> Clone for AugmentingBatcher<B> {
     fn clone(&self) -> Self {
-        // Create a new RNG with a different seed for each clone
-        let current_seed = self.rng.lock().unwrap().clone();
         Self {
             device: self.device.clone(),
             image_size: self.image_size,
             augmenter: self.augmenter.clone(),
-            rng: Mutex::new(current_seed),
+            seed: self.seed,
         }
     }
 }
@@ -427,17 +424,22 @@ impl<B: Backend> AugmentingBatcher<B> {
             device,
             image_size,
             augmenter: Augmenter::new(AugmentationConfig::default(), image_size as u32),
-            rng: Mutex::new(ChaCha8Rng::seed_from_u64(seed)),
+            seed,
         }
     }
 
     /// Create with a specific augmentation config
-    pub fn with_config(device: B::Device, image_size: usize, config: AugmentationConfig, seed: u64) -> Self {
+    pub fn with_config(
+        device: B::Device,
+        image_size: usize,
+        config: AugmentationConfig,
+        seed: u64,
+    ) -> Self {
         Self {
             device,
             image_size,
             augmenter: Augmenter::new(config, image_size as u32),
-            rng: Mutex::new(ChaCha8Rng::seed_from_u64(seed)),
+            seed,
         }
     }
 
@@ -463,9 +465,13 @@ impl<B: Backend> Batcher<B, RawPlantVillageItem, PlantVillageBatch<B>> for Augme
         let mut images_data = Vec::with_capacity(batch_size * channels * height * width);
         let mut targets_data = Vec::with_capacity(batch_size);
 
+        // Create a thread-local RNG for this batch (no lock contention across threads)
+        use rand::SeedableRng;
+        let batch_seed = rand::random::<u64>();
+        let mut rng = ChaCha8Rng::seed_from_u64(batch_seed);
+
         for item in items {
             // Apply augmentation and preprocessing
-            let mut rng = self.rng.lock().unwrap();
             let tensor_data = self.augmenter.preprocess(item.image, Some(&mut rng));
             images_data.extend(tensor_data);
             targets_data.push(item.label as i64);
@@ -490,10 +496,8 @@ impl<B: Backend> Batcher<B, RawPlantVillageItem, PlantVillageBatch<B>> for Augme
         let images = (images - mean) / std;
 
         // Create targets tensor
-        let targets = Tensor::<B, 1, Int>::from_data(
-            TensorData::new(targets_data, [batch_size]),
-            device,
-        );
+        let targets =
+            Tensor::<B, 1, Int>::from_data(TensorData::new(targets_data, [batch_size]), device);
 
         PlantVillageBatch { images, targets }
     }
@@ -540,6 +544,7 @@ pub struct PseudoLabelBatch<B: Backend> {
 /// Batcher for pseudo-labeled data with confidence weights
 #[derive(Clone, Debug)]
 pub struct PseudoLabelBatcher<B: Backend> {
+    #[allow(dead_code)]
     device: B::Device,
     image_size: usize,
 }
@@ -586,17 +591,13 @@ impl<B: Backend> Batcher<B, PseudoLabeledItem, PseudoLabelBatch<B>> for PseudoLa
 
         // Create targets tensor
         let targets_data: Vec<i64> = items.iter().map(|item| item.item.label as i64).collect();
-        let targets = Tensor::<B, 1, Int>::from_data(
-            TensorData::new(targets_data, [batch_size]),
-            device,
-        );
+        let targets =
+            Tensor::<B, 1, Int>::from_data(TensorData::new(targets_data, [batch_size]), device);
 
         // Create weights tensor (confidence scores)
         let weights_data: Vec<f32> = items.iter().map(|item| item.confidence).collect();
-        let weights = Tensor::<B, 1>::from_floats(
-            TensorData::new(weights_data, [batch_size]),
-            device,
-        );
+        let weights =
+            Tensor::<B, 1>::from_floats(TensorData::new(weights_data, [batch_size]), device);
 
         PseudoLabelBatch {
             images,
@@ -736,4 +737,3 @@ impl Dataset<PlantVillageItem> for CombinedDataset {
         self.labeled_items.len() + self.pseudo_items.len()
     }
 }
-

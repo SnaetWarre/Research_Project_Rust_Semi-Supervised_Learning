@@ -3,7 +3,7 @@
 //! This module provides utilities for computing and analyzing metrics
 //! specific to incremental learning scenarios.
 
-use super::{IncrementalResult, StepMetrics};
+use super::IncrementalResult;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
@@ -193,11 +193,7 @@ pub struct ClassIncrementalMetrics {
 
 impl ClassIncrementalMetrics {
     /// Compute metrics from predictions and labels
-    pub fn compute(
-        predictions: &[usize],
-        labels: &[usize],
-        num_old_classes: usize,
-    ) -> Self {
+    pub fn compute(predictions: &[usize], labels: &[usize], num_old_classes: usize) -> Self {
         if predictions.len() != labels.len() {
             return Self::default();
         }
@@ -263,7 +259,8 @@ impl Default for ClassIncrementalMetrics {
 
 /// Export results to CSV format
 pub fn export_to_csv(result: &IncrementalResult) -> String {
-    let mut csv = String::from("step,task,accuracy,avg_accuracy,backward_transfer,forward_transfer\n");
+    let mut csv =
+        String::from("step,task,accuracy,avg_accuracy,backward_transfer,forward_transfer\n");
 
     for step_metrics in &result.step_metrics {
         for (task_idx, &acc) in step_metrics.task_accuracies.iter().enumerate() {
@@ -273,8 +270,14 @@ pub fn export_to_csv(result: &IncrementalResult) -> String {
                 task_idx,
                 acc,
                 step_metrics.average_accuracy,
-                step_metrics.backward_transfer.map(|v| format!("{:.4}", v)).unwrap_or_default(),
-                step_metrics.forward_transfer.map(|v| format!("{:.4}", v)).unwrap_or_default(),
+                step_metrics
+                    .backward_transfer
+                    .map(|v| format!("{:.4}", v))
+                    .unwrap_or_default(),
+                step_metrics
+                    .forward_transfer
+                    .map(|v| format!("{:.4}", v))
+                    .unwrap_or_default(),
             ));
         }
     }
@@ -310,7 +313,8 @@ impl MethodComparison {
         }
 
         println!("\n=== Method Comparison ===");
-        println!("{:<15} {:>12} {:>12} {:>12} {:>12} {:>12}",
+        println!(
+            "{:<15} {:>12} {:>12} {:>12} {:>12} {:>12}",
             "Method", "Avg Acc", "BWT", "FWT", "Forgetting", "Intransig."
         );
         println!("{}", "-".repeat(77));
@@ -332,18 +336,16 @@ impl MethodComparison {
     pub fn best_by_accuracy(&self) -> Option<(&String, &IncrementalAnalysis)> {
         self.results
             .iter()
-            .max_by(|(_, a), (_, b)| {
-                a.average_accuracy.partial_cmp(&b.average_accuracy).unwrap()
-            })
+            .max_by(|(_, a), (_, b)| a.average_accuracy.partial_cmp(&b.average_accuracy).unwrap())
     }
 
     /// Get best method by backward transfer (least forgetting)
     pub fn best_by_backward_transfer(&self) -> Option<(&String, &IncrementalAnalysis)> {
-        self.results
-            .iter()
-            .max_by(|(_, a), (_, b)| {
-                a.backward_transfer.partial_cmp(&b.backward_transfer).unwrap()
-            })
+        self.results.iter().max_by(|(_, a), (_, b)| {
+            a.backward_transfer
+                .partial_cmp(&b.backward_transfer)
+                .unwrap()
+        })
     }
 }
 
@@ -355,8 +357,8 @@ impl Default for MethodComparison {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use super::super::{ExperimentMetadata, IncrementalConfig, IncrementalMethod, TrainingMetrics};
+    use super::*;
 
     #[test]
     fn test_average_accuracy() {
@@ -370,18 +372,12 @@ mod tests {
     #[test]
     fn test_backward_transfer() {
         // Perfect retention
-        let matrix = vec![
-            vec![0.9, 0.0],
-            vec![0.9, 0.8],
-        ];
+        let matrix = vec![vec![0.9, 0.0], vec![0.9, 0.8]];
         let bwt = backward_transfer(&matrix);
         assert_eq!(bwt, 0.0); // No change in task 0 accuracy
 
         // Forgetting
-        let matrix = vec![
-            vec![0.9, 0.0],
-            vec![0.7, 0.8],
-        ];
+        let matrix = vec![vec![0.9, 0.0], vec![0.7, 0.8]];
         let bwt = backward_transfer(&matrix);
         assert!((bwt - (-0.2)).abs() < 1e-6); // Task 0 dropped by 0.2
     }
@@ -398,11 +394,7 @@ mod tests {
 
     #[test]
     fn test_forgetting_measure() {
-        let matrix = vec![
-            vec![0.9, 0.0],
-            vec![0.9, 0.8],
-            vec![0.7, 0.85],
-        ];
+        let matrix = vec![vec![0.9, 0.0], vec![0.9, 0.8], vec![0.7, 0.85]];
         let forgetting = forgetting_measure(&matrix);
         // Max acc on task 0 was 0.9 (at step 0 and 1), final is 0.7, diff = 0.2
         // Max acc on task 1 was 0.85 (at step 2), final is 0.85, diff = 0.0
@@ -423,11 +415,11 @@ mod tests {
         // Actually: new class labels are at indices 3,4,5 with labels [3,3,5]
         // predictions are [3,4,5], so we have: 3==3 (correct), 4!=3 (wrong), 5==5 (correct)
         // That's 2/3 correct = 0.666...
-        assert!((metrics.new_class_accuracy - 2.0/3.0).abs() < 1e-6);
+        assert!((metrics.new_class_accuracy - 2.0 / 3.0).abs() < 1e-6);
 
         // Overall: 4/6 correct
         // Overall: 5/6 correct (0,1,2,3,5 are correct, only index 4 is wrong)
-        assert!((metrics.overall_accuracy - 5.0/6.0).abs() < 1e-6);
+        assert!((metrics.overall_accuracy - 5.0 / 6.0).abs() < 1e-6);
     }
 
     #[test]
@@ -510,16 +502,14 @@ mod tests {
     #[test]
     fn test_export_to_csv() {
         let result = IncrementalResult {
-            step_metrics: vec![
-                StepMetrics {
-                    step: 0,
-                    training: TrainingMetrics::new(),
-                    task_accuracies: vec![0.85],
-                    average_accuracy: 0.85,
-                    backward_transfer: None,
-                    forward_transfer: None,
-                },
-            ],
+            step_metrics: vec![StepMetrics {
+                step: 0,
+                training: TrainingMetrics::new(),
+                task_accuracies: vec![0.85],
+                average_accuracy: 0.85,
+                backward_transfer: None,
+                forward_transfer: None,
+            }],
             metadata: ExperimentMetadata {
                 name: "test".to_string(),
                 config: IncrementalConfig {

@@ -320,13 +320,13 @@ mod tests {
         let dims = output.dims();
 
         assert_eq!(dims[0], 2); // batch size
-        assert_eq!(dims[1], 39); // num classes
+        assert_eq!(dims[1], 38); // num classes (PlantVillage has 38 classes)
     }
 
     #[test]
     fn test_plant_classifier_lite_output_shape() {
         let device = Default::default();
-        let model = PlantClassifierLite::<TestBackend>::new(39, 0.5, &device);
+        let model = PlantClassifierLite::<TestBackend>::new(38, 0.5, &device);
 
         let input = Tensor::<TestBackend, 4>::zeros([1, 3, 256, 256], &device);
 
@@ -334,6 +334,6 @@ mod tests {
         let dims = output.dims();
 
         assert_eq!(dims[0], 1);
-        assert_eq!(dims[1], 39);
+        assert_eq!(dims[1], 38); // PlantVillage has 38 classes
     }
 }

@@ -67,13 +67,35 @@
 
 <div class="p-6 space-y-6">
   <div class="flex items-center justify-between">
-    <h2 class="text-2xl font-bold" style="color: var(--text-main)">Live Inference</h2>
-    {#if !$modelInfo.loaded}
-      <span class="text-sm flex items-center gap-2" style="color: var(--warning)">
-        <AlertTriangle class="w-4 h-4" />
-        No model loaded
-      </span>
-    {/if}
+    <div>
+      <h2 class="text-2xl font-bold" style="color: var(--text-main)">Live Inference</h2>
+      {#if $modelInfo.loaded && $modelInfo.path}
+        <p class="text-xs text-gray-400 mt-1">
+          Using: {$modelInfo.path.includes('ssl') ? 'SSL-trained model (post-training)' : 'Base CNN model'}
+        </p>
+      {/if}
+    </div>
+    <div class="flex items-center gap-4">
+      <a 
+        href="https://snaetwarre.github.io/plantvillage-demo/" 
+        target="_blank"
+        class="text-sm flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg transition-colors"
+        title="Open PWA for local edge inference demo"
+      >
+        🌐 Open PWA Demo
+      </a>
+      {#if !$modelInfo.loaded}
+        <span class="text-sm flex items-center gap-2" style="color: var(--warning)">
+          <AlertTriangle class="w-4 h-4" />
+          No model loaded
+        </span>
+      {:else}
+        <span class="text-sm flex items-center gap-2 text-green-400">
+          <CheckCircle class="w-4 h-4" />
+          Model ready
+        </span>
+      {/if}
+    </div>
   </div>
 
   <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">

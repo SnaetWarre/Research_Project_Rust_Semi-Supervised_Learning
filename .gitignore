@@ -1,37 +1,14 @@
-# Data (large files - do not commit)
-plantvillage_ssl/data/
-cifar10_semi_supervised/
-*.tar.gz
-
-# Build artifacts
-plantvillage_ssl/target/
-plantvillage_ssl/server/target/
-plantvillage_ssl/gui/src-tauri/target/
-**/target/
-
-# Output/models (generated, do not commit)
-plantvillage_ssl/output/
-!plantvillage_ssl/output/benchmarks/
+# Ignore large data directories
+data/
 output/
-
-# Python cache
-__pycache__/
-*.pyc
-
-# IDE
-.idea/
-.vscode/
-*.swp
-*.swo
-
-# Mobile export - separate GitHub Pages repo
-plantvillage_ssl/mobile_export/pwa/
-
-# Python virtual environments
-venv/
-.venv/
-
-.venv311/
-
-# Node.js
+target/
 node_modules/
+.DS_Store
+
+# Keep the assets data since it's needed for the bundle (but maybe warn user)
+# Actually, 7GB is too big for GitHub. We should probably ignore assets/data/farmer_demo too
+gui/src-tauri/assets/data/farmer_demo/
+
+# Ignore IDE files
+.vscode/
+.idea/

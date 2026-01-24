@@ -1,0 +1,262 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/*
+ * PlantVillage SSL Dashboard - Professional Dark Theme
+ * Palette: Zinc (Black/Gray/White) + Blue Accent
+ */
+
+:root {
+    /* Primitive Colors - Zinc Scale */
+    --c-black: #000000;
+    --c-zinc-950: #09090b;
+    --c-zinc-900: #18181b;
+    --c-zinc-800: #27272a;
+    --c-zinc-700: #3f3f46;
+    --c-zinc-600: #52525b;
+    --c-zinc-400: #a1a1aa;
+    --c-zinc-200: #e4e4e7;
+    --c-zinc-100: #f4f4f5;
+    --c-white: #ffffff;
+
+    /* Accent Color */
+    --c-accent: #3b82f6;      /* Blue 500 */
+    --c-accent-hover: #2563eb; /* Blue 600 */
+    --c-accent-dim: rgba(59, 130, 246, 0.15);
+
+    /* Semantic Tokens */
+    --bg-app: var(--c-black);
+    --bg-panel: var(--c-zinc-900);
+    --bg-surface: var(--c-zinc-950);
+    --bg-hover: var(--c-zinc-800);
+    
+    --border-base: var(--c-zinc-800);
+    --border-highlight: var(--c-zinc-700);
+
+    --text-main: var(--c-zinc-100);
+    --text-secondary: var(--c-zinc-400);
+    --text-inverse: var(--c-black);
+
+    /* Status Colors */
+    --success: #10b981;
+    --warning: #f59e0b;
+    --error: #ef4444;
+    --info: #3b82f6;
+
+    /* Common Components */
+    --card-radius: 12px;
+    --btn-radius: 8px;
+    
+    /* Mobile Safe Areas */
+    --safe-top: env(safe-area-inset-top);
+    --safe-bottom: env(safe-area-inset-bottom);
+}
+
+@layer base {
+    * {
+        border-color: var(--border-base);
+    }
+
+    body {
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
+        background-color: var(--bg-app);
+        color: var(--text-main);
+        margin: 0;
+        padding: 0;
+        -webkit-font-smoothing: antialiased;
+        overflow-x: hidden;
+        overscroll-behavior-y: none; /* Prevent rubber-banding on body */
+    }
+}
+
+/* Scrollbar */
+::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+}
+
+::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+    background: var(--c-zinc-800);
+    border-radius: 99px;
+}
+
+/* Component Classes */
+
+/* Cards */
+.card {
+    background: var(--bg-panel);
+    border: 1px solid var(--border-base);
+    border-radius: var(--card-radius);
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+
+/* Buttons */
+.btn-primary {
+    @apply font-medium py-3 px-4 transition-all duration-200;
+    background-color: var(--c-white);
+    color: var(--c-black);
+    border-radius: var(--btn-radius);
+    border: 1px solid transparent;
+    min-height: 44px; /* Touch target */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    touch-action: manipulation;
+}
+
+.btn-primary:active:not(:disabled) {
+    transform: scale(0.98);
+    background-color: var(--c-zinc-200);
+}
+
+.btn-primary:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+/* Secondary button usually outlined or ghost in dark mode */
+.btn-secondary {
+    @apply font-medium py-3 px-4 transition-all duration-200;
+    background-color: transparent;
+    color: var(--text-main);
+    border: 1px solid var(--border-base);
+    border-radius: var(--btn-radius);
+    min-height: 44px; /* Touch target */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    touch-action: manipulation;
+}
+
+.btn-secondary:active:not(:disabled) {
+    background-color: var(--bg-hover);
+    border-color: var(--border-highlight);
+    transform: scale(0.98);
+}
+
+.btn-accent {
+    @apply font-medium py-3 px-4 transition-all duration-200;
+    background-color: var(--c-accent);
+    color: white;
+    border-radius: var(--btn-radius);
+    border: none;
+    min-height: 44px; /* Touch target */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    touch-action: manipulation;
+}
+
+.btn-accent:active:not(:disabled) {
+    background-color: var(--c-accent-hover);
+    transform: scale(0.98);
+}
+
+/* Inputs */
+.input {
+    background: var(--bg-surface);
+    border: 1px solid var(--border-base);
+    color: var(--text-main);
+    border-radius: var(--btn-radius);
+    padding: 0.75rem 1rem; /* Larger touch area */
+    transition: all 0.2s;
+    font-size: 16px; /* Prevent iOS zoom */
+    width: 100%;
+}
+
+.input:focus {
+    outline: none;
+    border-color: var(--c-accent);
+    box-shadow: 0 0 0 2px var(--c-accent-dim);
+}
+
+.input::placeholder {
+    color: var(--c-zinc-600);
+}
+
+/* Tables */
+.table-container {
+    border: 1px solid var(--border-base);
+    border-radius: var(--card-radius);
+    overflow: hidden;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+}
+
+.table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.table th {
+    background: var(--bg-surface);
+    color: var(--text-secondary);
+    font-weight: 500;
+    text-align: left;
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--border-base);
+    font-size: 14px;
+}
+
+.table td {
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--border-base);
+    color: var(--text-main);
+    font-size: 14px;
+}
+
+/* Badges */
+.badge {
+    @apply inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium;
+}
+
+.badge-success { background: rgba(16, 185, 129, 0.15); color: var(--success); }
+.badge-warning { background: rgba(245, 158, 11, 0.15); color: var(--warning); }
+.badge-error { background: rgba(239, 68, 68, 0.15); color: var(--error); }
+.badge-info { background: rgba(59, 130, 246, 0.15); color: var(--info); }
+
+/* Progress */
+.progress-bar {
+    background: var(--bg-surface);
+    height: 8px;
+    border-radius: 99px;
+    overflow: hidden;
+}
+
+.progress-bar-fill {
+    background: var(--c-accent);
+    height: 100%;
+    transition: width 0.5s ease;
+}
+
+/* Mobile Optimizations */
+@media (max-width: 768px) {
+    /* Touch Targets */
+    button, input, select, .nav-item {
+        min-height: 44px;
+    }
+    
+    /* Typography */
+    h1 { font-size: 1.75rem !important; }
+    h2 { font-size: 1.5rem !important; }
+    h3 { font-size: 1.25rem !important; }
+    
+    /* Spacing */
+    .p-6 { padding: 1rem !important; }
+    .space-y-6 > :not([hidden]) ~ :not([hidden]) { --tw-space-y-reverse: 0; margin-top: 1rem !important; margin-bottom: 0 !important; }
+    
+    /* Hide scrollbars but keep functionality */
+    .overflow-x-auto::-webkit-scrollbar {
+        display: none;
+    }
+    
+    .overflow-x-auto {
+        -ms-overflow-style: none;
+        scrollbar-width: none;
+    }
+}

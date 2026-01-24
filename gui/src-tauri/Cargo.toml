@@ -1,0 +1,66 @@
+[package]
+name = "plantvillage-gui"
+version = "0.1.0"
+description = "PlantVillage SSL Dashboard - Semi-Supervised Learning Visualization"
+authors = ["Warre Snaet"]
+edition = "2021"
+
+[lib]
+name = "plantvillage_gui_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = ["devtools"] }
+tauri-plugin-opener = "2"
+tauri-plugin-dialog = "2"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+tokio = { version = "1", features = ["full"] }
+anyhow = "1.0"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+
+# Reference to the unified workspace crates
+# Default to CUDA on desktop, NdArray on mobile
+plantvillage_ssl = { path = "../..", default-features = false }
+
+burn = { version = "0.20.0-pre", default-features = false }
+burn-cuda = { version = "0.20.0-pre", optional = true }
+burn-ndarray = { version = "0.20.0-pre", optional = true }
+
+# Image processing for inference
+image = "0.25"
+base64 = "0.22"
+
+# Async runtime
+futures = "0.3"
+
+# HTTP client for Jetson remote API
+reqwest = { version = "0.11", features = ["json", "stream"] }
+futures-util = "0.3"
+
+# Random number generation (for training)
+rand = "0.8"
+rand_chacha = "0.3"
+
+# File system traversal
+walkdir = "2.5"
+
+# Date/time for metadata
+chrono = "0.4"
+
+[features]
+# Default: Use ndarray (works everywhere including iOS)
+# Desktop users can enable cuda with: cargo build --features cuda --no-default-features
+default = ["custom-protocol", "ndarray"]
+custom-protocol = ["tauri/custom-protocol"]
+
+# Backend features
+cuda = ["burn-cuda", "burn/cuda", "plantvillage_ssl/cuda"]
+ndarray = ["burn-ndarray", "burn/ndarray", "plantvillage_ssl/ndarray"]
+
+# Mobile builds automatically use ndarray
+mobile = ["ndarray"]

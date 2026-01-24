@@ -1,63 +1,44 @@
-# Plant Disease Detection - Research Project
+# PlantVillage SSL
 
-**Student:** Warre Snaet | **Institution:** Howest MCT
+Semi-supervised learning implementation for plant disease classification using Rust + Burn framework.
 
-Semi-supervised learning for plant disease classification on edge devices (Jetson) using Rust.
+## Quick Start
 
----
-
-## 📁 Structure
-
-```
-Source/
-├── plantvillage_ssl/      # SSL implementation (pseudo-labeling) ✅ WORKS
-├── incremental_learning/  # Add new classes (5→6, 30→31 experiments)
-├── pytorch_reference/     # Python reference for comparison
-├── benchmarks/            # Framework comparison scripts
-└── research/              # Literature study, contract, meeting notes
-```
-
----
-
-## 🚀 Quick Start
-
-### 1. Download Dataset (Once)
 ```bash
-./download_plantvillage.sh
-```
+# 1. Download dataset (from repo root)
+cd .. && ./download_plantvillage.sh && cd plantvillage_ssl
 
-### 2. SSL Training
-```bash
-cd plantvillage_ssl
+# 2. Build
 cargo build --release
+
+# 3. Train with SSL (30% labeled)
 ./target/release/plantvillage_ssl ssl-train \
     --data-dir data/plantvillage/organized \
     --labeled-ratio 0.3 \
     --epochs 30 --cuda
+
+# Inference
+./target/release/plantvillage_ssl infer \
+    --model-path output/models/best_model.mpk \
+    --image-path /path/to/leaf.jpg
+
+# Benchmark on Jetson
+./target/release/plantvillage_ssl benchmark \
+    --model-path output/models/best_model.mpk
 ```
 
-### 3. Incremental Learning
-```bash
-cd incremental_learning
-cargo build --release
-./target/release/plant-incremental experiment \
-    --method lwf \
-    --base-classes 5 \
-    --new-classes 1 \
-    --data-dir ../plantvillage_ssl/data/plantvillage/organized
+## Structure
+
+```
+src/
+├── model/      # CNN architecture (32→64→128→256 filters)
+├── training/   # SSL pseudo-labeling
+├── inference/  # Inference pipeline
+├── dataset/    # Data loading
+└── utils/      # Helpers
 ```
 
----
+## Deployment
 
-## 🎯 Research Questions
-
-1. **SSL:** How efficient is pseudo-labeling on edge devices?
-2. **Incremental:** Is 5→6 harder than 30→31 classes?
-3. **Data efficiency:** How many images needed per new class?
-
----
-
-## 📖 Documentation
-
-- [plantvillage_ssl/docs/](plantvillage_ssl/docs/) - Installation & user guide
-- [research/literatuurstudie.md](research/literatuurstudie.md) - Literature review
+Works on NVIDIA Jetson Orin Nano without code changes (CUDA backend).
+See `docs/` for detailed installation and user guide.

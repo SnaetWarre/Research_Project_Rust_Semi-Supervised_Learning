@@ -5,6 +5,8 @@
 
 mod commands;
 mod state;
+mod device;
+mod backend;
 
 use std::sync::Arc;
 use tokio::sync::Mutex;
@@ -52,6 +54,9 @@ pub fn run() {
             }
         })
         .invoke_handler(tauri::generate_handler![
+            // System info commands
+            get_device_info,
+            get_backend_info,
             // Dataset commands
             commands::get_dataset_stats,
             commands::load_model,
@@ -97,6 +102,12 @@ pub fn run() {
             commands::reset_demo_session,
             commands::process_farmer_images,
             commands::manual_retrain_demo,
+            // Mobile SSL commands
+            commands::start_ssl_retraining,
+            commands::get_ssl_retraining_config,
+            // Dataset bundling commands
+            commands::create_dataset_bundle,
+            commands::load_bundle_metadata,
             // Exit app command
             exit_app,
         ])
@@ -107,4 +118,21 @@ pub fn run() {
 #[tauri::command]
 fn exit_app() {
     std::process::exit(0);
+}
+
+/// Get device information (Desktop vs Mobile, capabilities)
+#[tauri::command]
+fn get_device_info() -> Result<device::DeviceCapabilities, String> {
+    let device_type = device::DeviceType::detect();
+    Ok(device_type.capabilities())
+}
+
+/// Get backend information (CUDA vs NdArray)
+#[tauri::command]
+fn get_backend_info() -> Result<serde_json::Value, String> {
+    Ok(serde_json::json!({
+        "backend": backend::backend_name(),
+        "has_gpu": backend::has_gpu(),
+        "device": format!("{:?}", backend::default_device()),
+    }))
 }

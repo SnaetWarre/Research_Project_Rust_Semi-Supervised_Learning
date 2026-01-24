@@ -3,14 +3,14 @@
 //! Manages the global state for the Tauri application, including
 //! model state, training state, and dataset information.
 
+use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 use tokio::sync::RwLock;
-use serde::{Deserialize, Serialize};
 
-use burn_cuda::Cuda;
+use crate::backend::AdaptiveBackend;
 
-/// Type alias for the backend we use
-pub type AppBackend = Cuda;
+/// Type alias for the backend we use (automatically selected)
+pub type AppBackend = AdaptiveBackend;
 
 /// Application state shared across commands
 /// Note: Models are NOT stored here due to CUDA threading restrictions.

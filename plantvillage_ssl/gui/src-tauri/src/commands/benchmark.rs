@@ -49,7 +49,7 @@ pub struct BenchmarkResults {
 pub async fn run_benchmark(
     params: BenchmarkParams,
 ) -> Result<BenchmarkResults, String> {
-    use burn_cuda::Cuda;
+    use crate::backend::AdaptiveBackend;
     use plantvillage_ssl::inference::{BenchmarkConfig, run_benchmark as run_bench};
     
     // Determine model path
@@ -64,9 +64,9 @@ pub async fn run_benchmark(
         output_path: None,
     };
 
-    let device = <Cuda as burn::tensor::backend::Backend>::Device::default();
+    let device = <AdaptiveBackend as burn::tensor::backend::Backend>::Device::default();
     
-    let result = run_bench::<Cuda>(config, model_path, params.image_size, &device)
+    let result = run_bench::<AdaptiveBackend>(config, model_path, params.image_size, &device)
         .map_err(|e| format!("Benchmark failed: {:?}", e))?;
 
     Ok(BenchmarkResults {

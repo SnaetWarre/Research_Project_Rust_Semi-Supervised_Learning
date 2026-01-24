@@ -24,10 +24,12 @@ tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 
 # Reference to the unified workspace crates
-plantvillage_ssl = { path = "../..", features = ["cuda"] }
+# Default to CUDA on desktop, NdArray on mobile
+plantvillage_ssl = { path = "../..", default-features = false }
 
-burn = { version = "0.20.0-pre" }
-burn-cuda = { version = "0.20.0-pre" }
+burn = { version = "0.20.0-pre", default-features = false }
+burn-cuda = { version = "0.20.0-pre", optional = true }
+burn-ndarray = { version = "0.20.0-pre", optional = true }
 
 # Image processing for inference
 image = "0.25"
@@ -47,6 +49,17 @@ rand_chacha = "0.3"
 # File system traversal
 walkdir = "2.5"
 
+# Date/time for metadata
+chrono = "0.4"
+
 [features]
-default = ["custom-protocol"]
+# Default: Use CUDA on desktop (unless explicitly building for mobile)
+default = ["custom-protocol", "cuda"]
 custom-protocol = ["tauri/custom-protocol"]
+
+# Backend features
+cuda = ["burn-cuda", "burn/cuda", "plantvillage_ssl/cuda"]
+ndarray = ["burn-ndarray", "burn/ndarray", "plantvillage_ssl/ndarray"]
+
+# Mobile builds automatically use ndarray
+mobile = ["ndarray"]

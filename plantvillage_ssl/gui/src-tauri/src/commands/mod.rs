@@ -13,6 +13,8 @@ pub mod incremental;
 pub mod diagnostics;
 pub mod experiments;
 pub mod demo;
+pub mod ssl_mobile;
+pub mod dataset_bundle;
 
 // Re-export all commands for registration
 pub use dataset::*;
@@ -25,3 +27,5 @@ pub use incremental::*;
 pub use diagnostics::*;
 pub use experiments::*;
 pub use demo::*;
+pub use ssl_mobile::*;
+pub use dataset_bundle::*;

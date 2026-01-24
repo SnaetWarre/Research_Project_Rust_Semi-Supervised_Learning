@@ -152,7 +152,7 @@ pub struct DemoSession<B: AutodiffBackend> {
 
 /// Global demo session state
 pub type DemoSessionGlobal =
-    Arc<Mutex<Option<DemoSession<burn::backend::Autodiff<burn_cuda::Cuda>>>>>;
+    Arc<Mutex<Option<DemoSession<crate::backend::AdaptiveBackend>>>>;
 
 /// Initialize a new demo session
 #[tauri::command]
@@ -161,11 +161,10 @@ pub async fn init_demo_session(
     demo_session: State<'_, DemoSessionGlobal>,
     _app_state: State<'_, Arc<AppState>>,
 ) -> Result<DemoSessionState, String> {
-    use burn::backend::Autodiff;
-    use burn_cuda::Cuda;
+    use crate::backend::AdaptiveBackend;
 
     // Run initialization in blocking task
-    let session = tokio::task::spawn_blocking(move || init_session_inner::<Autodiff<Cuda>>(config))
+    let session = tokio::task::spawn_blocking(move || init_session_inner::<AdaptiveBackend>(config))
         .await
         .map_err(|e| format!("Failed to spawn task: {:?}", e))??;
 
@@ -184,8 +183,7 @@ pub async fn advance_demo_day(
     demo_session: State<'_, DemoSessionGlobal>,
     app: AppHandle,
 ) -> Result<DayResult, String> {
-    use burn::backend::Autodiff;
-    use burn_cuda::Cuda;
+    use crate::backend::AdaptiveBackend;
     use std::time::Instant;
 
     let total_start = Instant::now();
@@ -227,7 +225,7 @@ pub async fn advance_demo_day(
     let _ = app.emit("demo:progress", serde_json::json!({"step": "processing", "message": "Processing images..."}));
     let process_start = Instant::now();
     
-    let result = process_demo_day::<Autodiff<Cuda>>(session)
+    let result = process_demo_day::<AdaptiveBackend>(session)
         .map_err(|e| {
             tracing::error!("process_demo_day FAILED: {}", e);
             format!("Failed to process day: {}", e)
@@ -361,8 +359,7 @@ pub async fn process_farmer_images(
     demo_session: State<'_, DemoSessionGlobal>,
     app: AppHandle,
 ) -> Result<FarmerImportResult, String> {
-    use burn::backend::Autodiff;
-    use burn_cuda::Cuda;
+    use crate::backend::AdaptiveBackend;
     use std::time::Instant;
 
     let total_start = Instant::now();
@@ -400,7 +397,7 @@ pub async fn process_farmer_images(
 
     // Run inference on farmer images
     let inference_start = Instant::now();
-    let predictions = run_inference_on_images::<Autodiff<Cuda>>(
+    let predictions = run_inference_on_images::<AdaptiveBackend>(
         &session.model,
         &farmer_images,
         &session.batcher,

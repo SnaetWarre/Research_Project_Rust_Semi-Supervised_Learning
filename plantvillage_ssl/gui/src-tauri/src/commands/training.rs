@@ -86,8 +86,7 @@ pub async fn start_training(
     app: AppHandle,
     state: State<'_, Arc<AppState>>,
 ) -> Result<TrainingResult, String> {
-    use burn::backend::Autodiff;
-    use burn_cuda::Cuda;
+    use crate::backend::AdaptiveBackend;
 
     // Update state to running
     {
@@ -107,7 +106,7 @@ pub async fn start_training(
 
     // Run training in a blocking task since it's CPU/GPU intensive
     let result = tokio::task::spawn_blocking(move || {
-        run_training_inner::<Autodiff<Cuda>>(&params, &app)
+        run_training_inner::<AdaptiveBackend>(&params, &app)
     })
     .await
     .map_err(|e| format!("Training task failed: {:?}", e))?;

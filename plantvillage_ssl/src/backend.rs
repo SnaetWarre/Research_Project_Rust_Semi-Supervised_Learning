@@ -1,35 +1,39 @@
-//! Backend abstraction - CUDA GPU backend
+//! Backend abstraction - Multi-backend support
 //!
-//! This module strictly enforces usage of the CUDA backend.
-//! CPU fallbacks have been removed to ensure high-performance GPU execution.
+//! Supports both CUDA (GPU) and NdArray (CPU) backends with automatic selection.
 
 use burn::backend::Autodiff;
 
 // --------------------------------------------------------------------------------
-// BACKEND SELECTION: STRICTLY CUDA
+// BACKEND SELECTION: CUDA (preferred) or NdArray (fallback)
 // --------------------------------------------------------------------------------
 
 #[cfg(feature = "cuda")]
 pub type DefaultBackend = burn_cuda::Cuda;
 
-// Compile-time error if CUDA is not enabled!
-#[cfg(not(feature = "cuda"))]
-compile_error!("CUDA feature is required! CPU fallback has been disabled.");
+#[cfg(all(not(feature = "cuda"), any(feature = "ndarray", feature = "cpu")))]
+pub type DefaultBackend = burn_ndarray::NdArray;
+
+#[cfg(all(not(feature = "cuda"), not(feature = "ndarray"), not(feature = "cpu")))]
+compile_error!("At least one backend (cuda, ndarray, or cpu) must be enabled!");
 
 /// The default autodiff backend for training
 pub type TrainingBackend = Autodiff<DefaultBackend>;
 
-/// Get the default device (CUDA)
+/// Get the default device
 pub fn default_device() -> <DefaultBackend as burn::tensor::backend::Backend>::Device {
-    #[cfg(feature = "cuda")]
-    {
-        // Default to the first GPU
-        burn_cuda::CudaDevice::default()
-    }
+    <DefaultBackend as burn::tensor::backend::Backend>::Device::default()
 }
 
 /// Get a human-readable name for the current backend
 pub fn backend_name() -> &'static str {
     #[cfg(feature = "cuda")]
-    { "CUDA (GPU)" }
+    {
+        "CUDA (GPU)"
+    }
+
+    #[cfg(all(not(feature = "cuda"), any(feature = "ndarray", feature = "cpu")))]
+    {
+        "NdArray (CPU)"
+    }
 }

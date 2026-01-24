@@ -84,8 +84,7 @@ pub async fn start_simulation(
     app: AppHandle,
     state: State<'_, Arc<AppState>>,
 ) -> Result<SimulationResult, String> {
-    use burn::backend::Autodiff;
-    use burn_cuda::Cuda;
+    use crate::backend::AdaptiveBackend;
     
     // Update state to running
     {
@@ -103,7 +102,7 @@ pub async fn start_simulation(
 
     // Run simulation in blocking task
     let result = tokio::task::spawn_blocking(move || {
-        run_simulation_inner::<Autodiff<Cuda>>(&params, &app)
+        run_simulation_inner::<AdaptiveBackend>(&params, &app)
     })
     .await
     .map_err(|e| format!("Simulation task failed: {:?}", e))?;

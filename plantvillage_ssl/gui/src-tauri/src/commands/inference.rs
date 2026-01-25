@@ -9,13 +9,91 @@ use tauri::State;
 use std::sync::Arc;
 
 use burn::module::Module;
+use burn::module::AutodiffModule;
 use burn::record::CompactRecorder;
 use burn::tensor::Tensor;
-use image::imageops::FilterType;
 
 use plantvillage_ssl::model::cnn::{PlantClassifier, PlantClassifierConfig};
 
 use crate::state::{AppState, AppBackend};
+use crate::backend::InferenceBackend;
+
+use image::{DynamicImage, RgbImage, Rgb};
+
+/// PIL-compatible bilinear resize with proper anti-aliasing.
+/// This matches PIL's Image.resize(size, BILINEAR) exactly.
+/// 
+/// For downscaling, uses a scaled triangle filter with support radius
+/// equal to the scale factor, which provides proper anti-aliasing.
+fn pil_bilinear_resize(img: &DynamicImage, target_width: u32, target_height: u32) -> RgbImage {
+    let src = img.to_rgb8();
+    let src_width = src.width() as usize;
+    let src_height = src.height() as usize;
+    let target_width = target_width as usize;
+    let target_height = target_height as usize;
+    
+    let mut dst = RgbImage::new(target_width as u32, target_height as u32);
+    
+    // Scale factors
+    let x_scale = src_width as f32 / target_width as f32;
+    let y_scale = src_height as f32 / target_height as f32;
+    
+    // Support radius (for downscaling, use scale factor for anti-aliasing)
+    let support_x = x_scale.max(1.0);
+    let support_y = y_scale.max(1.0);
+    
+    for dy in 0..target_height {
+        for dx in 0..target_width {
+            // Center of output pixel in source coordinates
+            let src_cx = (dx as f32 + 0.5) * x_scale;
+            let src_cy = (dy as f32 + 0.5) * y_scale;
+            
+            // Determine contributing source pixels
+            let x_min = (src_cx - support_x).floor().max(0.0) as usize;
+            let x_max = (src_cx + support_x).ceil().min(src_width as f32 - 1.0) as usize;
+            let y_min = (src_cy - support_y).floor().max(0.0) as usize;
+            let y_max = (src_cy + support_y).ceil().min(src_height as f32 - 1.0) as usize;
+            
+            let mut total_weight = 0.0f32;
+            let mut weighted_sum = [0.0f32; 3]; // RGB
+            
+            for sy in y_min..=y_max {
+                for sx in x_min..=x_max {
+                    // Normalized distance from center
+                    let dist_x = ((sx as f32 + 0.5) - src_cx).abs() / support_x;
+                    let dist_y = ((sy as f32 + 0.5) - src_cy).abs() / support_y;
+                    
+                    // Triangle (bilinear) kernel
+                    if dist_x < 1.0 && dist_y < 1.0 {
+                        let weight_x = 1.0 - dist_x;
+                        let weight_y = 1.0 - dist_y;
+                        let weight = weight_x * weight_y;
+                        
+                        let pixel = src.get_pixel(sx as u32, sy as u32);
+                        weighted_sum[0] += pixel[0] as f32 * weight;
+                        weighted_sum[1] += pixel[1] as f32 * weight;
+                        weighted_sum[2] += pixel[2] as f32 * weight;
+                        total_weight += weight;
+                    }
+                }
+            }
+            
+            if total_weight > 0.0 {
+                dst.put_pixel(
+                    dx as u32,
+                    dy as u32,
+                    Rgb([
+                        (weighted_sum[0] / total_weight).round() as u8,
+                        (weighted_sum[1] / total_weight).round() as u8,
+                        (weighted_sum[2] / total_weight).round() as u8,
+                    ])
+                );
+            }
+        }
+    }
+    
+    dst
+}
 
 /// Prediction result for a single image
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -86,9 +164,9 @@ fn get_class_name(class_id: usize) -> String {
     }
 }
 
-/// Helper to load model from path
-fn load_model_from_path(model_path: &Path) -> Result<PlantClassifier<AppBackend>, String> {
-    let device = <AppBackend as burn::tensor::backend::Backend>::Device::default();
+/// Helper to load model from path (for inference - no autodiff, no dropout)
+fn load_model_from_path(model_path: &Path) -> Result<PlantClassifier<InferenceBackend>, String> {
+    let device = <InferenceBackend as burn::tensor::backend::Backend>::Device::default();
 
     let config = PlantClassifierConfig {
         num_classes: 38,
@@ -98,7 +176,7 @@ fn load_model_from_path(model_path: &Path) -> Result<PlantClassifier<AppBackend>
         base_filters: 32,
     };
 
-    let model: PlantClassifier<AppBackend> = PlantClassifier::new(&config, &device);
+    let model: PlantClassifier<InferenceBackend> = PlantClassifier::new(&config, &device);
     let recorder = CompactRecorder::new();
 
     model
@@ -131,11 +209,10 @@ pub async fn run_inference(
     let img = image::open(path)
         .map_err(|e| format!("Failed to load image: {:?}", e))?;
 
-    let img = img.resize_exact(input_size as u32, input_size as u32, FilterType::Triangle);
-    let img = img.to_rgb8();
+    let img = pil_bilinear_resize(&img, input_size as u32, input_size as u32);
 
     // Convert to tensor [1, 3, H, W]
-    let device = <AppBackend as burn::tensor::backend::Backend>::Device::default();
+    let device = <InferenceBackend as burn::tensor::backend::Backend>::Device::default();
     let mut pixels: Vec<f32> = Vec::with_capacity(3 * input_size * input_size);
 
     // Normalize to [0, 1] and arrange as CHW
@@ -148,19 +225,34 @@ pub async fn run_inference(
         }
     }
 
-    let tensor = Tensor::<AppBackend, 1>::from_floats(pixels.as_slice(), &device)
+    let tensor = Tensor::<InferenceBackend, 1>::from_floats(pixels.as_slice(), &device)
         .reshape([1, 3, input_size, input_size]);
 
+    // Debug: Print raw pixel stats
+    eprintln!("DEBUG: Raw pixel values (0-1) - min={:.3}, max={:.3}, mean={:.3}", 
+        pixels.iter().cloned().fold(f32::INFINITY, f32::min),
+        pixels.iter().cloned().fold(f32::NEG_INFINITY, f32::max),
+        pixels.iter().sum::<f32>() / pixels.len() as f32
+    );
+
     // Apply ImageNet normalization: (x - mean) / std
-    let mean = Tensor::<AppBackend, 4>::from_floats(
+    let mean = Tensor::<InferenceBackend, 4>::from_floats(
         burn::tensor::TensorData::new(vec![0.485f32, 0.456, 0.406], [1, 3, 1, 1]),
         &device,
     );
-    let std = Tensor::<AppBackend, 4>::from_floats(
+    let std = Tensor::<InferenceBackend, 4>::from_floats(
         burn::tensor::TensorData::new(vec![0.229f32, 0.224, 0.225], [1, 3, 1, 1]),
         &device,
     );
     let tensor = (tensor - mean) / std;
+
+    // Debug: Print tensor stats  
+    eprintln!("DEBUG: Tensor shape: {:?}", tensor.dims());
+    let tensor_clone = tensor.clone();
+    let min_val = tensor_clone.clone().min().into_scalar();
+    let max_val = tensor_clone.clone().max().into_scalar();
+    let mean_val = tensor_clone.clone().mean().into_scalar();
+    eprintln!("DEBUG: Normalized tensor - min={:.3}, max={:.3}, mean={:.3}", min_val, max_val, mean_val);
 
     // Run inference
     let start = Instant::now();
@@ -224,11 +316,10 @@ pub async fn run_inference_bytes(
     let img = image::load_from_memory(&image_bytes)
         .map_err(|e| format!("Failed to load image: {:?}", e))?;
 
-    let img = img.resize_exact(input_size as u32, input_size as u32, FilterType::Triangle);
-    let img = img.to_rgb8();
+    let img = pil_bilinear_resize(&img, input_size as u32, input_size as u32);
 
     // Convert to tensor [1, 3, H, W]
-    let device = <AppBackend as burn::tensor::backend::Backend>::Device::default();
+    let device = <InferenceBackend as burn::tensor::backend::Backend>::Device::default();
     let mut pixels: Vec<f32> = Vec::with_capacity(3 * input_size * input_size);
 
     for c in 0..3 {
@@ -240,19 +331,34 @@ pub async fn run_inference_bytes(
         }
     }
 
-    let tensor = Tensor::<AppBackend, 1>::from_floats(pixels.as_slice(), &device)
+    let tensor = Tensor::<InferenceBackend, 1>::from_floats(pixels.as_slice(), &device)
         .reshape([1, 3, input_size, input_size]);
 
+    // Debug: Print raw pixel stats
+    eprintln!("DEBUG: Raw pixel values (0-1) - min={:.3}, max={:.3}, mean={:.3}", 
+        pixels.iter().cloned().fold(f32::INFINITY, f32::min),
+        pixels.iter().cloned().fold(f32::NEG_INFINITY, f32::max),
+        pixels.iter().sum::<f32>() / pixels.len() as f32
+    );
+
     // Apply ImageNet normalization: (x - mean) / std
-    let mean = Tensor::<AppBackend, 4>::from_floats(
+    let mean = Tensor::<InferenceBackend, 4>::from_floats(
         burn::tensor::TensorData::new(vec![0.485f32, 0.456, 0.406], [1, 3, 1, 1]),
         &device,
     );
-    let std = Tensor::<AppBackend, 4>::from_floats(
+    let std = Tensor::<InferenceBackend, 4>::from_floats(
         burn::tensor::TensorData::new(vec![0.229f32, 0.224, 0.225], [1, 3, 1, 1]),
         &device,
     );
     let tensor = (tensor - mean) / std;
+
+    // Debug: Print tensor stats  
+    eprintln!("DEBUG: Tensor shape: {:?}", tensor.dims());
+    let tensor_clone = tensor.clone();
+    let min_val = tensor_clone.clone().min().into_scalar();
+    let max_val = tensor_clone.clone().max().into_scalar();
+    let mean_val = tensor_clone.clone().mean().into_scalar();
+    eprintln!("DEBUG: Normalized tensor - min={:.3}, max={:.3}, mean={:.3}", min_val, max_val, mean_val);
 
     // Run inference
     let start = Instant::now();

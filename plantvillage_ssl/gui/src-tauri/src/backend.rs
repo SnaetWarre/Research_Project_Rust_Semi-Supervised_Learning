@@ -14,12 +14,19 @@ use burn_cuda::Cuda;
 #[cfg(not(feature = "cuda"))]
 use burn_ndarray::NdArray;
 
-// Type alias for the training backend based on compile-time features
+// Type alias for the training backend (with autodiff)
 #[cfg(feature = "cuda")]
 pub type AdaptiveBackend = Autodiff<Cuda>;
 
 #[cfg(not(feature = "cuda"))]
 pub type AdaptiveBackend = Autodiff<NdArray>;
+
+// Type alias for the inference backend (without autodiff - disables dropout)
+#[cfg(feature = "cuda")]
+pub type InferenceBackend = Cuda;
+
+#[cfg(not(feature = "cuda"))]
+pub type InferenceBackend = NdArray;
 
 /// Get a human-readable name for the current backend
 pub fn backend_name() -> &'static str {

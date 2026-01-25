@@ -12,13 +12,14 @@ use std::sync::Arc;
 use burn::module::Module;
 use burn::record::CompactRecorder;
 use burn::tensor::{Tensor, TensorData};
-use image::imageops::FilterType;
+use image::{DynamicImage, RgbImage, Rgb};
 use rand::seq::SliceRandom;
 
 use plantvillage_ssl::model::cnn::{PlantClassifier, PlantClassifierConfig};
 use plantvillage_ssl::dataset::loader::PlantVillageDataset;
 
-use crate::state::{AppState, AppBackend};
+use crate::state::AppState;
+use crate::backend::InferenceBackend;
 
 /// Diagnostic results for model analysis
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -93,9 +94,76 @@ fn get_class_name(class_id: usize) -> String {
     }
 }
 
-/// Helper to load model from path
-fn load_model_from_path(model_path: &Path) -> Result<PlantClassifier<AppBackend>, String> {
-    let device = <AppBackend as burn::tensor::backend::Backend>::Device::default();
+/// PIL-compatible bilinear resize with proper anti-aliasing.
+/// This matches PIL's Image.resize(size, BILINEAR) exactly.
+/// (Same implementation as inference.rs)
+fn pil_bilinear_resize(img: &DynamicImage, target_width: u32, target_height: u32) -> RgbImage {
+    let src = img.to_rgb8();
+    let src_width = src.width() as usize;
+    let src_height = src.height() as usize;
+    let target_width = target_width as usize;
+    let target_height = target_height as usize;
+    
+    let mut dst = RgbImage::new(target_width as u32, target_height as u32);
+    
+    let x_scale = src_width as f32 / target_width as f32;
+    let y_scale = src_height as f32 / target_height as f32;
+    
+    let support_x = x_scale.max(1.0);
+    let support_y = y_scale.max(1.0);
+    
+    for dy in 0..target_height {
+        for dx in 0..target_width {
+            let src_cx = (dx as f32 + 0.5) * x_scale;
+            let src_cy = (dy as f32 + 0.5) * y_scale;
+            
+            let x_min = (src_cx - support_x).floor().max(0.0) as usize;
+            let x_max = (src_cx + support_x).ceil().min(src_width as f32 - 1.0) as usize;
+            let y_min = (src_cy - support_y).floor().max(0.0) as usize;
+            let y_max = (src_cy + support_y).ceil().min(src_height as f32 - 1.0) as usize;
+            
+            let mut total_weight = 0.0f32;
+            let mut weighted_sum = [0.0f32; 3];
+            
+            for sy in y_min..=y_max {
+                for sx in x_min..=x_max {
+                    let dist_x = ((sx as f32 + 0.5) - src_cx).abs() / support_x;
+                    let dist_y = ((sy as f32 + 0.5) - src_cy).abs() / support_y;
+                    
+                    if dist_x < 1.0 && dist_y < 1.0 {
+                        let weight_x = 1.0 - dist_x;
+                        let weight_y = 1.0 - dist_y;
+                        let weight = weight_x * weight_y;
+                        
+                        let pixel = src.get_pixel(sx as u32, sy as u32);
+                        weighted_sum[0] += pixel[0] as f32 * weight;
+                        weighted_sum[1] += pixel[1] as f32 * weight;
+                        weighted_sum[2] += pixel[2] as f32 * weight;
+                        total_weight += weight;
+                    }
+                }
+            }
+            
+            if total_weight > 0.0 {
+                dst.put_pixel(
+                    dx as u32,
+                    dy as u32,
+                    Rgb([
+                        (weighted_sum[0] / total_weight).round() as u8,
+                        (weighted_sum[1] / total_weight).round() as u8,
+                        (weighted_sum[2] / total_weight).round() as u8,
+                    ])
+                );
+            }
+        }
+    }
+    
+    dst
+}
+
+/// Helper to load model from path (for inference - no autodiff, no dropout)
+fn load_model_from_path(model_path: &Path) -> Result<PlantClassifier<InferenceBackend>, String> {
+    let device = <InferenceBackend as burn::tensor::backend::Backend>::Device::default();
 
     let config = PlantClassifierConfig {
         num_classes: 38,
@@ -105,7 +173,7 @@ fn load_model_from_path(model_path: &Path) -> Result<PlantClassifier<AppBackend>
         base_filters: 32,
     };
 
-    let model: PlantClassifier<AppBackend> = PlantClassifier::new(&config, &device);
+    let model: PlantClassifier<InferenceBackend> = PlantClassifier::new(&config, &device);
     let recorder = CompactRecorder::new();
 
     model
@@ -162,7 +230,7 @@ pub async fn run_model_diagnostics(
     let mut low_confidence_count = 0;
     let mut input_class_counts: HashMap<String, usize> = HashMap::new();
 
-    let device = <AppBackend as burn::tensor::backend::Backend>::Device::default();
+    let device = <InferenceBackend as burn::tensor::backend::Backend>::Device::default();
 
     // Run predictions on sampled images
     for &i in selected_indices {
@@ -181,14 +249,13 @@ pub async fn run_model_diagnostics(
             }
         }
 
-        // Load and preprocess image
+        // Load and preprocess image using PIL-compatible resize
         let img = match image::open(path) {
             Ok(img) => img,
             Err(_) => continue,
         };
 
-        let img = img.resize_exact(input_size as u32, input_size as u32, FilterType::Triangle);
-        let img = img.to_rgb8();
+        let img = pil_bilinear_resize(&img, input_size as u32, input_size as u32);
 
         // Convert to tensor
         let mut pixels: Vec<f32> = Vec::with_capacity(3 * input_size * input_size);
@@ -202,15 +269,15 @@ pub async fn run_model_diagnostics(
             }
         }
 
-        let tensor = Tensor::<AppBackend, 1>::from_floats(pixels.as_slice(), &device)
+        let tensor = Tensor::<InferenceBackend, 1>::from_floats(pixels.as_slice(), &device)
             .reshape([1, 3, input_size, input_size]);
 
         // Apply ImageNet normalization (same as training)
-        let mean = Tensor::<AppBackend, 4>::from_floats(
+        let mean = Tensor::<InferenceBackend, 4>::from_floats(
             TensorData::new(vec![0.485f32, 0.456, 0.406], [1, 3, 1, 1]),
             &device,
         );
-        let std = Tensor::<AppBackend, 4>::from_floats(
+        let std = Tensor::<InferenceBackend, 4>::from_floats(
             TensorData::new(vec![0.229f32, 0.224, 0.225], [1, 3, 1, 1]),
             &device,
         );

@@ -9,7 +9,7 @@ benchmarks/
 ├── README.md                    # This file
 ├── results/                     # Benchmark result files
 │   ├── desktop_gpu/            # Desktop GPU (NVIDIA RTX/GTX) results
-│   ├── jetson_orin_nano/       # Jetson Orin Nano results
+│   ├── embedded_device/       # Embedded edge device results
 │   └── cpu_only/               # CPU-only baseline results
 ├── comparisons/                 # Cross-implementation comparisons
 │   ├── burn_vs_pytorch.csv     # Burn vs PyTorch comparison
@@ -30,7 +30,7 @@ benchmarks/
 
 ### Resource Metrics
 
-| Metric | Jetson Limit | Description |
+| Metric | Edge Device Limit | Description |
 |--------|--------------|-------------|
 | **GPU Memory** | <4GB | Peak GPU memory usage |
 | **CPU Usage** | <80% | Average CPU utilization |
@@ -81,7 +81,7 @@ benchmarks/
 | Lite | 1 | ~8 | ~125 | ~400 |
 | Lite | 32 | ~25 | ~1280 | ~1100 |
 
-### Jetson Orin Nano (8GB)
+### Embedded Device (8GB)
 
 | Model Size | Batch Size | Latency (ms) | Throughput (img/s) | Memory (MB) |
 |------------|------------|--------------|--------------------| ------------|
@@ -137,7 +137,7 @@ Benchmark results are stored in JSON format:
 {
   "timestamp": "2024-01-15T10:30:00Z",
   "device_info": {
-    "name": "NVIDIA Jetson Orin Nano",
+    "name": "Embedded Device",
     "device_type": "CUDA",
     "cuda_version": "12.2"
   },
@@ -168,9 +168,4 @@ Benchmark results are stored in JSON format:
 
 - All benchmarks should be run after a system warmup period
 - GPU benchmarks require CUDA-enabled builds (`--features cuda`)
-- For accurate Jetson measurements, ensure the device is in MAX power mode:
-  ```bash
-  sudo nvpmodel -m 0
-  sudo jetson_clocks
-  ```
-- Memory measurements on Jetson use unified memory - GPU/CPU share the same pool
+For accurate embedded device measurements, follow your device vendor's guidance to enable a high-performance power profile (if available). Memory reporting on some embedded platforms uses unified memory where GPU and CPU share the same pool.

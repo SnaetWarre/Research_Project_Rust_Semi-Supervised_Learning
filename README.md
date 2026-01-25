@@ -2,7 +2,7 @@
 
 **Student:** Warre Snaet | **Institution:** Howest MCT
 
-Semi-supervised learning for plant disease classification on edge devices (Jetson) using Rust.
+Semi-supervised learning for plant disease classification on embedded edge devices using Rust.
 
 ---
 

@@ -1,4 +1,5 @@
 # PlantVillage SSL - Installation Guide
+
 **Warre Snaet | Howest MCT | Research Project 2025-2026**
 
 ---
@@ -6,16 +7,18 @@
 ## 1. System Requirements
 
 ### Target Hardware
+
 | Device | Specification |
 |--------|---------------|
-| **Primary Target** | NVIDIA Jetson Orin Nano (8GB) |
+| **Primary Target** | Edge devices (embedded GPUs, 8GB+) |
 | **Alternative** | Linux PC with NVIDIA GPU (4GB+ VRAM) |
 
 ### Operating System
+
 - **Ubuntu 20.04 LTS** or **Ubuntu 22.04 LTS**
-- For Jetson: **JetPack 5.x** or **JetPack 6.x**
 
 ### Minimum Requirements
+
 | Resource | Minimum | Recommended |
 |----------|---------|-------------|
 | RAM | 8 GB | 16 GB |
@@ -72,19 +75,22 @@ cargo --version
 
 For GPU acceleration on NVIDIA hardware.
 
-### Desktop Linux (Non-Jetson)
+### Desktop Linux
 
 1. **Install NVIDIA Driver** (if not installed):
+
    ```bash
    sudo apt install nvidia-driver-535  # Or latest available
    ```
 
 2. **Install CUDA Toolkit**:
+
    ```bash
    sudo apt install nvidia-cuda-toolkit
    ```
 
 3. **Configure Environment Variables**:
+
    ```bash
    # Add to ~/.bashrc
    echo 'export PATH=/usr/local/cuda/bin:$PATH' >> ~/.bashrc
@@ -93,6 +99,7 @@ For GPU acceleration on NVIDIA hardware.
    ```
 
 4. **Verify Installation**:
+
    ```bash
    nvcc --version
    # Expected: Cuda compilation tools, release 11.x or 12.x
@@ -101,13 +108,9 @@ For GPU acceleration on NVIDIA hardware.
    # Should show GPU information
    ```
 
-### Jetson Orin Nano
+### Platform Notes
 
-CUDA is pre-installed with JetPack. Verify:
-```bash
-nvcc --version
-# Expected: Cuda compilation tools, release 11.4 (JetPack 5.x) or 12.x (JetPack 6.x)
-```
+For some embedded platforms the vendor provides a pre-installed SDK that bundles CUDA and related components. Verify your platform's SDK documentation for exact CUDA versions.
 
 ---
 
@@ -165,12 +168,14 @@ cd Research_Project
 The application uses the PlantVillage / New Plant Diseases Dataset from Kaggle.
 
 ### Option A: Using the Provided Script
+
 ```bash
 cd plantvillage_ssl
 ./scripts/download_dataset.sh
 ```
 
 ### Option B: Manual Download via Kaggle CLI
+
 ```bash
 # Install Kaggle CLI (if not installed)
 pip install kaggle
@@ -188,6 +193,7 @@ unzip new-plant-diseases-dataset.zip -d data/plantvillage/
 ```
 
 ### Expected Structure After Download
+
 ```
 plantvillage_ssl/data/plantvillage/
 ├── train/
@@ -235,12 +241,14 @@ bun run check
 ## 9. Run the Application
 
 ### Option A: Launch GUI in Development Mode
+
 ```bash
 cd plantvillage_ssl/gui
 bun run tauri:dev
 ```
 
 ### Option B: Build Production Application
+
 ```bash
 cd plantvillage_ssl/gui
 bun run tauri:build
@@ -250,6 +258,7 @@ bun run tauri:build
 ```
 
 ### Option C: CLI Only (No GUI)
+
 ```bash
 cd plantvillage_ssl
 
@@ -338,10 +347,10 @@ cd gui && bun run tauri:dev
 | **"Out of memory"** | Insufficient VRAM | Reduce batch size or use `--features cpu` |
 | **Compile timeout** | Slow machine | Use `cargo build --release -j 2` to limit parallelism |
 
-### Jetson-Specific Issues
+### Platform-Specific Issues
 
 ```bash
-# If "nvcc not found" on Jetson:
+# If "nvcc not found":
 export PATH=/usr/local/cuda/bin:$PATH
 export LD_LIBRARY_PATH=/usr/local/cuda/lib64:$LD_LIBRARY_PATH
 
@@ -352,6 +361,7 @@ sudo apt install libwebkit2gtk-4.0-dev --fix-missing
 ### Clean Rebuild
 
 If you encounter strange build errors:
+
 ```bash
 cd plantvillage_ssl
 cargo clean

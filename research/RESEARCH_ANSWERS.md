@@ -99,19 +99,20 @@ To evaluate reliability without ground truth (in a real deployment), we monitor:
 
 **Answer:**
 
-During deployment to the NVIDIA Jetson Orin Nano, we encountered and solved the following hurdles:
 
-1.  **VRAM Limitations (8GB Shared Memory):**
-    -   *Hurdle:* The Jetson shares RAM between CPU and GPU. Loading a large batch (64 images) caused "Out of Memory" (OOM) crashes because the OS and display buffer also consume RAM.
-    -   *Solution:* We implemented dynamic batch sizing. On the Jetson, we reduced the batch size to **16 or 32**. This trade-off slightly reduces throughput but ensures stability.
+During deployment to embedded edge devices, we encountered and solved common hardware and platform-specific hurdles:
 
-2.  **Dependency Management (The "Easy" Part):**
-    -   *Experience:* Contrary to expectations, setting up CUDA was seamless thanks to the **NVIDIA JetPack SDK**. It provides a compatible tensorrt/cuda/cudnn stack out-of-the-box.
-    -   *Burn Advantage:* Since Burn compiles to a native binary, we didn't have to install a complex Python/PyTorch environment on the Jetson, which often leads to version conflicts (e.g., "PyTorch version X requires CUDA Y, but JetPack provides CUDA Z"). The Rust binary just worked.
+1.  **Memory Constraints (Shared/limited memory):**
+    -   *Hurdle:* Some embedded platforms share RAM between CPU and GPU or have limited VRAM. Loading large batches (e.g., 64 images) can cause "Out of Memory" (OOM) crashes because the OS and other subsystems also consume memory.
+    -   *Solution:* We implemented dynamic batch sizing and reduced the batch size on constrained hardware to **16 or 32**. This trade-off slightly reduces throughput but ensures stability.
 
-3.  **Power Profiles:**
-    -   *Hurdle:* By default, the Jetson runs in a power-saving mode (15W).
-    -   *Solution:* Activating "Performance Mode" (MAXN) significantly boosted inference speed (from ~10ms to ~1.3ms), at the cost of higher heat generation.
+2.  **Dependency Management:**
+    -   *Experience:* Embedded platforms often provide vendor-specific SDKs that bundle CUDA/TensorRT and related components. These platform SDKs simplify installation but require following vendor documentation.
+    -   *Burn Advantage:* Since Burn compiles to a native binary, we avoid complex Python/PyTorch runtime dependency trees, reducing installation complexity and runtime footprint.
+
+3.  **Power & Performance Profiles:**
+    -   *Hurdle:* Many embedded devices default to power-saving modes which limit peak inference performance.
+    -   *Solution:* Enabling higher-performance modes (when available) boosts inference speed at the cost of increased power draw and thermal output; balance performance with thermal/power budgets during deployment.
 
 ---
 *See `BENCHMARK_ANSWERS.md` for answers to questions 3, 6, 7, 8, and 10 regarding performance metrics.*

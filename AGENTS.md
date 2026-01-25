@@ -1,7 +1,7 @@
 # AGENTS.md - Plant Disease Detection Research Project
 
 This is a Rust-based research project for semi-supervised plant disease classification
-with incremental learning, targeting edge devices (NVIDIA Jetson Orin Nano).
+with incremental learning, targeting edge devices.
 
 ## Project Structure
 

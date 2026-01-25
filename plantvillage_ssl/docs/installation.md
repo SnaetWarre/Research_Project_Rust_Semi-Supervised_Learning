@@ -1,13 +1,13 @@
 # PlantVillage SSL Installation Guide
 
-This guide provides step-by-step instructions for setting up the PlantVillage Semi-Supervised Learning project on both desktop systems (for training) and NVIDIA Jetson Orin Nano (for edge deployment).
+This guide provides step-by-step instructions for setting up the PlantVillage Semi-Supervised Learning project on both desktop systems (for training) and embedded CUDA-capable devices (for edge deployment).
 
 ## Table of Contents
 
 - [Prerequisites](#prerequisites)
 - [Desktop Installation (Linux)](#desktop-installation-linux)
 - [Desktop Installation (Windows)](#desktop-installation-windows)
-- [Jetson Orin Nano Installation](#jetson-orin-nano-installation)
+ - [Embedded Device Installation](#embedded-device-installation)
 - [Dataset Setup](#dataset-setup)
 - [Verifying Installation](#verifying-installation)
 - [Troubleshooting](#troubleshooting)
@@ -24,8 +24,8 @@ This guide provides step-by-step instructions for setting up the PlantVillage Se
 - GPU: NVIDIA GPU with 6GB+ VRAM (CUDA 12.x compatible)
 - Storage: 10GB free space (5GB for dataset, 5GB for models/outputs)
 
-**Edge Device (for inference):**
-- NVIDIA Jetson Orin Nano 8GB
+- **Edge Device (for inference):**
+- CUDA-capable embedded device (8GB)
 - microSD card 64GB+ (or NVMe SSD recommended)
 - USB camera (optional, for live inference)
 
@@ -68,51 +68,47 @@ export CUDA_HOME=/usr/local/cuda
 export PATH=$CUDA_HOME/bin:$PATH
 export LD_LIBRARY_PATH=$CUDA_HOME/lib64:$LD_LIBRARY_PATH
 
-# Verify installation
-nvcc --version
-nvidia-smi
-```
+## Embedded Device Installation
 
-### 3. Install Rust
+### 1. Install vendor SDK (if applicable)
 
-```bash
-# Install rustup (Rust installer)
-curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+For many embedded platforms the vendor provides an SDK that bundles CUDA/TensorRT components. Follow your device vendor's guide to install the appropriate SDK.
 
-# Follow the prompts, then reload your shell
-source $HOME/.cargo/env
+### 2. Run Setup Script
 
-# Verify installation
-rustc --version
-cargo --version
-```
-
-### 4. Clone and Build the Project
+The project includes an automated setup script for the target platform. Run it on the device when applicable:
 
 ```bash
 # Clone the repository
 git clone <repository-url>
 cd Source/plantvillage_ssl
 
-# Build with CUDA support (release mode)
-cargo build --release --features cuda
-
-# Or build without CUDA (CPU only)
-cargo build --release
+# Make script executable and run
+chmod +x scripts/setup_jetson.sh
+./scripts/setup_jetson.sh
 ```
 
-### 5. Set Up Python Environment (for reference implementation)
+### 3. Manual Installation (if script fails)
 
 ```bash
-# Create virtual environment
-python3 -m venv venv
-source venv/bin/activate
-
 # Install dependencies
-pip install -r ../pytorch_reference/requirements.txt
-```
+sudo apt-get update
+sudo apt-get install -y build-essential cmake pkg-config libssl-dev libclang-dev
 
----
+# Install Rust
+curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+source $HOME/.cargo/env
+
+# Set up CUDA paths
+echo 'export CUDA_HOME=/usr/local/cuda' >> ~/.bashrc
+echo 'export PATH=$CUDA_HOME/bin:$PATH' >> ~/.bashrc
+echo 'export LD_LIBRARY_PATH=$CUDA_HOME/lib64:$LD_LIBRARY_PATH' >> ~/.bashrc
+source ~/.bashrc
+
+# Build (enable CUDA support)
+cd Source/plantvillage_ssl
+cargo build --release --features cuda
+```
 
 ## Desktop Installation (Windows)
 
@@ -142,19 +138,15 @@ cargo build --release --features cuda
 
 ---
 
-## Jetson Orin Nano Installation
+## Embedded Device Installation
 
-### 1. Flash JetPack
+### 1. Install vendor SDK (if applicable)
 
-Ensure your Jetson Orin Nano is running JetPack 5.x or later:
-
-1. Download [NVIDIA SDK Manager](https://developer.nvidia.com/sdk-manager)
-2. Connect Jetson to host PC via USB
-3. Flash JetPack 5.x following the wizard
+Ensure your target embedded device has the appropriate vendor SDK installed (for example, JetPack on NVIDIA platforms). Follow the vendor's installation guide for flashing and SDK setup.
 
 ### 2. Run Setup Script
 
-The project includes an automated setup script for Jetson:
+The project includes an automated setup script for the target platform. Run it on the device when applicable:
 
 ```bash
 # Clone the repository

@@ -1,4 +1,5 @@
 # Appendices – Technical Documentation
+
 **Warre Snaet | Research Project 2025-2026**  
 **Plant Disease Classification with Semi-Supervised Learning on Edge Devices**
 
@@ -51,13 +52,13 @@
 └─────────────────────────────────────────────────────────────────┘
                               │
                               ▼
-              ┌───────────────────────────────┐
-              │     NVIDIA Jetson Orin Nano   │
-              │         (Edge Device)          │
-              │   • 8GB VRAM                   │
-              │   • ARM Architecture           │
-              │   • CUDA Acceleration          │
-              └───────────────────────────────┘
+                              ┌───────────────────────────────┐
+                              │     Representative Edge Device │
+                              │      (Embedded GPU, 8GB VRAM)  │
+                              │   • 8GB VRAM                    │
+                              │   • Embedded/ARM Architecture   │
+                              │   • GPU Acceleration (CUDA)     │
+                              └───────────────────────────────┘
 ```
 
 ---

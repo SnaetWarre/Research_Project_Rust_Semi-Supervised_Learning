@@ -1,6 +1,6 @@
 # PlantVillage Semi-Supervised Learning - User Guide
 
-This guide covers the complete workflow for using the PlantVillage SSL system, from dataset preparation to deployment on NVIDIA Jetson Orin Nano.
+This guide covers the complete workflow for using the PlantVillage SSL system, from dataset preparation to deployment on CUDA-capable embedded devices.
 
 ## Table of Contents
 
@@ -10,7 +10,7 @@ This guide covers the complete workflow for using the PlantVillage SSL system, f
 4. [Inference](#inference)
 5. [Semi-Supervised Learning](#semi-supervised-learning)
 6. [Benchmarking](#benchmarking)
-7. [Jetson Deployment](#jetson-deployment)
+7. [Edge Deployment](#edge-deployment)
 8. [Troubleshooting](#troubleshooting)
 
 ---
@@ -23,7 +23,7 @@ PlantVillage SSL is a semi-supervised learning system for plant disease classifi
 
 - **39-class plant disease classification** using the PlantVillage dataset
 - **Semi-supervised learning** with pseudo-labeling for efficient use of unlabeled data
-- **Edge deployment** optimized for NVIDIA Jetson Orin Nano
+-- **Edge deployment** optimized for CUDA-capable embedded devices
 - **Stream simulation** to mimic real-world agricultural camera setups
 
 ### System Requirements
@@ -35,7 +35,7 @@ PlantVillage SSL is a semi-supervised learning system for plant disease classifi
 - 10GB+ disk space
 
 **Edge Device (Inference):**
-- NVIDIA Jetson Orin Nano (8GB recommended)
+- CUDA-capable embedded device (8GB recommended)
 - JetPack 5.x or later
 
 ---
@@ -238,11 +238,11 @@ The dataset is split into pools to simulate real-world conditions:
 
 ---
 
-## Jetson Deployment
+## Edge Deployment
 
-### 1. Setup Jetson
+### 1. Platform Setup
 
-Run the setup script on your Jetson device:
+Run the provided setup script on your target embedded device (if applicable):
 
 ```bash
 cd plantvillage_ssl
@@ -252,13 +252,13 @@ chmod +x scripts/setup_jetson.sh
 
 ### 2. Transfer Model
 
-Copy your trained model to the Jetson:
+Copy your trained model to the device (adjust user and host as needed):
 
 ```bash
-scp output/models/best_model.bin jetson@<jetson-ip>:/home/jetson/plantvillage/models/
+scp output/models/best_model.bin user@<device-ip>:/home/user/plantvillage/models/
 ```
 
-### 3. Run Inference on Jetson
+### 3. Run Inference on Device
 
 ```bash
 ./target/release/plantvillage_ssl infer \
@@ -269,13 +269,7 @@ scp output/models/best_model.bin jetson@<jetson-ip>:/home/jetson/plantvillage/mo
 
 ### 4. Monitor Performance
 
-Check GPU utilization:
-
-```bash
-tegrastats  # Jetson-specific monitoring
-# or
-nvidia-smi  # Standard NVIDIA monitoring
-```
+Check device utilization using vendor tools (e.g., `tegrastats` on some NVIDIA devices) or standard NVIDIA/Linux tools such as `nvidia-smi`, `top`, or `htop`.
 
 ---
 

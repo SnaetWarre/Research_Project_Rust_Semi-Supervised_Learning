@@ -37,7 +37,7 @@ While PyTorch shows a slight advantage in raw inference latency on desktop hardw
 | **Memory Overhead** | Minimal (System native) | High (Python Interpreter + GC) | Rust leaves RAM for data |
 
 **Conclusion:**
-For the Jetson Orin Nano (Edge Device):
+For constrained edge devices:
 1.  **Storage:** PyTorch consumes most of the onboard storage. Rust is negligible.
 2.  **RAM:** PyTorch's heavy runtime reduces the available memory for frame buffering and data caching.
 3.  **Speed:** The 0.68ms latency difference is imperceptible (both >500 FPS), but the **7GB vs 24MB** size difference determines whether the project is viable on constrained hardware.
@@ -45,7 +45,7 @@ For the Jetson Orin Nano (Edge Device):
 **Burn** is deemed optimal for edge deployment because:
 1.  **Binary Size & Dependencies:** The Burn application compiles to a single binary, whereas PyTorch requires a heavy Python runtime (hundreds of MBs).
 2.  **Memory Safety:** Rust provides compile-time guarantees against memory leaks, which is critical for long-running edge devices.
-3.  **Deployment Simplicity:** No need to manage Python virtual environments or complex `pip` dependency trees on the Jetson Nano.
+3.  **Deployment Simplicity:** No need to manage Python virtual environments or complex `pip` dependency trees on constrained edge devices.
 
 ### Model Architecture Verification
 To ensure a fair comparison, we verified that both implementations use identical architectures:
@@ -65,7 +65,7 @@ Both models have approximately **0.46 million parameters** and are structurally 
 
 ## 6. Model Optimization for Edge Devices
 
-**Question:** *Hoe kan model-optimalisatie (quantization, pruning, model distillation) gebruikt worden om inference snelheid op de Jetson Orin Nano te verbeteren?*
+**Question:** *Hoe kan model-optimalisatie (quantization, pruning, model distillation) gebruikt worden om inference snelheid op embedded edge devices te verbeteren?*
 
 **Answer:**
 
@@ -73,7 +73,7 @@ Given our benchmark results (1.27ms inference), the current CNN model is already
 -   **Current Status:** The model uses a compact architecture (~0.46M parameters, 1.78MB size).
 -   **Quantization:** Converting weights from `f32` to `f16` (half-precision) is supported by Burn's CUDA backend and would roughly halve the memory bandwidth requirement, potentially increasing throughput further if VRAM bandwidth is a bottleneck.
 -   **Pruning:** Not strictly necessary as the model is already "Lite" (under 2MB).
--   **Recommendation:** For the Jetson Orin Nano (which has tensor cores), enabling `f16` (half-precision) inference is the most effective optimization.
+-   **Recommendation:** For tensor-core-capable edge devices, enabling `f16` (half-precision) inference is an effective optimization.
 
 ## 7. Trade-offs: Accuracy, Latency, and Energy
 

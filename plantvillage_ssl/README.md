@@ -22,7 +22,7 @@ cargo build --release
     --model-path output/models/best_model.mpk \
     --image-path /path/to/leaf.jpg
 
-# Benchmark on Jetson
+# Benchmark (embedded device)
 ./target/release/plantvillage_ssl benchmark \
     --model-path output/models/best_model.mpk
 ```
@@ -40,5 +40,5 @@ src/
 
 ## Deployment
 
-Works on NVIDIA Jetson Orin Nano without code changes (CUDA backend).
+Works on CUDA-capable embedded devices without code changes (CUDA backend).
 See `docs/` for detailed installation and user guide.

@@ -8,7 +8,7 @@
 
 Deze literatuurstudie vormt de basis voor mijn onderzoek naar het detecteren en classificeren van plantenziekten op edge devices met weinig gelabelde data. In een landbouwcontext is het verkrijgen van grote en correct gelabelde datasets vaak duur en traag. Semi-supervised learning (SSL) biedt hier een praktische oplossing voor. Deze methode combineert een klein gelabeld deel van de data met een grote hoeveelheid ongelabelde data om de prestaties van het model te verbeteren. Een harde eis voor dit project is dat het systeem volledig offline moet kunnen werken. Dit betekent dat het model lokaal draait zonder internetverbinding en zonder gebruik te maken van externe rekenkracht of data-uitwisseling.
 
-Ik kies bewust voor de programmeertaal Rust en het framework Burn. De reden hiervoor is de combinatie van performantie, geheugenveiligheid en de mogelijkheid tot eenvoudige deployment als één statische binary op embedded hardware zoals de NVIDIA Jetson Orin Nano. Deze keuze wijkt af van de klassieke Python en PyTorch stack, maar past beter bij de specifieke vereisten van edge computing zoals lage latency en betrouwbaarheid.
+Ik kies bewust voor de programmeertaal Rust en het framework Burn. De reden hiervoor is de combinatie van performantie, geheugenveiligheid en de mogelijkheid tot eenvoudige deployment als één statische binary op embedded hardware. Deze keuze wijkt af van de klassieke Python en PyTorch stack, maar past beter bij de specifieke vereisten van edge computing zoals lage latency en betrouwbaarheid.
 
 ### Onderzoeksvraag
 Hoe kan een semi-supervised neuraal netwerk efficiënt worden geïmplementeerd in Rust voor het automatisch labelen van deels gelabelde datasets op een edge device?
@@ -19,7 +19,7 @@ Hoe kan een semi-supervised neuraal netwerk efficiënt worden geïmplementeerd i
 3. Wat zijn de belangrijkste verschillen in snelheid en accuraatheid tussen Burn, candle_core en tch-rs libraries en welke is optimaal voor edge deployment?
 4. Hoe kunnen data-augmentatie en pseudo-labeling strategieën de trainingsefficiëntie verbeteren op gelimiteerde gelabelde datasets?
 5. Wat zijn de beste methodes om automatische labels toe te wijzen aan ongelabelde plantbladafbeeldingen en hoe evalueer je de betrouwbaarheid ervan?
-6. Hoe kan model-optimalisatie zoals quantization of pruning gebruikt worden om de inference snelheid op de Jetson Orin Nano te verbeteren?
+6. Hoe kan model-optimalisatie zoals quantization of pruning gebruikt worden om de inference snelheid op embedded edge devices te verbeteren?
 7. Welke afwegingen zijn er te maken tussen model-accuraatheid, inference latency en energieverbruik op edge hardware?
 8. Hoe presteert een Burn-gebaseerd semi-supervised model vergeleken met PyTorch equivalenten bij gelijke hardware?
 9. Wat zijn praktische implementatiehindernissen bij deployment op edge devices en hoe kunnen deze worden opgelost?
@@ -27,7 +27,7 @@ Hoe kan een semi-supervised neuraal netwerk efficiënt worden geïmplementeerd i
 
 ### SMART-koppeling
 *   **Specifiek:** Het doel is semi-supervised classificatie van plantenziekten op de PlantVillage dataset met Rust en Burn. Ik gebruik pseudo-labeling met een eigen CNN. Het systeem werkt volledig offline.
-*   **Meetbaar:** De succescriteria zijn de accuraatheid versus een supervised baseline, de inference latency op de Jetson, het aantal en de kwaliteit van de pseudo-labels en de stabiliteit van het systeem. Een strikt criterium is dat er geen netwerkverkeer mag zijn tijdens runtime.
+*   **Meetbaar:** De succescriteria zijn de accuraatheid versus een supervised baseline, de inference latency op edge devices, het aantal en de kwaliteit van de pseudo-labels en de stabiliteit van het systeem. Een strikt criterium is dat er geen netwerkverkeer mag zijn tijdens runtime.
 *   **Acceptabel:** De stack moet compatibel zijn met edge devices zonder zware C++ dependencies. Het model moet passen binnen het 8GB VRAM geheugen.
 *   **Realistisch:** Ik bouw een eigen licht CNN en gebruik 20 tot 30 procent gelabelde data. Het proces maakt gebruik van iteratieve pseudo-label cycli en eenvoudige augmentaties. Ik gebruik geen Vision Transformers of pretrained modellen.
 *   **Tijdgebonden:** Het technisch onderzoek start op 5 januari 2026. Er zijn wekelijkse doelen en evaluatiemomenten vastgelegd in het plan van aanpak.
@@ -105,7 +105,7 @@ graph TD
 **Praktische keuzes**  
 Ik gebruik lichte en label-consistente augmentaties zoals random crop, resize, horizontale flip en lichte variaties in helderheid. De threshold tuning start bij 0,95 en wordt geëvalueerd op basis van de precisie op de high-confidence set. Ik monitor de pseudo-labels per klasse om onbalans te voorkomen. Indien nodig pas ik oversampling toe of stuur ik de drempel per klasse bij.
 
-De implementatie in Burn maakt gebruik van een generieke modeldefinitie zodat ik lokaal op een NVIDIA GPU kan testen en later op de Jetson kan draaien. De DataLoader wordt multithreaded uitgevoerd om de GPU optimaal te benutten.
+De implementatie in Burn maakt gebruik van een generieke modeldefinitie zodat ik lokaal op een NVIDIA GPU kan testen en later op embedded hardware kan draaien. De DataLoader wordt multithreaded uitgevoerd om de GPU optimaal te benutten.
 
 ## 5. Data pipeline en dataset
 
@@ -135,7 +135,7 @@ Ik kies de definitieve backend (CUDA of WGPU) en test mixed precision indien bes
 
 **Validatie**  
 *   **Offline validation:** Ik analyseer de training curves en de precisie van de pseudo-labels.
-*   **Edge device testing:** Ik deploy het model op de Jetson en log de latency per forward pass.
+*   **Edge device testing:** Ik deploy het model op een embedded device en log de latency per forward pass.
 *   **Semi-supervised validation:** Ik evalueer het model bij verschillende ratio's van pseudo-labels (0%, 25%, 50%, 75%).
 *   **Benchmark:** Ik vergelijk mijn model met een vergelijkbare architectuur in PyTorch op dezelfde hardware.
 *   **Live demo:** Ik log de voorspellingen en confidence scores en maak een video timelapse van de outputs.
@@ -149,7 +149,7 @@ De keuze voor SSL past uitstekend bij de landbouwsector waar gelabelde data scha
 
 ## 8. Conclusie
 
-Semi-supervised learning met pseudo-labeling is een haalbare en efficiënte strategie voor plantenziekteclassificatie met beperkte labels. Door Burn in Rust te gebruiken, kan ik een compacte, performante en betrouwbare pipeline bouwen die geschikt is voor edge devices. De literatuur bevestigt dat het filteren van ambigue samples en het gebruik van consistente augmentaties cruciaal zijn. Mijn plan is iteratief en meetbaar, met duidelijke validatie op zowel desktop als Jetson hardware. Dit vormt een stevig fundament voor het technisch onderzoek dat start op 5 januari 2026.
+Semi-supervised learning met pseudo-labeling is een haalbare en efficiënte strategie voor plantenziekteclassificatie met beperkte labels. Door Burn in Rust te gebruiken, kan ik een compacte, performante en betrouwbare pipeline bouwen die geschikt is voor edge devices. De literatuur bevestigt dat het filteren van ambigue samples en het gebruik van consistente augmentaties cruciaal zijn. Mijn plan is iteratief en meetbaar, met duidelijke validatie op zowel desktop als embedded hardware. Dit vormt een stevig fundament voor het technisch onderzoek dat start op 5 januari 2026.
 
 ## 9. Bronvermelding
 

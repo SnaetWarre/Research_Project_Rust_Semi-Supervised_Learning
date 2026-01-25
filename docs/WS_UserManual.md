@@ -1,13 +1,15 @@
 # PlantVillage SSL - User Manual
+
 **Warre Snaet | Howest MCT | Research Project 2025-2026**
 
 ---
 
 ## 1. Introduction
 
-PlantVillage SSL is a machine learning application for **plant disease classification** using semi-supervised learning. The application is designed to run efficiently on edge devices like the NVIDIA Jetson Orin Nano, enabling real-time plant disease detection in agricultural environments—even without internet connectivity.
+PlantVillage SSL is a machine learning application for **plant disease classification** using semi-supervised learning. The application is designed to run efficiently on edge devices, enabling real-time plant disease detection in agricultural environments—even without internet connectivity.
 
 ### Key Features
+
 - 🌱 **38 Plant Disease Classes** – Supports tomato, apple, corn, grape, potato, and more
 - ⚡ **Ultra-Fast Inference** – <2ms per image on GPU hardware
 - 🔄 **Semi-Supervised Learning** – Learns from unlabeled data via pseudo-labeling
@@ -21,12 +23,14 @@ PlantVillage SSL is a machine learning application for **plant disease classific
 ### Launching the Application
 
 **Option A: GUI Mode (Recommended)**
+
 ```bash
 cd plantvillage_ssl/gui
 bun run tauri:dev
 ```
 
 **Option B: Command Line Interface**
+
 ```bash
 cd plantvillage_ssl
 ./target/release/plantvillage_ssl --help
@@ -53,7 +57,8 @@ Upon startup, you are greeted by the **Dashboard**. This provides an at-a-glance
 
 This is the primary feature for diagnosing plant diseases from leaf images.
 
-### Steps:
+### Steps
+
 1. **Navigate** → Click the **"Inference"** tab in the sidebar
 2. **Ensure Model Loaded** → Check the green status indicator
 3. **Upload Image** → Click the upload area or drag-and-drop a leaf image
@@ -83,7 +88,8 @@ This is the primary feature for diagnosing plant diseases from leaf images.
 
 Demonstrates how the model **learns from unlabeled data** through pseudo-labeling.
 
-### How to Run:
+### How to Run
+
 1. **Navigate** → Click **"Simulation"** tab
 2. **Configure Parameters:**
    - **Daily Batch**: Images arriving per simulated day (e.g., 100)
@@ -95,7 +101,8 @@ Demonstrates how the model **learns from unlabeled data** through pseudo-labelin
    - Observe the Accepted vs. Rejected ratio chart
    - Automatic retraining triggers when threshold is reached
 
-### Key Metrics Displayed:
+### Key Metrics Displayed
+
 - **Total Processed**: Images seen by the model
 - **Pseudo-labels Generated**: High-confidence predictions stored
 - **Rejected**: Low-confidence images (below threshold)
@@ -107,7 +114,8 @@ Demonstrates how the model **learns from unlabeled data** through pseudo-labelin
 
 Measures and validates the performance of the application on your hardware.
 
-### How to Run:
+### How to Run
+
 1. **Navigate** → Click **"Benchmark"** tab
 2. **Run** → Click **"Run Benchmark"**
 3. **View Results:**
@@ -115,18 +123,19 @@ Measures and validates the performance of the application on your hardware.
    - **Throughput**: Images processed per second (FPS)
    - **Comparison Chart**: Your results vs. PyTorch reference baseline
 
-### Expected Performance:
+### Expected Performance
 
-| Metric | Desktop GPU | Jetson Orin Nano |
-|--------|-------------|------------------|
-| Latency | ~1.3 ms | ~5-8 ms |
-| Throughput | ~800 FPS | ~150 FPS |
+| Metric | Desktop GPU |
+|--------|-------------|
+| Latency | ~1.3 ms |
+| Throughput | ~800 FPS |
 
 ---
 
 ## 7. Training a New Model
 
-### From the GUI:
+### From the GUI
+
 1. Navigate to **"Training"** tab
 2. Select the dataset directory
 3. Configure:
@@ -136,7 +145,8 @@ Measures and validates the performance of the application on your hardware.
 4. Click **"Start Training"**
 5. Monitor the training progress and loss curves
 
-### From CLI (Advanced):
+### From CLI (Advanced)
+
 ```bash
 cd plantvillage_ssl
 cargo run --release --bin plantvillage_ssl -- train \
@@ -150,6 +160,7 @@ cargo run --release --bin plantvillage_ssl -- train \
 ## 8. Data Requirements
 
 ### Dataset Structure
+
 ```
 data/plantvillage/
 ├── train/
@@ -164,6 +175,7 @@ data/plantvillage/
 ```
 
 ### Supported Formats
+
 - **Images**: JPG, PNG, JPEG
 - **Resolution**: Any (automatically resized to 128×128)
 - **Color**: RGB required
@@ -182,6 +194,7 @@ data/plantvillage/
 | `export` | Export model metrics to CSV/JSON |
 
 **Example Commands:**
+
 ```bash
 # View help
 ./target/release/plantvillage_ssl --help
@@ -210,6 +223,7 @@ data/plantvillage/
 | **Out of Memory** | Reduce batch size or use CPU fallback |
 
 ### Checking System Status
+
 ```bash
 # Check CUDA availability
 nvidia-smi
@@ -231,6 +245,7 @@ watch -n 1 nvidia-smi
 **Project:** Research Project 2025-2026
 
 **Technologies Used:**
+
 - Rust + Burn ML Framework
 - Tauri (Desktop Application Framework)
 - Svelte 5 + TailwindCSS (Frontend)

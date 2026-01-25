@@ -96,7 +96,7 @@ impl DeviceType {
                 device_type: *self,
                 has_gpu: false,
                 backend_name: self.backend_name().to_string(),
-                recommended_batch_size: 8, // Small batches for mobile
+                recommended_batch_size: 2, // Ultra-conservative for 4GB iPhone RAM
                 recommended_epochs: 2,     // Quick retraining only
                 max_memory_mb: 512,        // Conservative mobile RAM
             },
@@ -132,7 +132,7 @@ impl AdaptiveTrainingConfig {
                 device_type: device,
             },
             DeviceType::Mobile => Self {
-                batch_size: 8,
+                batch_size: 2, // Ultra-conservative for 4GB iPhone RAM
                 epochs: 2,
                 learning_rate: 0.0001,
                 use_augmentation: true, // Still use augmentation to prevent overfitting
@@ -153,7 +153,7 @@ impl AdaptiveTrainingConfig {
                 device_type: device,
             },
             DeviceType::Mobile => Self {
-                batch_size: 8, // Keep small for memory
+                batch_size: 2, // Ultra-conservative for 4GB iPhone RAM
                 epochs: 2,     // Minimal epochs on mobile
                 learning_rate: 0.0001,
                 use_augmentation: true,

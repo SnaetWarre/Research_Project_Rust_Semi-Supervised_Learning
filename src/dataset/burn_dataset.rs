@@ -110,8 +110,12 @@ impl std::fmt::Debug for RawPlantVillageItem {
 /// Dataset that stores raw images for on-the-fly augmentation
 #[derive(Clone)]
 pub struct RawPlantVillageDataset {
-    /// Cached raw images
+    /// Cached raw images (if using cached mode)
     items: Vec<RawPlantVillageItem>,
+    /// Sample paths for lazy loading mode
+    samples: Vec<(PathBuf, usize)>,
+    /// Whether to use lazy loading (default: false for backward compatibility)
+    lazy_mode: bool,
 }
 
 impl std::fmt::Debug for RawPlantVillageDataset {
@@ -123,6 +127,21 @@ impl std::fmt::Debug for RawPlantVillageDataset {
 }
 
 impl RawPlantVillageDataset {
+    /// Create a new dataset with lazy loading (memory-efficient for mobile)
+    /// Images are loaded on-demand instead of pre-loading all into memory
+    pub fn new_lazy(samples: Vec<(PathBuf, usize)>) -> anyhow::Result<Self> {
+        tracing::info!(
+            "📦 Creating lazy-loading dataset with {} samples (mobile-friendly)",
+            samples.len()
+        );
+
+        Ok(Self {
+            items: Vec::new(),
+            samples,
+            lazy_mode: true,
+        })
+    }
+
     /// Create a new dataset by loading all images into memory (raw, unprocessed)
     pub fn new_cached(samples: Vec<(PathBuf, usize)>) -> anyhow::Result<Self> {
         let total = samples.len();
@@ -157,27 +176,52 @@ impl RawPlantVillageDataset {
             items.len()
         );
 
-        Ok(Self { items })
+        Ok(Self {
+            items,
+            samples: Vec::new(),
+            lazy_mode: false,
+        })
     }
 
     /// Get the number of classes in the dataset
     pub fn num_classes(&self) -> usize {
-        self.items
-            .iter()
-            .map(|item| item.label)
-            .max()
-            .map(|m| m + 1)
-            .unwrap_or(0)
+        if self.lazy_mode {
+            self.samples
+                .iter()
+                .map(|(_, label)| *label)
+                .max()
+                .map(|m| m + 1)
+                .unwrap_or(0)
+        } else {
+            self.items
+                .iter()
+                .map(|item| item.label)
+                .max()
+                .map(|m| m + 1)
+                .unwrap_or(0)
+        }
     }
 }
 
 impl Dataset<RawPlantVillageItem> for RawPlantVillageDataset {
     fn get(&self, index: usize) -> Option<RawPlantVillageItem> {
-        self.items.get(index).cloned()
+        if self.lazy_mode {
+            // Lazy loading: load image on-demand
+            self.samples
+                .get(index)
+                .and_then(|(path, label)| RawPlantVillageItem::from_path(path, *label).ok())
+        } else {
+            // Cached mode: return pre-loaded item
+            self.items.get(index).cloned()
+        }
     }
 
     fn len(&self) -> usize {
-        self.items.len()
+        if self.lazy_mode {
+            self.samples.len()
+        } else {
+            self.items.len()
+        }
     }
 }
 

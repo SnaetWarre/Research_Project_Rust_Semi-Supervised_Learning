@@ -161,7 +161,7 @@ fi
 # Build the iOS app
 echo "Building iOS release..."
 cd "$LOCAL_PATH/gui"
-bun run tauri ios build --release
+bun run tauri ios build
 
 echo ""
 echo "=============================================="
@@ -195,3 +195,9 @@ open "$LOCAL_PATH/gui/src-tauri/gen/apple/plantvillage-gui.xcodeproj"
 echo ""
 echo "Build files location: $LOCAL_PATH"
 echo ""
+
+echo "start putting the app on the phone"
+echo ""
+xcrun devicectl device install app --device EC0FB767-2C9F-5823-9C84-7F7F6F0A133F "/Users/loustandaert/Library/Developer/Xcode/DerivedData/plantvillage-gui-bspasgfdlqnbnoakjfjswxtnxstc/Build/Products/release-iphoneos/PlantVillage SSL Dashboard.app"
+echo ""
+echo "app is now on the phone"

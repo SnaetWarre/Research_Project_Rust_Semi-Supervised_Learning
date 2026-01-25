@@ -169,13 +169,6 @@ fn run_ssl_retraining_inner(
         return Err(format!("Model not found at: {:?}", model_path));
     }
 
-    // Load labeled data
-    let labeled_dataset = PlantVillageBurnDataset::new_cached(
-        vec![], // TODO: Load from labeled_data_dir
-        128,
-    )
-    .map_err(|e| format!("Failed to load labeled dataset: {:?}", e))?;
-
     // Convert pseudo-labels to training samples
     let pseudo_samples: Vec<(PathBuf, usize)> = params
         .pseudo_labels
@@ -184,13 +177,14 @@ fn run_ssl_retraining_inner(
         .collect();
 
     tracing::info!(
-        "Retraining with {} pseudo-labels and {} labeled samples",
-        pseudo_samples.len(),
-        labeled_dataset.len()
+        "Retraining with {} pseudo-labels (using lazy loading + chunked processing for memory efficiency)",
+        pseudo_samples.len()
     );
 
-    // Create combined dataset using RawPlantVillageDataset for augmentation
-    let combined_dataset = RawPlantVillageDataset::new_cached(pseudo_samples)
+    // Create dataset using RawPlantVillageDataset WITHOUT caching
+    // On mobile, we use lazy loading to avoid loading all images into memory at once
+    // Combined with chunked processing, this allows training on datasets of any size
+    let combined_dataset = RawPlantVillageDataset::new_lazy(pseudo_samples)
         .map_err(|e| format!("Failed to create combined dataset: {:?}", e))?;
 
     // Create optimizer
@@ -217,58 +211,77 @@ fn run_ssl_retraining_inner(
     // Training loop
     for epoch in 0..config.epochs {
         let len = combined_dataset.len();
-        let mut indices: Vec<usize> = (0..len).collect();
-        indices.shuffle(&mut rng);
-
+        
+        // MEMORY OPTIMIZATION: Don't create full indices vector for large datasets
+        // Instead, process batches sequentially with shuffling only within smaller chunks
         let mut epoch_loss = 0.0;
         let mut batch_count = 0;
+        
+        // Process in chunks to reduce memory usage
+        let chunk_size = 1000.min(len); // Process max 1000 samples at a time
+        let num_chunks = (len + chunk_size - 1) / chunk_size;
+        
+        for chunk_idx in 0..num_chunks {
+            let chunk_start = chunk_idx * chunk_size;
+            let chunk_end = (chunk_start + chunk_size).min(len);
+            let chunk_len = chunk_end - chunk_start;
+            
+            // Create indices only for this chunk (much smaller memory footprint)
+            let mut chunk_indices: Vec<usize> = (chunk_start..chunk_end).collect();
+            chunk_indices.shuffle(&mut rng);
+            
+            // Process batches within this chunk
+            for batch_start in (0..chunk_len).step_by(config.batch_size) {
+                let batch_end = (batch_start + config.batch_size).min(chunk_len);
+                let batch_indices = &chunk_indices[batch_start..batch_end];
+                
+                let items: Vec<_> = batch_indices
+                    .iter()
+                    .filter_map(|&i| combined_dataset.get(i))
+                    .collect();
 
-        for (batch_idx, start) in (0..len).step_by(config.batch_size).enumerate() {
-            let end = (start + config.batch_size).min(len);
-            let batch_indices = &indices[start..end];
-            let items: Vec<_> = batch_indices
-                .iter()
-                .filter_map(|&i| combined_dataset.get(i))
-                .collect();
+                if items.is_empty() {
+                    continue;
+                }
 
-            if items.is_empty() {
-                continue;
+                // Use augmenting batcher
+                let batch = aug_batcher.batch(items, &device);
+
+                // Forward pass
+                let output = model.forward(batch.images.clone());
+
+                // Compute loss
+                let loss = CrossEntropyLossConfig::new()
+                    .init(&output.device())
+                    .forward(output, batch.targets);
+
+                let loss_value: f64 = loss.clone().into_scalar().elem();
+                epoch_loss += loss_value;
+                batch_count += 1;
+
+                // Backward pass
+                let grads = loss.backward();
+                let grads = GradientsParams::from_grads(grads, &model);
+
+                // Update model
+                model = optimizer.step(config.learning_rate, model, grads);
+
+                // Emit progress every 10 batches to reduce overhead
+                if batch_count % 10 == 0 {
+                    let overall_batch_idx = chunk_idx * (chunk_len / config.batch_size) + (batch_start / config.batch_size);
+                    let _ = app.emit(
+                        "ssl:retraining:progress",
+                        RetrainingProgress {
+                            epoch: epoch + 1,
+                            total_epochs: config.epochs,
+                            batch: overall_batch_idx + 1,
+                            total_batches: num_batches,
+                            loss: loss_value,
+                            device_type: format!("{:?}", config.device_type),
+                        },
+                    );
+                }
             }
-
-            // Use augmenting batcher
-            let batch = aug_batcher.batch(items, &device);
-
-            // Forward pass
-            let output = model.forward(batch.images.clone());
-
-            // Compute loss
-            let loss = CrossEntropyLossConfig::new()
-                .init(&output.device())
-                .forward(output, batch.targets);
-
-            let loss_value: f64 = loss.clone().into_scalar().elem();
-            epoch_loss += loss_value;
-            batch_count += 1;
-
-            // Backward pass
-            let grads = loss.backward();
-            let grads = GradientsParams::from_grads(grads, &model);
-
-            // Update model
-            model = optimizer.step(config.learning_rate, model, grads);
-
-            // Emit progress
-            let _ = app.emit(
-                "ssl:retraining:progress",
-                RetrainingProgress {
-                    epoch: epoch + 1,
-                    total_epochs: config.epochs,
-                    batch: batch_idx + 1,
-                    total_batches: num_batches,
-                    loss: loss_value,
-                    device_type: format!("{:?}", config.device_type),
-                },
-            );
         }
 
         final_loss = if batch_count > 0 {

@@ -37,6 +37,7 @@ use plantvillage_ssl::{
 };
 
 use crate::state::AppState;
+use crate::device::{AdaptiveTrainingConfig, DeviceType};
 
 /// Configuration for demo session
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -583,8 +584,9 @@ pub async fn manual_retrain_demo(
         "total_training_samples": combined_samples.len()
     }));
 
-    // Create combined dataset with augmentation
-    let combined_dataset = RawPlantVillageDataset::new_cached(combined_samples)
+    // Create combined dataset with lazy loading for mobile efficiency
+    // MOBILE OPTIMIZATION: Use lazy loading instead of caching to prevent OOM on 4GB devices
+    let combined_dataset = RawPlantVillageDataset::new_lazy(combined_samples)
         .map_err(|e| format!("Failed to load combined dataset: {:?}", e))?;
 
     tracing::info!(
@@ -593,13 +595,15 @@ pub async fn manual_retrain_demo(
     );
 
     // Retrain model with lower LR for fine-tuning (prevents catastrophic forgetting)
+    // Use adaptive batch size based on device (2 for mobile, 16 for desktop)
+    let training_config = AdaptiveTrainingConfig::for_ssl_retraining();
     let retrain_start = Instant::now();
     retrain_model_with_augmentation(
         &mut session.model,
         &mut session.optimizer,
         &combined_dataset,
-        5,       // epochs - reduced for stability (was 10)
-        16,      // batch_size (smaller for mobile)
+        training_config.epochs,         // Use adaptive epochs (2 for mobile, 5 for desktop)
+        training_config.batch_size,     // Use adaptive batch size (2 for mobile, 64 for desktop)
         0.00005, // learning_rate - lower for fine-tuning (was 0.0001)
         session.state.config.seed + 9999, // Different seed for manual retrain
         Some(app.clone()), // Pass app handle for progress events
@@ -972,8 +976,9 @@ fn process_demo_day<B: AutodiffBackend>(session: &mut DemoSession<B>, app: &AppH
             "total_training_samples": combined_samples.len()
         }));
 
-        // Create combined dataset with augmentation
-        let combined_dataset = RawPlantVillageDataset::new_cached(combined_samples)
+        // Create combined dataset with lazy loading for mobile efficiency
+        // MOBILE OPTIMIZATION: Use lazy loading instead of caching to prevent OOM on 4GB devices
+        let combined_dataset = RawPlantVillageDataset::new_lazy(combined_samples)
             .map_err(|e| format!("Failed to load combined dataset: {:?}", e))?;
 
         tracing::info!(
@@ -982,13 +987,15 @@ fn process_demo_day<B: AutodiffBackend>(session: &mut DemoSession<B>, app: &AppH
         );
 
     // Retrain model with lower LR for fine-tuning (prevents catastrophic forgetting)
+    // Use adaptive batch size based on device (2 for mobile, 64 for desktop)
+    let training_config = AdaptiveTrainingConfig::for_ssl_retraining();
     let retrain_start = Instant::now();
     retrain_model_with_augmentation(
         &mut session.model,
         &mut session.optimizer,
         &combined_dataset,
-        5,       // epochs - reduced for stability (was 10)
-        16,      // batch_size (smaller for mobile)
+        training_config.epochs,         // Use adaptive epochs (2 for mobile, 5 for desktop)
+        training_config.batch_size,     // Use adaptive batch size (2 for mobile, 64 for desktop)
         0.00005, // learning_rate - lower for fine-tuning (was 0.0001)
         session.state.config.seed + day as u64,
         Some(app.clone()), // Pass app handle for progress events

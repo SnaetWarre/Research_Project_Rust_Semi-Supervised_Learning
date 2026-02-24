@@ -44,7 +44,7 @@ PlantVillage SSL is a semi-supervised learning system for plant disease classifi
 
 ### 1. Download the PlantVillage Dataset
 
-The PlantVillage dataset contains ~61,486 images of plant leaves across 39 classes.
+The PlantVillage dataset contains ~87,000 images of plant leaves across 38 classes.
 
 **Option A: Kaggle Download (Recommended)**
 
@@ -58,36 +58,36 @@ mv kaggle.json ~/.kaggle/
 chmod 600 ~/.kaggle/kaggle.json
 
 # Download dataset
-python scripts/download_dataset.py --kaggle
+cd ..
+./download_plantvillage.sh
 ```
 
 **Option B: Manual Download**
 
-1. Visit: https://www.kaggle.com/datasets/abdallahalidev/plantvillage-dataset
+1. Visit: https://www.kaggle.com/datasets/vipoooool/new-plant-diseases-dataset
 2. Download and extract the dataset
-3. Organize with: `python scripts/download_dataset.py --organize /path/to/extracted`
+3. Ensure the extracted directory contains `train/` and `valid/`
 
 ### 2. Dataset Structure
 
 After downloading, your dataset should look like:
 
 ```
-data/plantvillage/organized/
-├── Apple___Apple_scab/
-│   ├── image_001.jpg
-│   └── ...
-├── Apple___Black_rot/
-├── Apple___Cedar_apple_rust/
-├── Apple___healthy/
-├── Tomato___Late_blight/
-├── Tomato___healthy/
-└── ... (39 class directories total)
+data/plantvillage/
+├── train/
+│   ├── Apple___Apple_scab/
+│   │   ├── image_001.jpg
+│   │   └── ...
+│   └── ... (38 class directories)
+└── valid/
+    ├── Apple___Apple_scab/
+    └── ... (38 class directories)
 ```
 
 ### 3. Verify Dataset
 
 ```bash
-python scripts/download_dataset.py --verify-only --output-dir data/plantvillage/organized
+ls data/plantvillage/train
 ```
 
 ---
@@ -100,7 +100,7 @@ Train a model with default settings:
 
 ```bash
 ./target/release/plantvillage_ssl train \
-    --data-dir data/plantvillage/organized \
+    --data-dir data/plantvillage \
     --epochs 50 \
     --batch-size 32 \
     --output-dir output/models
@@ -123,7 +123,7 @@ Enable pseudo-labeling for semi-supervised learning:
 
 ```bash
 ./target/release/plantvillage_ssl train \
-    --data-dir data/plantvillage/organized \
+    --data-dir data/plantvillage \
     --epochs 50 \
     --labeled-ratio 0.2 \
     --confidence-threshold 0.9 \
@@ -150,7 +150,7 @@ Training logs are saved to `output/logs/`. Monitor progress with:
 ```bash
 ./target/release/plantvillage_ssl infer \
     --input path/to/leaf_image.jpg \
-    --model output/models/best_model.bin
+    --model output/models/best_model.mpk
 ```
 
 ### Batch Prediction
@@ -158,7 +158,7 @@ Training logs are saved to `output/logs/`. Monitor progress with:
 ```bash
 ./target/release/plantvillage_ssl infer \
     --input path/to/image_directory/ \
-    --model output/models/best_model.bin
+    --model output/models/best_model.mpk
 ```
 
 ### Output Format
@@ -179,8 +179,8 @@ Simulate real-world camera data collection:
 
 ```bash
 ./target/release/plantvillage_ssl simulate \
-    --data-dir data/plantvillage/organized \
-    --model output/models/initial_model.bin \
+    --data-dir data/plantvillage \
+    --model output/models/initial_model.mpk \
     --days 30 \
     --images-per-day 50 \
     --confidence-threshold 0.9 \
@@ -204,8 +204,7 @@ The dataset is split into pools to simulate real-world conditions:
 1. **Test Set (10%)** - Never seen during training, for final evaluation
 2. **Validation Set (10%)** - For hyperparameter tuning
 3. **Labeled Pool (20%)** - Initial labeled training data
-4. **Stream Pool (50%)** - Simulates incoming camera images
-5. **Future Pool (10%)** - Reserved for extended simulation
+4. **Stream Pool (60%)** - Simulates incoming camera images
 
 ---
 
@@ -215,8 +214,8 @@ The dataset is split into pools to simulate real-world conditions:
 
 ```bash
 ./target/release/plantvillage_ssl benchmark \
-    --model output/models/best_model.bin \
-    --test-dir data/plantvillage/organized/Tomato___healthy \
+    --model output/models/best_model.mpk \
+    --test-dir data/plantvillage/valid/Tomato___healthy \
     --iterations 100 \
     --cuda
 ```
@@ -255,7 +254,7 @@ chmod +x scripts/setup_jetson.sh
 Copy your trained model to the device (adjust user and host as needed):
 
 ```bash
-scp output/models/best_model.bin user@<device-ip>:/home/user/plantvillage/models/
+scp output/models/best_model.mpk user@<device-ip>:/home/user/plantvillage/models/
 ```
 
 ### 3. Run Inference on Device
@@ -263,7 +262,7 @@ scp output/models/best_model.bin user@<device-ip>:/home/user/plantvillage/models
 ```bash
 ./target/release/plantvillage_ssl infer \
     --input test_image.jpg \
-    --model models/best_model.bin \
+    --model models/best_model.mpk \
     --cuda
 ```
 

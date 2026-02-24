@@ -250,8 +250,8 @@ The project uses the **New Plant Diseases Dataset** from Kaggle (`vipoooool/new-
 
 ### Download Dataset
 ```bash
-cd plantvillage_ssl
-./scripts/download_dataset.sh
+cd /home/warre/Documents/howest/Semester_5/Research_Project/Source
+./download_plantvillage.sh
 ```
 
 Or manually via Kaggle CLI:

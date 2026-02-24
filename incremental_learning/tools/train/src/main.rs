@@ -6,7 +6,7 @@
 use anyhow::{Context, Result};
 use clap::{Parser, ValueEnum};
 use indicatif::{ProgressBar, ProgressStyle};
-use plant_core::{ModelArchitecture, TrainingConfig};
+use plant_core::{load_toml_config, setup_cli_logging};
 use plant_training::{
     checkpoint::{Checkpoint, CheckpointManager},
     evaluator::Evaluator,
@@ -148,13 +148,13 @@ fn main() -> Result<()> {
     let args = Args::parse();
 
     // Initialize logging
-    setup_logging(args.verbose)?;
+    setup_cli_logging(args.verbose)?;
 
     info!("Plant Disease Classification - Training Tool");
     info!("============================================");
 
     // Load configuration
-    let mut config = load_config(&args.config)
+    let mut config: TrainConfig = load_toml_config(&args.config)
         .context("Failed to load configuration file")?;
 
     // Apply command-line overrides
@@ -195,33 +195,6 @@ fn main() -> Result<()> {
     info!("Training completed successfully!");
 
     Ok(())
-}
-
-fn setup_logging(verbose: bool) -> Result<()> {
-    use tracing_subscriber::{fmt, prelude::*, EnvFilter};
-
-    let filter = if verbose {
-        EnvFilter::new("debug")
-    } else {
-        EnvFilter::new("info")
-    };
-
-    tracing_subscriber::registry()
-        .with(fmt::layer())
-        .with(filter)
-        .init();
-
-    Ok(())
-}
-
-fn load_config(path: &PathBuf) -> Result<TrainConfig> {
-    let content = std::fs::read_to_string(path)
-        .with_context(|| format!("Failed to read config file: {}", path.display()))?;
-
-    let config: TrainConfig = toml::from_str(&content)
-        .with_context(|| format!("Failed to parse config file: {}", path.display()))?;
-
-    Ok(config)
 }
 
 fn apply_overrides(config: &mut TrainConfig, args: &Args) {
@@ -577,7 +550,7 @@ mod tests {
                 num_workers: 4,
                 augmentation: true,
             },
-            lr_scheduler: LRSchedulerConfig::Constant,
+            lr_scheduler: "constant".to_string(),
             output: OutputConfig {
                 output_dir: PathBuf::from("/tmp/output"),
                 experiment_name: "test".to_string(),

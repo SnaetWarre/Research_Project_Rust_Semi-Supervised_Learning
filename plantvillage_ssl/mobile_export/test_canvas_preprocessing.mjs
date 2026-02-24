@@ -152,7 +152,7 @@ function compareResults(results, expected) {
 }
 
 // Main
-const imagePath = process.argv[2] || '../data/plantvillage/balanced/Peach___healthy/Peach___healthy_0000.jpg';
+const imagePath = process.argv[2] || '../data/plantvillage/train/Peach___healthy/Peach___healthy_0000.jpg';
 
 console.log('Testing Canvas Preprocessing');
 console.log('Image:', imagePath);

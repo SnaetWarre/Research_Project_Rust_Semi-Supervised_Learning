@@ -43,8 +43,8 @@ benchmarks/
 ```bash
 # Run a quick benchmark (20 iterations)
 ./target/release/plantvillage_ssl benchmark \
-    --model output/models/best.bin \
-    --test-dir data/plantvillage/test \
+    --model output/models/best_model.mpk \
+    --test-dir data/plantvillage/valid \
     --iterations 20
 ```
 
@@ -53,8 +53,8 @@ benchmarks/
 ```bash
 # Run comprehensive benchmark (500 iterations)
 ./target/release/plantvillage_ssl benchmark \
-    --model output/models/best.bin \
-    --test-dir data/plantvillage/test \
+    --model output/models/best_model.mpk \
+    --test-dir data/plantvillage/valid \
     --iterations 500 \
     --cuda
 ```
@@ -64,8 +64,8 @@ benchmarks/
 ```bash
 # Run 1-hour stress test
 ./target/release/plantvillage_ssl benchmark \
-    --model output/models/best.bin \
-    --test-dir data/plantvillage/test \
+    --model output/models/best_model.mpk \
+    --test-dir data/plantvillage/valid \
     --duration 3600 \
     --monitor-memory
 ```

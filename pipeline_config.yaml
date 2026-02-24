@@ -13,7 +13,7 @@
 # Paths - where data and outputs are stored
 # ------------------------------------------------------------------------------
 paths:
-  data_dir: "plantvillage_ssl/data/plantvillage/balanced"
+  data_dir: "plantvillage_ssl/data/plantvillage"
   output_dir: "output/research_pipeline"
 
 # ------------------------------------------------------------------------------
@@ -37,10 +37,10 @@ python:
 dataset:
   num_classes: 38                    # PlantVillage has 38 disease classes
   image_size: 224                    # Input image size (square)
-  labeled_ratio: 0.25                # 25% of remaining data (20% total) used as labeled training set
+  labeled_ratio: 0.20                # 20% labeled training set (with 10% validation + 10% test)
   validation_split: 0.10             # 10% for validation
   test_split: 0.10                   # 10% held out for final testing
-  # Remaining 75% goes to SSL stream pool (60% total)
+  # Remaining 60% goes to SSL stream pool
 
 # ------------------------------------------------------------------------------
 # Training Settings

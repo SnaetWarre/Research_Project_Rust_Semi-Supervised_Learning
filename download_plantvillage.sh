@@ -1,15 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# ============================================================================
-# New Plant Diseases Dataset Downloader (Augmented & Balanced PlantVillage)
-# ============================================================================
-# Downloads the balanced, augmented PlantVillage dataset from Kaggle
-# Dataset: vipoooool/new-plant-diseases-dataset
-# 
-# This dataset contains ~87K RGB images across 38 balanced classes.
-# It comes pre-split into train/ and valid/ folders.
-# ============================================================================
+# New Plant Diseases dataset downloader.
+# Dataset: vipoooool/new-plant-diseases-dataset (~87K RGB images, 38 classes).
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"

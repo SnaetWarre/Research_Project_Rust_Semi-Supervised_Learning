@@ -58,6 +58,10 @@ fn find_newest_model() -> Option<PathBuf> {
     newest_file
 }
 
+fn first_existing(candidates: Vec<PathBuf>) -> Option<PathBuf> {
+    candidates.into_iter().find(|candidate| candidate.exists())
+}
+
 /// Get dataset statistics
 #[tauri::command]
 pub async fn get_dataset_stats(
@@ -72,15 +76,11 @@ pub async fn get_dataset_stats(
             PathBuf::from(&data_dir),
             PathBuf::from(format!("../{}", data_dir)),
             PathBuf::from(format!("../../{}", data_dir)),
-            PathBuf::from("data/plantvillage/balanced"),
-            PathBuf::from("../data/plantvillage/balanced"),
+            PathBuf::from("data/plantvillage"),
+            PathBuf::from("../data/plantvillage"),
         ];
-
-        for candidate in candidates {
-            if candidate.exists() {
-                path = candidate;
-                break;
-            }
+        if let Some(found) = first_existing(candidates) {
+            path = found;
         }
     }
 
@@ -135,38 +135,33 @@ pub async fn load_model(
         // Fallback: Check if best_model.mpk actually exists as a file/symlink
         else if !path.exists() {
              // Fallback search logic for specific paths if find_newest didn't work
-             let candidates = vec![
+            let candidates = vec![
                 PathBuf::from("best_model.mpk"),
                 PathBuf::from("../best_model.mpk"),
                 PathBuf::from("plantvillage_ssl/best_model.mpk"),
             ];
-            for candidate in candidates {
-                if candidate.exists() {
-                    path = candidate;
-                    break;
-                }
+            if let Some(found) = first_existing(candidates) {
+                path = found;
             }
         }
     }
     else if !path.exists() {
-         // Standard relative path search
-         let candidates = vec![
+        // Standard relative path search
+        let candidates = vec![
             PathBuf::from(&model_path),
             PathBuf::from(format!("../{}", model_path)),
             PathBuf::from(format!("output/checkpoints/{}", model_path)),
             PathBuf::from(format!("../output/checkpoints/{}", model_path)),
         ];
-
-        for candidate in candidates {
-            if candidate.exists() {
-                path = candidate;
-                break;
-            }
-             // Try with .mpk extension
-             let with_ext = PathBuf::from(format!("{}.mpk", candidate.to_string_lossy()));
-             if with_ext.exists() {
-                path = with_ext;
-                break;
+        if let Some(found) = first_existing(candidates.clone()) {
+            path = found;
+        } else {
+            let with_ext_candidates: Vec<PathBuf> = candidates
+                .into_iter()
+                .map(|candidate| PathBuf::from(format!("{}.mpk", candidate.to_string_lossy())))
+                .collect();
+            if let Some(found) = first_existing(with_ext_candidates) {
+                path = found;
             }
         }
     }

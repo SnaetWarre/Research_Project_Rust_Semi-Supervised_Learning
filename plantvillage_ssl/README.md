@@ -11,10 +11,10 @@ cd .. && ./download_plantvillage.sh && cd plantvillage_ssl
 # 2. Build
 cargo build --release
 
-# 3. Train with SSL (30% labeled)
-./target/release/plantvillage_ssl ssl-train \
-    --data-dir data/plantvillage/organized \
-    --labeled-ratio 0.3 \
+# 3. Train (20% labeled)
+./target/release/plantvillage_ssl train \
+    --data-dir data/plantvillage \
+    --labeled-ratio 0.2 \
     --epochs 30 --cuda
 
 # Inference

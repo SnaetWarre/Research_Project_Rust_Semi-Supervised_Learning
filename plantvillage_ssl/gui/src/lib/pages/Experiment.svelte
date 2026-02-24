@@ -87,7 +87,7 @@
         <div class="empty-state">
             <h3>No Experiments Found</h3>
             <p>Run experiments first using the CLI:</p>
-            <code>./target/release/experiments all --data-dir data/plantvillage/balanced</code>
+            <code>./target/release/experiments all --data-dir data/plantvillage</code>
         </div>
     {:else}
         <!-- Tabs -->

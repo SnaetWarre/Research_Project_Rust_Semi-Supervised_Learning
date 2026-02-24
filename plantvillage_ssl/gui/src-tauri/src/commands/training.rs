@@ -29,11 +29,11 @@ pub struct TrainingParams {
 impl Default for TrainingParams {
     fn default() -> Self {
         Self {
-            data_dir: "data/plantvillage/balanced".to_string(),
+            data_dir: "data/plantvillage".to_string(),
             epochs: 50,
             batch_size: 32,
             learning_rate: 0.0001,
-            labeled_ratio: 0.25,
+            labeled_ratio: 0.2,
             confidence_threshold: 0.9,
             output_dir: "output/models".to_string(),
             class_weighted: false, // Not needed with balanced dataset

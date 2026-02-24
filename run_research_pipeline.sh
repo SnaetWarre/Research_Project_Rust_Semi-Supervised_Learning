@@ -226,13 +226,13 @@ load_config() {
     detect_yq
     
     # Paths
-    DATA_DIR="$PROJECT_ROOT/$(read_config '.paths.data_dir' 'plantvillage_ssl/data/plantvillage/organized')"
+    DATA_DIR="$PROJECT_ROOT/$(read_config '.paths.data_dir' 'plantvillage_ssl/data/plantvillage')"
     OUTPUT_DIR="$(read_config '.paths.output_dir' 'output/research_pipeline')"
     
     # Dataset settings
-    NUM_CLASSES=$(read_config '.dataset.num_classes' '39')
+    NUM_CLASSES=$(read_config '.dataset.num_classes' '38')
     IMAGE_SIZE=$(read_config '.dataset.image_size' '224')
-    LABELED_RATIO=$(read_config '.dataset.labeled_ratio' '0.30')
+    LABELED_RATIO=$(read_config '.dataset.labeled_ratio' '0.20')
     VALIDATION_SPLIT=$(read_config '.dataset.validation_split' '0.10')
     TEST_SPLIT=$(read_config '.dataset.test_split' '0.10')
     
@@ -268,7 +268,7 @@ load_config() {
     CONDA_ENV=$(read_config '.python.conda_env' '')
     
     # Script paths
-    DATASET_SCRIPT="$PROJECT_ROOT/plantvillage_ssl/scripts/download_dataset.sh"
+    DATASET_SCRIPT="$PROJECT_ROOT/download_plantvillage.sh"
 }
 
 # ==============================================================================
@@ -394,7 +394,7 @@ download_dataset() {
         if [ "$DRY_RUN" = false ]; then
             bash "$DATASET_SCRIPT" --output-dir "$data_root"
         fi
-        print_success "Dataset downloaded and organized"
+        print_success "Dataset downloaded successfully"
     else
         print_error "Download script not found at $DATASET_SCRIPT"
         return 1

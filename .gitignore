@@ -23,6 +23,7 @@ __pycache__/
 .vscode/
 *.swp
 *.swo
+*.mov
 
 # Mobile export - separate GitHub Pages repo
 plantvillage_ssl/mobile_export/pwa/

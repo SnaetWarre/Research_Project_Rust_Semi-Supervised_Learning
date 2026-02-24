@@ -58,7 +58,7 @@ impl Default for DemoConfig {
             images_per_day: 100,
             confidence_threshold: 0.9,
             retrain_threshold: 200,
-            labeled_ratio: 0.25,
+            labeled_ratio: 0.2,
             seed: 42,
         }
     }

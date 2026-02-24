@@ -30,9 +30,9 @@ Source/
 ```bash
 cd plantvillage_ssl
 cargo build --release
-./target/release/plantvillage_ssl ssl-train \
-    --data-dir data/plantvillage/organized \
-    --labeled-ratio 0.3 \
+./target/release/plantvillage_ssl train \
+    --data-dir data/plantvillage \
+    --labeled-ratio 0.2 \
     --epochs 30 --cuda
 ```
 
@@ -44,7 +44,7 @@ cargo build --release
     --method lwf \
     --base-classes 5 \
     --new-classes 1 \
-    --data-dir ../plantvillage_ssl/data/plantvillage/organized
+    --data-dir ../plantvillage_ssl/data/plantvillage
 ```
 
 ---

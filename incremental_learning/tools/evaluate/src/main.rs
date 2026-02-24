@@ -6,6 +6,7 @@
 use anyhow::{Context, Result};
 use clap::Parser;
 use indicatif::{ProgressBar, ProgressStyle};
+use plant_core::setup_cli_logging;
 use plant_training::checkpoint::Checkpoint;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -85,7 +86,7 @@ fn main() -> Result<()> {
     let args = Args::parse();
 
     // Initialize logging
-    setup_logging(args.verbose)?;
+    setup_cli_logging(args.verbose)?;
 
     info!("Plant Disease Classification - Evaluation Tool");
     info!("===============================================");
@@ -128,23 +129,6 @@ fn main() -> Result<()> {
 
     info!("Evaluation completed successfully!");
     info!("Results saved to: {}", args.output.display());
-
-    Ok(())
-}
-
-fn setup_logging(verbose: bool) -> Result<()> {
-    use tracing_subscriber::{fmt, prelude::*, EnvFilter};
-
-    let filter = if verbose {
-        EnvFilter::new("debug")
-    } else {
-        EnvFilter::new("info")
-    };
-
-    tracing_subscriber::registry()
-        .with(fmt::layer())
-        .with(filter)
-        .init();
 
     Ok(())
 }

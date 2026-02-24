@@ -8,12 +8,14 @@ pub mod types;
 pub mod config;
 pub mod metrics;
 pub mod backend;
+pub mod cli;
 
 pub use error::{Error, Result};
 pub use types::*;
 pub use config::*;
 pub use metrics::*;
 pub use backend::*;
+pub use cli::*;
 
 /// Re-export commonly used burn types
 pub mod prelude {
@@ -23,6 +25,7 @@ pub mod prelude {
     pub use crate::config::*;
     pub use crate::metrics::*;
     pub use crate::backend::*;
+    pub use crate::cli::*;
 }
 
 #[cfg(test)]

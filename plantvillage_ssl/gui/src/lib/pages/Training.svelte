@@ -13,7 +13,7 @@
   let learningRate = $state(0.0001);
   let labeledRatio = $state(0.2);
   let confidenceThreshold = $state(0.9);
-  let dataDir = $derived($datasetInfo?.path || 'data/plantvillage/balanced');
+  let dataDir = $derived($datasetInfo?.path || 'data/plantvillage');
   let outputDir = $state('output/models');
 
   let showSettings = $state(false);

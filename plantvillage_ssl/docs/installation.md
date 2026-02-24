@@ -203,20 +203,16 @@ pip install kaggle
 # 3. Save kaggle.json to ~/.kaggle/
 
 # Download dataset
-cd Source/plantvillage_ssl
-python scripts/download_dataset.py --kaggle
+cd Source
+./download_plantvillage.sh
 ```
 
 ### Option 2: Manual Download
 
-1. Visit [PlantVillage Dataset on Kaggle](https://www.kaggle.com/datasets/abdallahalidev/plantvillage-dataset)
+1. Visit [New Plant Diseases Dataset on Kaggle](https://www.kaggle.com/datasets/vipoooool/new-plant-diseases-dataset)
 2. Download the dataset (click "Download" button)
 3. Extract to `Source/plantvillage_ssl/data/plantvillage/`
-4. Organize the dataset:
-
-```bash
-python scripts/download_dataset.py --organize /path/to/extracted/dataset
-```
+4. Ensure `train/` and `valid/` directories are present under `data/plantvillage/`
 
 ### Expected Directory Structure
 
@@ -224,16 +220,14 @@ After setup, your data directory should look like:
 
 ```
 data/plantvillage/
-├── organized/
+├── train/
 │   ├── Apple___Apple_scab/
 │   │   ├── image1.jpg
 │   │   └── ...
-│   ├── Apple___Black_rot/
-│   │   └── ...
-│   ├── Apple___healthy/
-│   │   └── ...
-│   └── ... (39 class directories)
-└── split_config.json
+│   └── ... (38 class directories)
+└── valid/
+    ├── Apple___Apple_scab/
+    └── ... (38 class directories)
 ```
 
 ---
@@ -255,10 +249,7 @@ data/plantvillage/
 
 ```bash
 # Check dataset statistics
-./target/release/plantvillage_ssl stats --data-dir data/plantvillage/organized
-
-# Verify with Python script
-python scripts/download_dataset.py --verify-only --output-dir data/plantvillage/organized
+./target/release/plantvillage_ssl stats --data-dir data/plantvillage
 ```
 
 ### 3. Test CUDA (GPU only)
@@ -337,10 +328,11 @@ Error: Dataset directory does not exist
 **Solution:** Ensure the dataset path is correct:
 ```bash
 # Check the path
-ls data/plantvillage/organized/
+ls data/plantvillage/train/
 
-# If empty, re-download/organize the dataset
-python scripts/download_dataset.py --kaggle
+# If empty, re-download the dataset
+cd ..
+./download_plantvillage.sh
 ```
 
 #### 5. Permission denied on Jetson
@@ -380,17 +372,17 @@ After successful installation:
 
 1. **Train a model:**
    ```bash
-   ./target/release/plantvillage_ssl train --data-dir data/plantvillage/organized --epochs 50
+   ./target/release/plantvillage_ssl train --data-dir data/plantvillage --epochs 50
    ```
 
 2. **Run inference:**
    ```bash
-   ./target/release/plantvillage_ssl infer --input <image.jpg> --model output/models/best.bin
+   ./target/release/plantvillage_ssl infer --input <image.jpg> --model output/models/best_model.mpk
    ```
 
 3. **Benchmark performance:**
    ```bash
-   ./target/release/plantvillage_ssl benchmark --model output/models/best.bin
+   ./target/release/plantvillage_ssl benchmark --model output/models/best_model.mpk
    ```
 
 4. **Read the [User Guide](user_guide.md)** for detailed usage instructions.

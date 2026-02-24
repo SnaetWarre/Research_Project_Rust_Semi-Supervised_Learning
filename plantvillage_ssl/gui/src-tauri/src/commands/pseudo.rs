@@ -6,15 +6,8 @@ use std::sync::Arc;
 use serde::{Deserialize, Serialize};
 use tauri::State;
 
-use burn::module::Module;
-use burn::record::CompactRecorder;
-use burn::tensor::Tensor;
-use image::imageops::FilterType;
-
-use plantvillage_ssl::model::cnn::{PlantClassifier, PlantClassifierConfig};
-
-use crate::state::{AppState, AppBackend};
-use crate::commands::inference::CLASS_NAMES;
+use crate::commands::shared::{get_class_name, load_app_model, preprocess_image_for_app, CLASS_NAMES};
+use crate::state::AppState;
 
 /// Single sample for pseudo-labeling demo
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -49,34 +42,6 @@ pub struct ClassCount {
     pub count: usize,
 }
 
-fn get_class_name(class_id: usize) -> String {
-    if class_id < CLASS_NAMES.len() {
-        CLASS_NAMES[class_id].to_string()
-    } else {
-        format!("Unknown_{}", class_id)
-    }
-}
-
-/// Helper to load model from path
-fn load_model_from_path(model_path: &std::path::Path) -> Result<PlantClassifier<AppBackend>, String> {
-    let device = <AppBackend as burn::tensor::backend::Backend>::Device::default();
-
-    let config = PlantClassifierConfig {
-        num_classes: 38,
-        input_size: 128,
-        dropout_rate: 0.3,
-        in_channels: 3,
-        base_filters: 32,
-    };
-
-    let model: PlantClassifier<AppBackend> = PlantClassifier::new(&config, &device);
-    let recorder = CompactRecorder::new();
-
-    model
-        .load_file(model_path, &recorder, &device)
-        .map_err(|e| format!("Failed to load model: {:?}", e))
-}
-
 /// Run pseudo-labeling demo on a set of images
 #[tauri::command]
 pub async fn run_pseudo_label_demo(
@@ -91,9 +56,7 @@ pub async fn run_pseudo_label_demo(
         .clone();
 
     // Load model on-demand
-    let model = load_model_from_path(&model_path)?;
-
-    let device = <AppBackend as burn::tensor::backend::Backend>::Device::default();
+    let model = load_app_model(&model_path)?;
     let input_size = 128usize;
 
     let mut samples = Vec::new();
@@ -122,21 +85,7 @@ pub async fn run_pseudo_label_demo(
             Err(_) => continue,
         };
 
-        let img = img.resize_exact(input_size as u32, input_size as u32, FilterType::Triangle);
-        let img = img.to_rgb8();
-
-        let mut pixels: Vec<f32> = Vec::with_capacity(3 * input_size * input_size);
-        for c in 0..3 {
-            for y in 0..input_size {
-                for x in 0..input_size {
-                    let pixel = img.get_pixel(x as u32, y as u32);
-                    pixels.push(pixel[c] as f32 / 255.0);
-                }
-            }
-        }
-
-        let tensor = Tensor::<AppBackend, 1>::from_floats(pixels.as_slice(), &device)
-            .reshape([1, 3, input_size, input_size]);
+        let tensor = preprocess_image_for_app(&img, input_size);
 
         let output = model.forward_softmax(tensor);
         let output_data = output.into_data();

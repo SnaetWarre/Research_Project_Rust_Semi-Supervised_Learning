@@ -15,6 +15,7 @@ pub mod experiments;
 pub mod demo;
 pub mod ssl_mobile;
 pub mod dataset_bundle;
+pub mod shared;
 
 // Re-export all commands for registration
 pub use dataset::*;

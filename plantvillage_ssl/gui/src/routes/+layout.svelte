@@ -52,7 +52,7 @@
             // Only load if not already loaded
             if (!$datasetInfo) {
                 try {
-                    const defaultDataDir = "data/plantvillage/balanced";
+                    const defaultDataDir = "data/plantvillage";
                     const result = await invoke<{
                         path: string;
                         total_samples: number;

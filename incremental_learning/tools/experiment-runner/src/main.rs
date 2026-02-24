@@ -6,7 +6,7 @@
 use anyhow::{Context, Result};
 use clap::Parser;
 use indicatif::{MultiProgress, ProgressBar, ProgressStyle};
-use plant_core::ModelArchitecture;
+use plant_core::load_toml_config;
 use plant_dataset::loader::ImageLoader;
 use plant_incremental::{
     finetuning::{FineTuningConfig, FineTuningLearner},
@@ -137,7 +137,7 @@ fn main() -> Result<()> {
     let args = Args::parse();
 
     // Load configuration first (needed for logging setup)
-    let mut config = load_config(&args.config)
+    let mut config: ExperimentConfig = load_toml_config(&args.config)
         .context("Failed to load experiment configuration")?;
 
     // Apply output directory override early
@@ -258,16 +258,6 @@ fn setup_logging(verbose: bool, experiment_name: &str, output_base: &PathBuf) ->
         .init();
 
     Ok(())
-}
-
-fn load_config(path: &PathBuf) -> Result<ExperimentConfig> {
-    let content = std::fs::read_to_string(path)
-        .with_context(|| format!("Failed to read config file: {}", path.display()))?;
-
-    let config: ExperimentConfig = toml::from_str(&content)
-        .with_context(|| format!("Failed to parse config file: {}", path.display()))?;
-
-    Ok(config)
 }
 
 fn validate_config(config: &ExperimentConfig) -> Result<()> {

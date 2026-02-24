@@ -441,7 +441,7 @@
           <div class="p-4 rounded-xl badge-error">
             <h4 class="font-semibold mb-2">🚨 Critical: Model Retraining Needed</h4>
             <ul class="space-y-2 text-sm">
-              <li>• Use the <strong>balanced dataset</strong> in <code class="text-blue-600">data/plantvillage/balanced</code></li>
+              <li>• Use the dataset root at <code class="text-blue-600">data/plantvillage</code> with train/valid splits</li>
               <li>• Enable <strong>class-weighted loss</strong> in training settings</li>
               <li>• Increase model capacity: <strong>base_filters=32</strong>, <strong>dropout=0.3</strong></li>
               <li>• Train for <strong>50-100 epochs</strong> with early stopping</li>

@@ -12,7 +12,7 @@
   let imagesPerDay = $state(50);
   let confidenceThreshold = $state(0.9);
   let retrainThreshold = $state(200);
-  let dataDir = $derived($datasetInfo?.path || 'data/plantvillage/balanced');
+  let dataDir = $derived($datasetInfo?.path || 'data/plantvillage');
   let modelPath = $state('output/models/plant_classifier');
   let outputDir = $state('output/simulation');
 

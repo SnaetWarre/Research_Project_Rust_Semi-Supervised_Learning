@@ -1,12 +1,12 @@
-# 2. Research — Literature Study
+# 2. Research: Literature Study
 
-This chapter presents the theoretical background required to understand the research and its results. Following the thesis guidelines, only topics that fall **outside the standard MCT curriculum** are discussed in depth — the intended audience is IT professionals. The chapter covers semi-supervised learning theory, the Rust machine learning ecosystem, incremental learning (catastrophic forgetting), edge AI deployment, and the PlantVillage dataset.
+This chapter presents the theoretical background required to understand the research and its results. Following the thesis guidelines, only topics that fall **outside the standard MCT curriculum** are discussed in depth; the intended audience is IT professionals. The chapter covers semi-supervised learning theory, the Rust machine learning ecosystem, incremental learning (catastrophic forgetting), edge AI deployment, and the PlantVillage dataset.
 
 ## 2.1 Semi-Supervised Learning
 
 ### 2.1.1 Fundamentals
 
-Semi-supervised learning (SSL) sits between supervised learning (all data is labeled) and unsupervised learning (no labels at all). SSL leverages a small set of labeled examples together with a large pool of unlabeled data to train a model that performs comparably to one trained on a fully labeled dataset [13]. This is particularly valuable in domains where labeling is expensive — agricultural image annotation by plant pathologists is a clear example.
+Semi-supervised learning (SSL) sits between supervised learning (all data is labeled) and unsupervised learning (no labels at all). SSL leverages a small set of labeled examples together with a large pool of unlabeled data to train a model that performs comparably to one trained on a fully labeled dataset [13]. This is particularly valuable in domains where labeling is expensive; agricultural image annotation by plant pathologists is a clear example.
 
 The core assumption behind SSL is the **cluster assumption**: data points that lie close together in feature space are likely to share the same label. If this assumption holds, the structure of the unlabeled data provides useful information about the decision boundary [13].
 
@@ -28,7 +28,7 @@ Several recent studies have applied SSL to plant disease detection with strong r
 
 **Ambiguity-Aware Semi-Supervised Learning (AaSSL).** Pham et al. (2025) address the problem of ambiguous samples near the decision boundary. Their method explicitly filters these samples rather than accepting them as pseudo-labels. With only 5% labeled data, accuracy improved from 90.74% to 94.09% [1]. This concept directly influenced the confidence-threshold filtering used in this project.
 
-**Mean Teacher and Consistency Regularization.** Ilsever and Baz (2024) apply a student–teacher architecture to the PlantVillage dataset. The teacher's weights are an exponential moving average (EMA) of the student's weights, and consistency loss is applied under different augmentations. This achieved 88.50% accuracy with 5% labeled data [4]. While effective, the Mean Teacher approach requires two models to be held in memory simultaneously — a constraint that is relevant on edge devices with limited VRAM.
+**Mean Teacher and Consistency Regularization.** Ilsever and Baz (2024) apply a student–teacher architecture to the PlantVillage dataset. The teacher's weights are an exponential moving average (EMA) of the student's weights, and consistency loss is applied under different augmentations. This achieved 88.50% accuracy with 5% labeled data [4]. While effective, the Mean Teacher approach requires two models to be held in memory simultaneously, a constraint that is relevant on edge devices with limited VRAM.
 
 **Semi-supervised jute leaf disease classification.** Jannat (2025) demonstrates that a lightweight CNN combined with SSL on 10% labeled / 90% unlabeled data can reach 97.89% accuracy, specifically targeting mobile and edge deployment [2]. This result confirms that simple architectures paired with effective SSL can outperform complex models in constrained environments.
 
@@ -52,18 +52,18 @@ graph TD
     I -- Yes --> J[Final Model]
     G -- No --> C
 ```
-*Figure 2.1 — Flowchart of the implemented pseudo-labeling pipeline.*
+*Figure 2.1: Flowchart of the implemented pseudo-labeling pipeline.*
 
 1. **Single model** rather than student–teacher (keeps VRAM usage within edge device limits).
 2. **High confidence threshold (0.9)** to prioritize label precision over recall, following Pham et al.'s ambiguity-aware filtering principle.
 3. **Retrain threshold of 200 samples** to batch pseudo-labels rather than adding them one at a time, which reduces training overhead.
-4. **Label-consistent augmentations** (random crop, horizontal flip, brightness jitter) — augmentations that do not alter the semantic content of the image.
+4. **Label-consistent augmentations** (random crop, horizontal flip, brightness jitter): augmentations that do not alter the semantic content of the image.
 
 ## 2.2 The Rust ML Ecosystem: Burn Framework
 
 ### 2.2.1 Why Rust for Machine Learning?
 
-The standard ML stack — Python, PyTorch, CUDA — is optimized for research flexibility and GPU throughput. However, it introduces several challenges for edge deployment:
+The standard ML stack (Python, PyTorch, CUDA) is optimized for research flexibility and GPU throughput. However, it introduces several challenges for edge deployment:
 
 - **Deployment size:** a minimal PyTorch installation requires approximately 7.1 GB of dependencies.
 - **Startup latency:** Python interpreter initialization takes ~3 seconds, which is noticeable in interactive applications.
@@ -76,7 +76,7 @@ Rust addresses all of these constraints. It compiles to a single static binary w
 
 Three Rust ML frameworks were evaluated for this project [14]:
 
-**Table 2.1** — Comparison of Rust ML frameworks
+**Table 2.1:** Comparison of Rust ML frameworks
 
 | Criterion | Burn | Candle | tch-rs |
 |:---|:---|:---|:---|
@@ -86,7 +86,7 @@ Three Rust ML frameworks were evaluated for this project [14]:
 | **Deployment** | Static binary | Static binary / WASM | Requires LibTorch shared library |
 | **Edge suitability** | High (no heavy dependencies) | High (lightweight) | Medium (complex cross-compilation) |
 
-**Burn** [6][7] is a backend-agnostic framework that provides a comprehensive training API with support for custom training loops — essential for implementing the pseudo-labeling cycle. Its `Module` derive macro enables type-safe model definitions that are generic over backends, meaning the same code compiles to CUDA, CPU, wgpu, or WASM targets without modification.
+**Burn** [6][7] is a backend-agnostic framework that provides a comprehensive training API with support for custom training loops, which is essential for implementing the pseudo-labeling cycle. Its `Module` derive macro enables type-safe model definitions that are generic over backends, meaning the same code compiles to CUDA, CPU, wgpu, or WASM targets without modification.
 
 **Candle** (by Hugging Face) excels at inference for large language models and transformer architectures. However, its training API is more limited and does not easily support the iterative pseudo-labeling loops required for SSL.
 
@@ -149,7 +149,7 @@ For this project, the experimental focus is on measuring the severity of catastr
 
 Edge deployment imposes constraints that differ fundamentally from cloud or datacenter ML:
 
-- **Compute:** limited GPU/CPU capability — models must be small and efficient.
+- **Compute:** limited GPU/CPU capability; models must be small and efficient.
 - **Memory:** typically 4–8 GB RAM/VRAM, shared with the operating system and other applications.
 - **Storage:** model and application must be small enough to install via limited-bandwidth channels.
 - **Connectivity:** zero network dependency during inference (fully offline).
@@ -183,7 +183,7 @@ Zhang et al. (2024) present MicroFlow, an efficient Rust-based inference engine 
 
 The PlantVillage dataset is one of the most widely used benchmarks for plant disease classification research. The version used in this project is the **New Plant Diseases Dataset** from Kaggle, which provides a pre-balanced and augmented collection of plant leaf images.
 
-**Table 2.2** — Dataset characteristics
+**Table 2.2:** Dataset characteristics
 
 | Property | Value |
 |:---|:---|
@@ -207,6 +207,6 @@ While PlantVillage is widely used as a benchmark, it has known limitations that 
 - **Controlled imaging conditions.** Images in PlantVillage were captured under relatively uniform lighting and backgrounds. Real-world field images contain varying lighting, complex backgrounds (soil, other plants, sky), and motion blur from handheld cameras.
 - **Single disease per image.** Each PlantVillage image contains a single disease manifestation. In practice, plants may exhibit multiple diseases simultaneously, or disease symptoms may be confounded with nutrient deficiencies or mechanical damage.
 - **Limited crop diversity.** While 38 classes cover the most common crops and diseases, many region-specific diseases are not represented. A production system would need to be extended with locally relevant classes.
-- **No temporal progression.** The dataset captures diseases at a single point in time. Early-stage detection — when intervention is most effective — requires images of disease onset, which are underrepresented.
+- **No temporal progression.** The dataset captures diseases at a single point in time. Early-stage detection, when intervention is most effective, requires images of disease onset, which are underrepresented.
 
 These limitations do not invalidate the dataset for this research, but they define the boundary conditions under which the experimental results should be interpreted. Field validation on real-world imagery (discussed in Chapter 4) remains essential before deployment.

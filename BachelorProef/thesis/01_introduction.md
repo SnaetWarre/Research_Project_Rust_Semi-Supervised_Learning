@@ -2,15 +2,15 @@
 
 ## 1.1 Context and Motivation
 
-Plant diseases are responsible for an estimated 20–40% of global agricultural production losses each year [15]. For smallholder farmers — who produce roughly one-third of the world's food — a single undetected outbreak can mean the difference between a profitable harvest and financial ruin. Early and accurate identification of plant diseases is therefore not merely a technological convenience but an economic necessity.
+Plant diseases are responsible for an estimated 20–40% of global agricultural production losses each year [15]. For smallholder farmers, who produce roughly one-third of the world's food, a single undetected outbreak can mean the difference between a profitable harvest and financial ruin. Early and accurate identification of plant diseases is therefore not merely a technological convenience but an economic necessity.
 
-Current diagnostic methods fall into two broad categories. The first is laboratory-based analysis, where leaf samples are physically sent to an expert for examination. This approach is accurate but slow, with turnaround times of several days, and it is economically prohibitive at scale. The second category consists of cloud-based machine learning systems, where images of diseased plants are uploaded to a remote server for classification. While faster than laboratory methods, these systems introduce a hard dependency on internet connectivity — a resource that is unavailable or unreliable in many of the rural regions where agriculture is most vulnerable.
+Current diagnostic methods fall into two broad categories. The first is laboratory-based analysis, where leaf samples are physically sent to an expert for examination. This approach is accurate but slow, with turnaround times of several days, and it is economically prohibitive at scale. The second category consists of cloud-based machine learning systems, where images of diseased plants are uploaded to a remote server for classification. While faster than laboratory methods, these systems introduce a hard dependency on internet connectivity, a resource that is unavailable or unreliable in many of the rural regions where agriculture is most vulnerable.
 
 This creates a clear gap: farmers need fast, accurate, and accessible disease detection that works without internet connectivity, on the devices they already own. The solution must be lightweight enough to run on a smartphone or a low-power laptop, and it must not require a data connection after initial installation.
 
 ## 1.2 The Labeling Problem
 
-Building a machine learning model for plant disease classification requires large quantities of labeled training data. Expert annotation of agricultural imagery costs approximately €2 per image [16]. For a dataset of 50,000 images covering 38 disease classes, this translates to a labeling budget of €100,000 — a cost that is prohibitive for most research projects and impractical for field deployment in developing regions.
+Building a machine learning model for plant disease classification requires large quantities of labeled training data. Expert annotation of agricultural imagery costs approximately €2 per image [16]. For a dataset of 50,000 images covering 38 disease classes, this translates to a labeling budget of €100,000, a cost that is prohibitive for most research projects and impractical for field deployment in developing regions.
 
 Semi-supervised learning (SSL) offers a way to reduce this dependency on labeled data. By training an initial model on a small labeled subset and then using that model to generate pseudo-labels for the remaining unlabeled data, SSL can achieve accuracy levels comparable to fully supervised training at a fraction of the annotation cost. The key challenge lies in ensuring that the pseudo-labels are sufficiently accurate to improve rather than degrade the model during retraining.
 
@@ -35,7 +35,7 @@ This question is decomposed into the following sub-questions:
 
 ## 1.4 Scope and Approach
 
-This research focuses on the PlantVillage dataset (38 disease classes, approximately 87,000 images) and uses a custom lightweight convolutional neural network (CNN) rather than pretrained models or Vision Transformers. The entire pipeline — from training to deployment — is implemented in Rust using the Burn framework. The system is designed to work fully offline, with no network calls during inference.
+This research focuses on the PlantVillage dataset (38 disease classes, approximately 87,000 images) and uses a custom lightweight convolutional neural network (CNN) rather than pretrained models or Vision Transformers. The entire pipeline, from training to deployment, is implemented in Rust using the Burn framework. The system is designed to work fully offline, with no network calls during inference.
 
 The experimental work is organized around three axes:
 
@@ -49,8 +49,8 @@ Deployment is validated across four hardware configurations: a laptop with an NV
 
 This thesis is organized as follows:
 
-- **Chapter 2 — Research** presents the literature study covering semi-supervised learning techniques, the Rust ML ecosystem, incremental learning theory, edge AI deployment strategies, and the PlantVillage dataset.
-- **Chapter 3 — Research Results** describes the technical implementation: the system architecture, the SSL training pipeline, the three controlled experiments with their quantitative results, cross-platform benchmarks, and the Tauri-based GUI application.
-- **Chapter 4 — Reflection** provides a critical evaluation of the results through interviews with external experts and an analysis of broader implications including implementation barriers, business value, societal impact, and future research directions.
-- **Chapter 5 — Advice** offers a practical step-by-step guide for someone facing the same research question, grounded in both the experimental findings and the feedback from external reflection.
-- **Chapter 6 — Conclusion** directly answers the research question by synthesizing the key findings from the preceding chapters.
+- **Chapter 2: Research** presents the literature study covering semi-supervised learning techniques, the Rust ML ecosystem, incremental learning theory, edge AI deployment strategies, and the PlantVillage dataset.
+- **Chapter 3: Research Results** describes the technical implementation: the system architecture, the SSL training pipeline, the three controlled experiments with their quantitative results, cross-platform benchmarks, and the Tauri-based GUI application.
+- **Chapter 4: Reflection** provides a critical evaluation of the results through interviews with external experts and an analysis of broader implications including implementation barriers, business value, societal impact, and future research directions.
+- **Chapter 5: Advice** offers a practical step-by-step guide for someone facing the same research question, grounded in both the experimental findings and the feedback from external reflection.
+- **Chapter 6: Conclusion** directly answers the research question by synthesizing the key findings from the preceding chapters.

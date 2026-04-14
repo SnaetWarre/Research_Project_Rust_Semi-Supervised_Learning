@@ -22,7 +22,7 @@ If your use case involves any form of SSL or iterative training loop, Burn is th
 
 The label efficiency experiment (Table 3.1) provides a clear empirical baseline:
 
-- **Below 25 images per class:** accuracy is unacceptably low (< 60%). Do not attempt to train a model with this little data — the pseudo-labeling cycle will propagate errors.
+- **Below 25 images per class:** accuracy is unacceptably low (< 60%). Do not attempt to train a model with this little data, as the pseudo-labeling cycle will propagate errors.
 - **50–100 images per class:** the minimum viable range. At 100 images per class, accuracy reaches 85.53%, which is sufficient for the initial model in an SSL pipeline.
 - **200+ images per class:** diminishing returns. The effort of labeling beyond 200 images per class is better spent on improving the pseudo-labeling pipeline.
 
@@ -52,7 +52,7 @@ Based on the experimental results and the literature review, the following param
 
 ## 5.4 Plan for Incremental Class Addition
 
-If the deployment scenario involves adding new disease classes over time — which is likely in any real-world agricultural application — the experimental results from Chapter 3 provide important guidelines:
+If the deployment scenario involves adding new disease classes over time, which is likely in any real-world agricultural application, the experimental results from Chapter 3 provide important guidelines:
 
 1. **Start with a comprehensive base model.** The class scaling experiment (Table 3.2) shows that adding a class to a larger base incurs 6× more forgetting. However, starting with a larger base means the model already covers more diseases, reducing the frequency of updates.
 

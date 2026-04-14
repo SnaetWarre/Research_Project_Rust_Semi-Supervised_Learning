@@ -7,9 +7,9 @@ This chapter provides a critical evaluation of the research results through two 
 ### 4.1.1 External Expert 1
 
 > **[TODO: Insert name and company/organization]**
-> *[TODO: Insert role/title and brief description of expertise — e.g., "Agricultural Technology Specialist at AgriTech B.V." or "ML Engineer at a precision farming startup"]*
+> *[TODO: Insert role/title and brief description of expertise - e.g., "Agricultural Technology Specialist at AgriTech B.V." or "ML Engineer at a precision farming startup"]*
 
-**Context of the conversation:** [TODO: Describe how you contacted this person and the setting of the interview — in person, video call, etc.]
+**Context of the conversation:** [TODO: Describe how you contacted this person and the setting of the interview (in person, video call, etc.)]
 
 **Key discussion points:**
 
@@ -32,7 +32,7 @@ This chapter provides a critical evaluation of the research results through two 
 ### 4.1.2 External Expert 2
 
 > **[TODO: Insert name and company/organization]**
-> *[TODO: Insert role/title and brief description of expertise — e.g., "Senior ML Engineer at an edge computing firm" or "Researcher in computer vision at a university"]*
+> *[TODO: Insert role/title and brief description of expertise - e.g., "Senior ML Engineer at an edge computing firm" or "Researcher in computer vision at a university"]*
 
 **Context of the conversation:** [TODO: Describe how you contacted this person and the setting of the interview.]
 
@@ -62,7 +62,7 @@ This chapter provides a critical evaluation of the research results through two 
 
 ### 4.2.1 Strengths
 
-**Deployment size and portability.** The 24 MB binary represents a genuine step change compared to PyTorch's 7.1 GB footprint. This is not an incremental improvement — it fundamentally changes which distribution channels are viable for edge deployment. A model that can be sent via Bluetooth or copied from a USB stick is qualitatively different from one that requires a broadband connection.
+**Deployment size and portability.** The 24 MB binary represents a genuine step change compared to PyTorch's 7.1 GB footprint. This is not an incremental improvement; it fundamentally changes which distribution channels are viable for edge deployment. A model that can be sent via Bluetooth or copied from a USB stick is qualitatively different from one that requires a broadband connection.
 
 **The BYOD pivot.** The benchmark results (Table 3.6) provided a clear, data-driven reason to abandon dedicated edge hardware. The Jetson Orin Nano, at €350, was slower than a phone that farmers already own. This pivot eliminated the single largest cost barrier to deployment.
 
@@ -87,7 +87,7 @@ Deploying an offline AI system in the field involves challenges beyond the techn
 - **Digital literacy:** farmers in regions where offline operation is most needed may have limited experience with smartphone applications. The UI must be simple, with clear visual feedback and minimal text.
 - **Device diversity:** the "BYOD" model means the system must work on a wide range of Android and iOS devices with varying camera quality and processing power.
 - **Trust in AI:** a farmer who receives an incorrect diagnosis may lose trust in the system entirely. False positive rates must be communicated transparently, and the system should indicate confidence levels rather than presenting a single definitive answer.
-- **Update distribution:** while the initial installation is small enough for offline distribution, model updates (new classes, improved weights) still require a distribution mechanism — potentially through agricultural extension workers or community access points.
+- **Update distribution:** while the initial installation is small enough for offline distribution, model updates (new classes, improved weights) still require a distribution mechanism, potentially through agricultural extension workers or community access points.
 
 ### 4.3.2 Business Value
 
@@ -104,7 +104,7 @@ Plant disease detection has direct implications for food security. The FAO estim
 
 An offline, phone-based disease detection tool removes two critical access barriers: internet connectivity and specialized equipment. If the accuracy demonstrated in this research translates to field conditions, such a tool could enable earlier intervention, reduce crop losses, and improve food security for some of the world's most vulnerable farming communities.
 
-The offline-first architecture also has a privacy advantage, as noted in the NVISO guest session on AI threats (Appendix C): because the model runs entirely on-device, no agricultural data is transmitted to external servers. This eliminates risks of data exfiltration and removes the need for data processing agreements — a practical benefit for deployment in regions with varying data protection regulations.
+The offline-first architecture also has a privacy advantage, as noted in the NVISO guest session on AI threats (Appendix C): because the model runs entirely on-device, no agricultural data is transmitted to external servers. This eliminates risks of data exfiltration and removes the need for data processing agreements, a practical benefit for deployment in regions with varying data protection regulations.
 
 ### 4.3.4 Future Research Directions
 

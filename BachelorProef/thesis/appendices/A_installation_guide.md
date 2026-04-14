@@ -1,4 +1,4 @@
-# Appendix A — Installation and User Guide
+# Appendix A: Installation and User Guide
 
 ## A.1 Prerequisites
 
@@ -63,7 +63,7 @@ cargo build --release --features cpu
 
 ## A.3 Training the Model
 
-### A.3.1 Step 1 — Initial CNN Training (Supervised)
+### A.3.1 Step 1: Initial CNN Training (Supervised)
 
 ```bash
 cd plantvillage_ssl
@@ -81,7 +81,7 @@ cargo run --release --bin plantvillage_ssl -- train \
 
 The trained model is saved to `output/models/plant_classifier_TIMESTAMP`.
 
-### A.3.2 Step 2 — SSL Simulation (Pseudo-Labeling)
+### A.3.2 Step 2: SSL Simulation (Pseudo-Labeling)
 
 ```bash
 cargo run --release --bin plantvillage_ssl -- simulate \
@@ -103,7 +103,7 @@ cargo run --release --bin plantvillage_ssl -- simulate \
 | `--retrain-threshold 200` | Retrain after accumulating 200 pseudo-labels |
 | `--confidence-threshold 0.9` | Only accept predictions with >90% confidence |
 
-### A.3.3 Step 3 — Copy Best Model
+### A.3.3 Step 3: Copy Best Model
 
 ```bash
 cp plantvillage_ssl/output/simulation/plant_classifier_ssl_TIMESTAMP.mpk \

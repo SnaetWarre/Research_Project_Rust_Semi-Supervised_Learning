@@ -1,4 +1,4 @@
-# Appendix C — Guest Session Report: AI Threat Landscape and Defenses
+# Appendix C: Guest Session Report: AI Threat Landscape and Defenses
 
 **Speaker:** NVISO (www.nviso.eu)
 **Date:** January 2026
@@ -11,7 +11,7 @@
 | Item | Details |
 |:---|:---|
 | **Topic** | AI Threat Landscape and Defenses |
-| **Organization** | NVISO — a cybersecurity consulting firm with multiple locations worldwide |
+| **Organization** | NVISO, a cybersecurity consulting firm with multiple locations worldwide |
 | **Context** | Cybersecurity and AI-related threats in modern organizations |
 
 ---
@@ -68,11 +68,11 @@ AI systems have built-in safety mechanisms ("guardrails"), but these can be circ
 
 ### Preventive Measures
 
-1. **Training & awareness** — educate employees about AI-related threats; create awareness of deepfakes and social engineering.
-2. **Authentication procedures** — multi-factor verification for sensitive actions; callback procedures for unexpected requests.
-3. **Secure email & browser activity** — content filtering, DNS filtering, blocking active content.
-4. **Incident response plan** — clear procedures for when an attack is detected; escalation paths and contact persons.
-5. **Network segmentation** — limit lateral movement after a breach; isolate critical systems.
+1. **Training & awareness:** educate employees about AI-related threats; create awareness of deepfakes and social engineering.
+2. **Authentication procedures:** multi-factor verification for sensitive actions; callback procedures for unexpected requests.
+3. **Secure email & browser activity:** content filtering, DNS filtering, blocking active content.
+4. **Incident response plan:** clear procedures for when an attack is detected; escalation paths and contact persons.
+5. **Network segmentation:** limit lateral movement after a breach; isolate critical systems.
 
 ### Securing AI Tools for End Users
 
@@ -107,7 +107,7 @@ AI can also be deployed for **defense**, structured around three pillars:
 
 This guest session was relevant for my research project for the following reasons:
 
-1. **Edge deployment and security.** My project runs fully offline on edge devices, which is inherently more secure than cloud-based solutions. Because no data leaves the device, data exfiltration — one of the key attack vectors discussed in the session — is impossible by design. This reinforces the security argument for the offline-first architecture.
+1. **Edge deployment and security.** My project runs fully offline on edge devices, which is inherently more secure than cloud-based solutions. Because no data leaves the device, data exfiltration, one of the key attack vectors discussed in the session, is impossible by design. This reinforces the security argument for the offline-first architecture.
 
 2. **AI ethics.** The session underlined the importance of responsible AI usage and the need for guardrails in ML systems. While the plant disease detection model does not raise the same misuse concerns as large language models, the principle of building safety-conscious AI applies broadly.
 
@@ -120,11 +120,11 @@ This guest session was relevant for my research project for the following reason
 - AI-generated deepfakes are **surprisingly easy** to create with minimal source material.
 - Social engineering remains a major threat vector, now amplified by AI capabilities.
 - Training and awareness are the first line of defense.
-- AI is simultaneously a **weapon** and a **shield** — the same technology enables both attack and defense.
+- AI is simultaneously a **weapon** and a **shield**; the same technology enables both attack and defense.
 - SOAR and automation help security teams work more effectively by handling routine tasks.
 
 ---
 
 *Report written: January 2026*
 *Student: Warre Snaet*
-*Program: MCT — Research Project*
+*Program: MCT, Research Project*

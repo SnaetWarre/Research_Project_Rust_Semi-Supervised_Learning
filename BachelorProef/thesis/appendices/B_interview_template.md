@@ -1,4 +1,4 @@
-# Appendix B — Interview Question Template
+# Appendix B: Interview Question Template
 
 These questions are designed for the external reflection interviews (Chapter 4). They should be adapted based on the expert's background and area of expertise.
 

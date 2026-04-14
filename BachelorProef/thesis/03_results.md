@@ -8,8 +8,8 @@ This chapter provides a technical description of the system that was built to an
 
 The project is organized as two separate Rust workspaces:
 
-- **`plantvillage_ssl`** — the main SSL library and CLI, built on Burn 0.20. This workspace contains the CNN model, the training loop, the pseudo-labeling simulation pipeline, the experiment runner, and the Tauri-based GUI application.
-- **`incremental_learning`** — a dedicated workspace for incremental learning experiments, built on Burn 0.14. This workspace is organized into library crates (`plant-core`, `plant-dataset`, `plant-training`, `plant-incremental`) and CLI tools (`train`, `evaluate`, `experiment-runner`).
+- **`plantvillage_ssl`**: the main SSL library and CLI, built on Burn 0.20. This workspace contains the CNN model, the training loop, the pseudo-labeling simulation pipeline, the experiment runner, and the Tauri-based GUI application.
+- **`incremental_learning`**: a dedicated workspace for incremental learning experiments, built on Burn 0.14. This workspace is organized into library crates (`plant-core`, `plant-dataset`, `plant-training`, `plant-incremental`) and CLI tools (`train`, `evaluate`, `experiment-runner`).
 
 The separation into two workspaces is a deliberate architectural choice. Burn's API changed significantly between versions 0.14 and 0.20, and the incremental learning crate was developed earlier in the project before migrating the main pipeline to the newer version. Both workspaces share the same CNN architecture and dataset handling logic, ensuring experimental results are comparable.
 
@@ -46,7 +46,7 @@ This design means the exact same model code runs on CUDA (for GPU-accelerated tr
 
 ### 3.1.3 Model Size
 
-The trained model weights occupy 5.7 MB on disk. The compiled Rust binary — including the model, the inference runtime, and the application code — totals 24 MB. For comparison, a minimal PyTorch deployment (model + runtime + dependencies) requires approximately 7.1 GB [17]. This represents a **300× reduction** in deployment size, which is critical for distribution to edge devices over limited-bandwidth connections or physical media.
+The trained model weights occupy 5.7 MB on disk. The compiled Rust binary, including the model, the inference runtime, and the application code, totals 24 MB. For comparison, a minimal PyTorch deployment (model + runtime + dependencies) requires approximately 7.1 GB [17]. This represents a **300× reduction** in deployment size, which is critical for distribution to edge devices over limited-bandwidth connections or physical media.
 
 ## 3.2 Semi-Supervised Learning Pipeline
 
@@ -65,11 +65,11 @@ The labeled ratio is deliberately kept low at 20% to simulate a realistic scenar
 
 ### 3.2.2 Training Pipeline
 
-**Step 1 — Initial supervised training.** The CNN is trained on the 20% labeled pool for 30 epochs using cross-entropy loss, Adam optimizer, and standard data augmentations (random crop, horizontal flip, brightness jitter). This produces a baseline model with approximately 70–75% validation accuracy.
+**Step 1: Initial supervised training.** The CNN is trained on the 20% labeled pool for 30 epochs using cross-entropy loss, Adam optimizer, and standard data augmentations (random crop, horizontal flip, brightness jitter). This produces a baseline model with approximately 70–75% validation accuracy.
 
-**Step 2 — Pseudo-labeling simulation.** The trained model is used to classify images from the 60% unlabeled stream pool. Images are processed in batches of 100 ("images per day" in the streaming simulation). For each image, the model produces a softmax probability distribution across all 38 classes. If the maximum predicted probability exceeds the **confidence threshold of 0.9**, the image is accepted as a pseudo-labeled sample with the predicted class as its label. Images below this threshold are discarded.
+**Step 2: Pseudo-labeling simulation.** The trained model is used to classify images from the 60% unlabeled stream pool. Images are processed in batches of 100 ("images per day" in the streaming simulation). For each image, the model produces a softmax probability distribution across all 38 classes. If the maximum predicted probability exceeds the **confidence threshold of 0.9**, the image is accepted as a pseudo-labeled sample with the predicted class as its label. Images below this threshold are discarded.
 
-**Step 3 — Retraining.** Once 200 pseudo-labeled samples have accumulated (the retrain threshold), the model is retrained on the combined set of original labeled data and accepted pseudo-labels. This cycle repeats until all stream data has been processed or validation accuracy plateaus.
+**Step 3: Retraining.** Once 200 pseudo-labeled samples have accumulated (the retrain threshold), the model is retrained on the combined set of original labeled data and accepted pseudo-labels. This cycle repeats until all stream data has been processed or validation accuracy plateaus.
 
 The pipeline is implemented as a CLI command:
 
@@ -95,7 +95,7 @@ Three controlled experiments were conducted to evaluate aspects of the system th
 
 The model was trained from scratch at seven different labeled data quantities, ranging from 5 to 500 images per class. All other variables (architecture, augmentation, training schedule) were held constant.
 
-**Table 3.1** — Label efficiency results
+**Table 3.1:** Label efficiency results
 
 | Images per class | Accuracy (%) | Training time (s) |
 |:---:|:---:|:---:|
@@ -108,14 +108,14 @@ The model was trained from scratch at seven different labeled data quantities, r
 | 500 | 94.47 | 1,101.1 |
 
 ![Label Efficiency Curve](../../plantvillage_ssl/output/experiments/label_efficiency/label_efficiency_curve.svg)
-*Figure 3.1 — Accuracy as a function of labeled images per class. The steepest gain occurs between 25 and 100 images per class.*
+*Figure 3.1: Accuracy as a function of labeled images per class. The steepest gain occurs between 25 and 100 images per class.*
 
 ![Label Efficiency Bars](../../plantvillage_ssl/output/experiments/label_efficiency/label_efficiency_bars.svg)
-*Figure 3.2 — Bar chart comparison of accuracy at each labeling level.*
+*Figure 3.2: Bar chart comparison of accuracy at each labeling level.*
 
 **Key findings:**
 
-1. With only 5 labeled images per class, the model achieves just 34.21% accuracy — barely above random for 38 classes (2.63%).
+1. With only 5 labeled images per class, the model achieves just 34.21% accuracy, barely above random for 38 classes (2.63%).
 2. The sharpest improvement occurs between 25 and 100 images per class, where accuracy jumps from 57.89% to 85.53%.
 3. Beyond 100 images per class, returns diminish: doubling from 100 to 200 yields only a 3.22 percentage point improvement.
 4. **Practical recommendation:** a minimum of 100 labeled images per class is needed for production-viable accuracy (>80%). SSL methods are essential to bridge the gap when fewer labels are available.
@@ -126,7 +126,7 @@ The model was trained from scratch at seven different labeled data quantities, r
 
 Two scenarios were compared. In Scenario A, a model was trained on 5 base classes, then a 6th class was added via incremental learning. In Scenario B, a model was trained on 30 base classes, then a 31st class was added. Both scenarios used the same incremental learning procedure and the same number of labeled samples for the new class.
 
-**Table 3.2** — Class scaling results
+**Table 3.2:** Class scaling results
 
 | Metric | 5 → 6 classes | 30 → 31 classes |
 |:---|:---:|:---:|
@@ -138,7 +138,7 @@ Two scenarios were compared. In Scenario A, a model was trained on 5 base classe
 | Training time | 1,573 s | 8,359 s |
 
 ![Class Scaling Comparison](../../plantvillage_ssl/output/experiments/class_scaling/class_scaling_comparison.svg)
-*Figure 3.3 — Visual comparison of accuracy metrics between the small-base and large-base scenarios.*
+*Figure 3.3: Visual comparison of accuracy metrics between the small-base and large-base scenarios.*
 
 **Key findings:**
 
@@ -153,7 +153,7 @@ Two scenarios were compared. In Scenario A, a model was trained on 5 base classe
 
 Both scenarios were evaluated at five labeling levels: 5, 10, 25, 50, and 100 labeled samples for the new class.
 
-**Table 3.3** — New class accuracy by label count and base size
+**Table 3.3:** New class accuracy by label count and base size
 
 | Labeled samples | 6th class accuracy | 31st class accuracy | Difference |
 |:---:|:---:|:---:|:---:|
@@ -163,7 +163,7 @@ Both scenarios were evaluated at five labeling levels: 5, 10, 25, 50, and 100 la
 | 50 | 84.27% | 25.62% | -58.66 pp |
 | 100 | 95.16% | 55.10% | -40.06 pp |
 
-**Table 3.4** — Forgetting by label count and base size
+**Table 3.4:** Forgetting by label count and base size
 
 | Labeled samples | 5→6 forgetting | 30→31 forgetting | Difference |
 |:---:|:---:|:---:|:---:|
@@ -174,19 +174,19 @@ Both scenarios were evaluated at five labeling levels: 5, 10, 25, 50, and 100 la
 | 100 | -2.50% | 0.55% | +3.06 pp |
 
 ![New Class Accuracy Curve](../../plantvillage_ssl/output/experiments/new_class_position/new_class_accuracy_curve.svg)
-*Figure 3.4 — New class accuracy as a function of labeled samples, for both base sizes.*
+*Figure 3.4: New class accuracy as a function of labeled samples, for both base sizes.*
 
 ![Position Comparison at 50 Samples](../../plantvillage_ssl/output/experiments/new_class_position/position_comparison_50.svg)
-*Figure 3.5 — Detailed comparison at 50 labeled samples.*
+*Figure 3.5: Detailed comparison at 50 labeled samples.*
 
 ![Forgetting Curve](../../plantvillage_ssl/output/experiments/new_class_position/forgetting_curve.svg)
-*Figure 3.6 — Catastrophic forgetting as a function of labeled samples for the new class.*
+*Figure 3.6: Catastrophic forgetting as a function of labeled samples for the new class.*
 
 **Key findings:**
 
 1. Learning a new class is substantially harder as the 31st class than as the 6th class. At 50 labeled samples, the 6th class reaches 84.27% accuracy while the 31st class reaches only 25.62%.
 2. The 6th class exceeds 70% accuracy with 50 samples. The 31st class does not reach 70% accuracy at any tested sample count (up to 100).
-3. Negative forgetting values in the small-base scenario (e.g., -2.84% at 50 samples) indicate that the model occasionally improves on existing classes during incremental training — likely because the additional data acts as implicit regularization.
+3. Negative forgetting values in the small-base scenario (e.g., -2.84% at 50 samples) indicate that the model occasionally improves on existing classes during incremental training, likely because the additional data acts as implicit regularization.
 4. **Practical recommendation:** when deploying to environments where new disease classes will be added over time, start with a comprehensive base model. Adding classes to a large taxonomy requires significantly more labeled data than adding them to a small one. SSL pseudo-labeling can help bridge this gap by generating additional training samples for the new class.
 
 ## 3.4 Deployment and Benchmarks
@@ -195,7 +195,7 @@ Both scenarios were evaluated at five labeling levels: 5, 10, 25, 50, and 100 la
 
 The system was benchmarked across four hardware configurations. All tests used standardized conditions: 100 inference iterations, 10 warmup iterations, batch size 1, and 128×128 input images.
 
-**Table 3.5** — Burn (Rust) CUDA backend: model version comparison
+**Table 3.5:** Burn (Rust) CUDA backend: model version comparison
 
 | Model Version | Mean (ms) | p50 (ms) | p99 (ms) | Throughput |
 |:---|:---:|:---:|:---:|:---:|
@@ -203,7 +203,7 @@ The system was benchmarked across four hardware configurations. All tests used s
 | SSL | 0.42 | 0.41 | 0.53 | 2,357 FPS |
 | **SSL Optimized** | **0.39** | **0.38** | **0.45** | **2,579 FPS** |
 
-**Table 3.6** — Hardware comparison (SSL Optimized model)
+**Table 3.6:** Hardware comparison (SSL Optimized model)
 
 | Device | Latency | Throughput | Cost |
 |:---|:---:|:---:|:---:|
@@ -216,13 +216,13 @@ The system was benchmarked across four hardware configurations. All tests used s
 
 Several observations emerge from the benchmark results:
 
-**Desktop GPU performance.** At 0.39 ms per inference (2,579 FPS), the model operates far below the real-time threshold on desktop hardware. The SSL training does not degrade inference speed — the optimized SSL model matches the supervised baseline in latency while benefiting from higher accuracy.
+**Desktop GPU performance.** At 0.39 ms per inference (2,579 FPS), the model operates far below the real-time threshold on desktop hardware. The SSL training does not degrade inference speed; the optimized SSL model matches the supervised baseline in latency while benefiting from higher accuracy.
 
 **Mobile performance.** The iPhone 12, running the model through Tauri's Rust backend, achieves approximately 80 ms per inference (~12 FPS). This is well within the usability threshold for a camera-based application where a farmer holds a phone up to a leaf and waits for a classification result.
 
-**The Jetson pivot.** The Jetson Orin Nano — a dedicated edge AI device costing €350 — performs worse than the iPhone 12 (120 ms vs. 80 ms). This result directly informed the project's deployment strategy: dedicated edge hardware is unnecessary when consumer devices (phones, laptops) already outperform it. The project pivoted to a BYOD (Bring Your Own Device) model, eliminating hardware costs entirely.
+**The Jetson pivot.** The Jetson Orin Nano, a dedicated edge AI device costing €350, performs worse than the iPhone 12 (120 ms vs. 80 ms). This result directly informed the project's deployment strategy: dedicated edge hardware is unnecessary when consumer devices (phones, laptops) already outperform it. The project pivoted to a BYOD (Bring Your Own Device) model, eliminating hardware costs entirely.
 
-**Deployment size advantage.** The 24 MB compiled binary can be distributed via Bluetooth, USB drive, or a brief mobile data connection. A 7.1 GB PyTorch deployment would require persistent broadband access to distribute — defeating the purpose of an offline-first application.
+**Deployment size advantage.** The 24 MB compiled binary can be distributed via Bluetooth, USB drive, or a brief mobile data connection. A 7.1 GB PyTorch deployment would require persistent broadband access to distribute, defeating the purpose of an offline-first application.
 
 **Startup time.** PyTorch cold start takes approximately 3 seconds due to Python interpreter initialization and library loading. The Burn binary starts in under 100 ms, which is the threshold below which users perceive an application as "instant."
 
@@ -230,11 +230,11 @@ Several observations emerge from the benchmark results:
 
 Three deployment targets were implemented:
 
-1. **Desktop GUI** — A native application built with Svelte 5 and TailwindCSS on the frontend and Tauri with the Rust Burn model on the backend. The GUI provides real-time classification, confidence visualization, and model diagnostics.
+1. **Desktop GUI:** a native application built with Svelte 5 and TailwindCSS on the frontend and Tauri with the Rust Burn model on the backend. The GUI provides real-time classification, confidence visualization, and model diagnostics.
 
-2. **Browser (PWA)** — An export pipeline converts the Burn model weights to JSON, which are then loaded into an ONNX Runtime Web deployment via a Progressive Web App. The PWA caches the 5.7 MB model via a Service Worker, enabling full offline operation after the first load.
+2. **Browser (PWA):** an export pipeline converts the Burn model weights to JSON, which are then loaded into an ONNX Runtime Web deployment via a Progressive Web App. The PWA caches the 5.7 MB model via a Service Worker, enabling full offline operation after the first load.
 
-3. **iPhone 12 (Tauri Mobile)** — The same Tauri application compiled for iOS. The Rust inference backend runs natively on the A14 chip, with the web-based UI providing the camera interface. Deployment is possible via Xcode or TestFlight.
+3. **iPhone 12 (Tauri Mobile):** the same Tauri application compiled for iOS. The Rust inference backend runs natively on the A14 chip, with the web-based UI providing the camera interface. Deployment is possible via Xcode or TestFlight.
 
 ## 3.5 Tauri GUI Application
 
@@ -255,7 +255,7 @@ Several technical challenges were encountered during development that are worth 
 
 ### 3.6.1 Burn Version Migration
 
-The project began development on Burn 0.14 (the `incremental_learning` workspace). During the project, Burn released version 0.20 with significant API changes — particularly in the `Module` trait, the optimizer API, and the tensor serialization format. Rather than migrating the incremental learning code mid-experiment, a second workspace (`plantvillage_ssl`) was created on Burn 0.20 for the main SSL pipeline. This ensured experimental results from the incremental learning workspace remained reproducible, but it introduced the maintenance burden of two parallel codebases with the same model architecture.
+The project began development on Burn 0.14 (the `incremental_learning` workspace). During the project, Burn released version 0.20 with significant API changes, particularly in the `Module` trait, the optimizer API, and the tensor serialization format. Rather than migrating the incremental learning code mid-experiment, a second workspace (`plantvillage_ssl`) was created on Burn 0.20 for the main SSL pipeline. This ensured experimental results from the incremental learning workspace remained reproducible, but it introduced the maintenance burden of two parallel codebases with the same model architecture.
 
 Model weights are not directly transferable between Burn versions. To share trained models across workspaces, a JSON-based weight export/import mechanism was implemented. This adds a conversion step but preserves weight compatibility.
 
@@ -265,7 +265,7 @@ During the pseudo-labeling simulation, the training loop creates and destroys th
 
 ### 3.6.3 Cross-Platform Image Preprocessing
 
-The Tauri mobile deployment introduced preprocessing inconsistencies. Desktop image loading (via the `image` crate) returns images in RGB format, while the iOS camera API returns images in BGRA format. An initial deployment to the iPhone 12 produced incorrect classifications until the color channel ordering was corrected in the preprocessing pipeline. This type of bug is silent — the model still produces valid probability distributions, but the classifications are systematically wrong because the input channels are misaligned with what the model was trained on.
+The Tauri mobile deployment introduced preprocessing inconsistencies. Desktop image loading (via the `image` crate) returns images in RGB format, while the iOS camera API returns images in BGRA format. An initial deployment to the iPhone 12 produced incorrect classifications until the color channel ordering was corrected in the preprocessing pipeline. This type of bug is silent: the model still produces valid probability distributions, but the classifications are systematically wrong because the input channels are misaligned with what the model was trained on.
 
 ### 3.6.4 Compilation Times
 

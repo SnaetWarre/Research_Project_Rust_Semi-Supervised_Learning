@@ -1,4 +1,4 @@
-# Appendix D — Guest Session Report: [TODO: Title]
+# Appendix D: Guest Session Report: [TODO: Title]
 
 **Speaker:** [TODO: Speaker name / organization]
 **Date:** [TODO: Date of session]
@@ -44,4 +44,4 @@
 
 *Report written: [TODO: Month Year]*
 *Student: Warre Snaet*
-*Program: MCT — Research Project*
+*Program: MCT, Research Project*

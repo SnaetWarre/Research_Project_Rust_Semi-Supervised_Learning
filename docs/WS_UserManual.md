@@ -1,256 +1,139 @@
-# PlantVillage SSL - User Manual
+# User Manual: Plant Disease Detection System
 
-**Warre Snaet | Howest MCT | Research Project 2025-2026**
-
----
-
-## 1. Introduction
-
-PlantVillage SSL is a machine learning application for **plant disease classification** using semi-supervised learning. The application is designed to run efficiently on edge devices, enabling real-time plant disease detection in agricultural environments—even without internet connectivity.
-
-### Key Features
-
-- 🌱 **38 Plant Disease Classes** – Supports tomato, apple, corn, grape, potato, and more
-- ⚡ **Ultra-Fast Inference** – <2ms per image on GPU hardware
-- 🔄 **Semi-Supervised Learning** – Learns from unlabeled data via pseudo-labeling
-- 🖥️ **Modern GUI** – Built with Svelte 5 & Tauri for a native desktop experience
-- 📴 **Fully Offline** – No cloud or internet required
+**Author:** Warre Snaet  
+**Project:** Research Project 2025-2026  
+**Version:** 1.0
 
 ---
 
-## 2. Getting Started
+## 1. Getting Started (Hoe start een gebruiker)
 
-### Launching the Application
+This guide explains how to install and launch the Plant Disease Detection application. The system is designed to run locally on your machine, supporting both desktop (Linux/Windows/macOS) and edge devices (NVIDIA Jetson).
 
-**Option A: GUI Mode (Recommended)**
+### Prerequisites
 
-```bash
-cd plantvillage_ssl/gui
-bun run tauri:dev
-```
+* **Operating System**: Linux (recommended), Windows, or macOS.
+* **Drivers**: NVIDIA CUDA drivers (if using GPU acceleration).
+* **Software**: Rust (Cargo) and Bun (for the GUI).
 
-**Option B: Command Line Interface**
+### Installation & Launch
 
-```bash
-cd plantvillage_ssl
-./target/release/plantvillage_ssl --help
-```
+You can run the application in two modes: the **Graphical User Interface (GUI)** for ease of use, or the **Command Line Interface (CLI)** for automation and headless environments.
 
----
+#### Option A: Graphical User Interface (Recommended)
 
-## 3. Dashboard Overview
+The GUI provides a modern, visual dashboard for all functionalities.
 
-![Dashboard Layout](./diagrams/dashboard.png)
+1. **Open a terminal** in the project directory.
+2. **Navigate** to the GUI folder:
 
-Upon startup, you are greeted by the **Dashboard**. This provides an at-a-glance view of the system:
+    ```bash
+    cd plantvillage_ssl/gui
+    ```
 
-| Component | Description |
-|-----------|-------------|
-| **Model Status** | Green indicator = Model loaded. Red = No model. |
-| **GPU Stats** | Current VRAM usage and GPU utilization |
-| **Activity Log** | Recent actions (training, inference, errors) |
-| **Quick Actions** | Buttons for common operations |
+3. **Install dependencies** (first time only):
 
----
+    ```bash
+    bun install
+    ```
 
-## 4. Live Inference (Disease Detection)
+4. **Start the application**:
 
-This is the primary feature for diagnosing plant diseases from leaf images.
+    ```bash
+    bun run tauri:dev
+    ```
 
-### Steps
+    *The application window will open automatically.*
 
-1. **Navigate** → Click the **"Inference"** tab in the sidebar
-2. **Ensure Model Loaded** → Check the green status indicator
-3. **Upload Image** → Click the upload area or drag-and-drop a leaf image
-   - *Supported formats:* JPG, PNG
-4. **View Results:**
+#### Option B: Command Line Interface
 
-### Understanding the Results
+Best for scripting or server environments.
 
-| Element | Meaning |
-|---------|---------|
-| **Main Prediction** | The detected disease (e.g., "Tomato Early Blight") |
-| **Confidence Score** | Prediction certainty (0-100%) |
-| **Latency** | Processing time in milliseconds |
-| **Top-5 Chart** | Most likely disease classes visualized |
+1. **Navigate** to the core library folder:
 
-### Confidence Thresholds
+    ```bash
+    cd plantvillage_ssl
+    ```
 
-| Color | Range | Interpretation |
-|-------|-------|----------------|
-| 🟢 Green | >90% | High confidence – Safe to trust |
-| 🟡 Yellow | 70-90% | Medium confidence – Verify if possible |
-| 🔴 Red | <70% | Low confidence – Manual review needed |
+2. **Display help** to see available commands:
+
+    ```bash
+    cargo run --release --bin plantvillage_ssl -- --help
+    ```
 
 ---
 
-## 5. Semi-Supervised Learning Simulation
+## 2. Capabilities & Functionalities (Mogelijkheden)
 
-Demonstrates how the model **learns from unlabeled data** through pseudo-labeling.
+This section describes what you can do with the application.
 
-### How to Run
+### 🍃 A. Real-time Disease Detection (Inference)
 
-1. **Navigate** → Click **"Simulation"** tab
-2. **Configure Parameters:**
-   - **Daily Batch**: Images arriving per simulated day (e.g., 100)
-   - **Confidence Threshold**: Minimum confidence for pseudo-labels (default: 0.9)
-   - **Retrain Threshold**: Images needed to trigger retraining (default: 200)
-3. **Start** → Click **"Start Stream"**
-4. **Monitor Progress:**
-   - Watch pseudo-labels accumulate
-   - Observe the Accepted vs. Rejected ratio chart
-   - Automatic retraining triggers when threshold is reached
+**Goal**: Identify plant diseases from leaf images instantly.
 
-### Key Metrics Displayed
+* **How to use**:
+    1. Go to the **"Inference"** tab in the sidebar.
+    2. **Drag & Drop** an image of a plant leaf into the upload zone (or click to browse).
+    3. The system analyzes the image and displays:
+        * **Predicted Disease**: The most likely class.
+        * **Confidence**: How certain the model is (Green = High, Red = Low).
+        * **Top 5**: A chart showing other potential matches.
 
-- **Total Processed**: Images seen by the model
-- **Pseudo-labels Generated**: High-confidence predictions stored
-- **Rejected**: Low-confidence images (below threshold)
-- **Retrain Count**: Number of retraining cycles completed
+### 🔄 B. Semi-Supervised Learning Simulation
 
----
+**Goal**: Visualize how the model improves by learning from unlabeled data without human intervention.
 
-## 6. Benchmarking
+* **How to use**:
+    1. Go to the **"SSL Demo"** tab.
+    2. Set the **Daily Batch Size** (e.g., 100 images/day).
+    3. Click **"Start Stream"**.
+    4. **Observe**:
+        * The system processes "unlabeled" images.
+        * High-confidence predictions become "pseudo-labels".
+        * The model **automatically retrains** when enough new data is collected.
 
-Measures and validates the performance of the application on your hardware.
+### 🧪 C. Experiments
 
-### How to Run
+**Goal**: Run specific experimental scenarios to validate learning performance.
 
-1. **Navigate** → Click **"Benchmark"** tab
-2. **Run** → Click **"Run Benchmark"**
-3. **View Results:**
-   - **Latency**: Average time per image (ms)
-   - **Throughput**: Images processed per second (FPS)
-   - **Comparison Chart**: Your results vs. PyTorch reference baseline
+* **How to use**:
+    1. Go to the **"Experiments"** tab.
+    2. Select an experiment type (e.g., Class Incremental Learning).
+    3. Monitor the metrics as the experiment runs.
 
-### Expected Performance
+### 🏋️ D. Train New Models
 
-| Metric | Desktop GPU |
-|--------|-------------|
-| Latency | ~1.3 ms |
-| Throughput | ~800 FPS |
+**Goal**: Create a custom classification model from a dataset.
 
----
-
-## 7. Training a New Model
-
-### From the GUI
-
-1. Navigate to **"Training"** tab
-2. Select the dataset directory
-3. Configure:
-   - **Epochs**: 30 (recommended)
-   - **Labeled Ratio**: 0.2 (20% labeled data)
-   - **CUDA**: Enable for GPU acceleration
-4. Click **"Start Training"**
-5. Monitor the training progress and loss curves
-
-### From CLI (Advanced)
-
-```bash
-cd plantvillage_ssl
-cargo run --release --bin plantvillage_ssl -- train \
-    --epochs 30 \
-    --cuda \
-    --labeled-ratio 0.2
-```
+* **How to use**:
+    1. Go to the **"Training"** (or command line) to initiate a full training run.
+    2. Select your dataset folder (must follow the PlantVillage structure).
+    3. Adjust parameters:
+        * **Labeled Ratio**: How much data is "known" (e.g., 0.2 for 20%).
+        * **Epochs**: Training duration (recommended: 30).
+    4. The dashboard updates with real-time loss and accuracy graphs.
 
 ---
 
-## 8. Data Requirements
+## 3. CLI Reference
 
-### Dataset Structure
-
-```
-data/plantvillage/
-├── train/
-│   ├── Apple___Apple_scab/
-│   │   ├── image001.jpg
-│   │   └── ...
-│   ├── Tomato___Early_blight/
-│   └── ... (38 classes)
-└── valid/
-    ├── Apple___Apple_scab/
-    └── ... (38 classes)
-```
-
-### Supported Formats
-
-- **Images**: JPG, PNG, JPEG
-- **Resolution**: Any (automatically resized to 128×128)
-- **Color**: RGB required
-
----
-
-## 9. CLI Reference
+For advanced users, the command line offers direct control:
 
 | Command | Description |
 |---------|-------------|
 | `train` | Train a new model with semi-supervised learning |
 | `infer` | Run inference on a single image |
 | `simulate` | Run SSL simulation pipeline |
-| `benchmark` | Test inference performance |
 | `stats` | Display dataset statistics |
 | `export` | Export model metrics to CSV/JSON |
 
-**Example Commands:**
-
-```bash
-# View help
-./target/release/plantvillage_ssl --help
-
-# Run inference on an image
-./target/release/plantvillage_ssl infer \
-    --model-path best_model.mpk \
-    --image-path test_leaf.jpg
-
-# View dataset statistics
-./target/release/plantvillage_ssl stats --data-dir data/plantvillage
-```
-
 ---
 
-## 10. Troubleshooting
+## 4. Troubleshooting
 
-### Common Issues
-
-| Problem | Solution |
-|---------|----------|
-| **"No Model Loaded"** | Train a model first or load `best_model.mpk` |
-| **"CUDA not found"** | Add CUDA to PATH: `export PATH=/usr/local/cuda/bin:$PATH` |
-| **Slow interface** | Close other GPU applications, reduce batch size |
-| **"Inference Failed"** | Check image format (JPG/PNG only), verify VRAM usage |
-| **Out of Memory** | Reduce batch size or use CPU fallback |
-
-### Checking System Status
-
-```bash
-# Check CUDA availability
-nvidia-smi
-
-# Check disk space
-df -h
-
-# Monitor GPU usage
-watch -n 1 nvidia-smi
-```
-
----
-
-## 11. Credits
-
-**Developer:** Warre Snaet  
-**Institution:** Howest University of Applied Sciences  
-**Program:** MCT (Multimedia & Creative Technologies)  
-**Project:** Research Project 2025-2026
-
-**Technologies Used:**
-
-- Rust + Burn ML Framework
-- Tauri (Desktop Application Framework)
-- Svelte 5 + TailwindCSS (Frontend)
-- NVIDIA CUDA (GPU Acceleration)
-
----
-
-*Document Version: 1.0 | Last Updated: January 2026*
+| Issue | Solution |
+|-------|----------|
+| **App won't start** | Ensure `bun` and `cargo` are installed and in your PATH. |
+| **"CUDA not found"** | Install NVIDIA Toolkit or run without `--cuda` (slower). |
+| **Low Accuracy** | Check image lighting or try training with more epochs. |
+| **Out of Memory** | Close other GPU-heavy apps or reduce batch size in training. |

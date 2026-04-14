@@ -1,0 +1,613 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>Building a 24MB Offline AI with Rust + Burn | Warre Snaet</title>
+
+        <!-- SEO Meta Tags -->
+        <meta
+            name="description"
+            content="How I built a 24MB offline plant disease detection AI using Rust and the Burn framework. 0.39ms inference, 2579 FPS, deployed to iPhone via Tauri. Full benchmarks and architecture breakdown."
+        />
+        <meta
+            name="keywords"
+            content="Rust, Burn Framework, Edge AI, WASM, Tauri, Machine Learning, Plant Disease Detection, ONNX, WebAssembly, Semi-Supervised Learning, iPhone, Mobile AI"
+        />
+        <meta name="author" content="Warre Snaet" />
+        <meta name="robots" content="index, follow" />
+        <link
+            rel="canonical"
+            href="https://snaetwarre.github.io/My-Portofolio/blog/blog.html"
+        />
+
+        <!-- Open Graph / Facebook -->
+        <meta property="og:type" content="article" />
+        <meta
+            property="og:url"
+            content="https://snaetwarre.github.io/My-Portofolio/blog/blog.html"
+        />
+        <meta
+            property="og:title"
+            content="Building a 24MB Offline AI with Rust + Burn"
+        />
+        <meta
+            property="og:description"
+            content="0.39ms inference, 2579 FPS, runs on iPhone. How Rust + Burn beat PyTorch for edge deployment."
+        />
+        <meta
+            property="og:image"
+            content="https://snaetwarre.github.io/My-Portofolio/blog/images/mobile-pwa.png"
+        />
+        <meta property="og:locale" content="en_US" />
+        <meta property="og:site_name" content="Warre Snaet Portfolio" />
+
+        <!-- Twitter -->
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta
+            name="twitter:url"
+            content="https://snaetwarre.github.io/My-Portofolio/blog/blog.html"
+        />
+        <meta
+            name="twitter:title"
+            content="Building a 24MB Offline AI with Rust + Burn"
+        />
+        <meta
+            name="twitter:description"
+            content="0.39ms inference at 2579 FPS. Rust + Burn vs PyTorch for edge AI deployment."
+        />
+        <meta
+            name="twitter:image"
+            content="https://snaetwarre.github.io/My-Portofolio/blog/images/mobile-pwa.png"
+        />
+
+        <!-- Structured Data (JSON-LD) -->
+        <script type="application/ld+json">
+            [
+                {
+                    "@context": "https://schema.org",
+                    "@type": "TechArticle",
+                    "headline": "Building a 24MB Offline AI with Rust and the Burn Framework",
+                    "alternativeHeadline": "How Rust + Burn beat PyTorch for edge ML deployment",
+                    "image": "https://snaetwarre.github.io/My-Portofolio/blog/images/mobile-pwa.png",
+                    "author": {
+                        "@type": "Person",
+                        "name": "Warre Snaet",
+                        "url": "https://snaetwarre.github.io/My-Portofolio/"
+                    },
+                    "genre": "Artificial Intelligence",
+                    "keywords": "Rust, Burn Framework, Edge AI, WASM, Tauri, Machine Learning",
+                    "wordcount": "1800",
+                    "url": "https://snaetwarre.github.io/My-Portofolio/blog/blog.html",
+                    "datePublished": "2026-01-21",
+                    "dateModified": "2026-01-24",
+                    "description": "Technical deep-dive: 0.39ms inference, 2579 FPS, 24MB deployment. Rust ML on iPhone via Tauri.",
+                    "articleBody": "How I built a complete ML pipeline in Rust..."
+                },
+                {
+                    "@context": "https://schema.org",
+                    "@type": "BreadcrumbList",
+                    "itemListElement": [
+                        {
+                            "@type": "ListItem",
+                            "position": 1,
+                            "name": "Home",
+                            "item": "https://snaetwarre.github.io/My-Portofolio/"
+                        },
+                        {
+                            "@type": "ListItem",
+                            "position": 2,
+                            "name": "Blog",
+                            "item": "https://snaetwarre.github.io/My-Portofolio/#writing"
+                        },
+                        {
+                            "@type": "ListItem",
+                            "position": 3,
+                            "name": "Rust Burn Edge AI",
+                            "item": "https://snaetwarre.github.io/My-Portofolio/blog/blog.html"
+                        }
+                    ]
+                }
+            ]
+        </script>
+
+        <link rel="stylesheet" href="../style.css" />
+        <link rel="icon" type="image/svg+xml" href="../favicon.svg" />
+        <link rel="alternate icon" href="../favicon.ico" />
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+        <link
+            href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&family=Playfair+Display:ital,wght@0,400;0,700;1,400;1,700&family=Source+Serif+4:ital,wght@0,400;0,600;1,400&display=swap"
+            rel="stylesheet"
+        />
+    </head>
+    <body>
+        <nav class="site-nav">
+            <a href="../index.html" class="nav-logo">Warre Snaet</a>
+            <div class="nav-links">
+                <a href="../index.html#projects" class="nav-link">Projects</a>
+                <a href="blog.html" class="nav-link">Blog</a>
+            </div>
+        </nav>
+
+        <main class="blog-post">
+            <!-- Removed back-link -->
+
+            <article>
+                <header class="blog-header fade-in">
+                    <div class="blog-meta">
+                        <span>Jan 24, 2026</span>
+                        <span>Rust / Burn / Edge AI / Tauri</span>
+                    </div>
+                    <h1 class="blog-title">
+                        Building a 24MB Offline AI with Rust + Burn
+                    </h1>
+                </header>
+
+                <div class="article-content fade-in">
+                    <!-- Key Metrics Box for Reddit -->
+                    <div class="key-metrics">
+                        <h3>TL;DR - Key Results</h3>
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Metric</th>
+                                    <th>Value</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td><strong>Deployment Size</strong></td>
+                                    <td>
+                                        <strong>24MB</strong> (vs 7.1GB PyTorch)
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Inference Latency</strong></td>
+                                    <td>
+                                        <strong>0.39ms</strong> (p50: 0.38ms,
+                                        p99: 0.45ms)
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Throughput</strong></td>
+                                    <td>
+                                        <strong>2,579 FPS</strong> on RTX 3060
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Model Size</strong></td>
+                                    <td>5.7MB weights</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Classes</strong></td>
+                                    <td>38 plant diseases</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Training Data</strong></td>
+                                    <td>30% labeled (SSL)</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Target Platforms</strong></td>
+                                    <td>
+                                        Browser (WASM), iPhone 12 (Tauri),
+                                        Desktop
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <p>
+                        This is a technical breakdown of how I built an
+                        end-to-end ML pipeline entirely in Rust using the
+                        <a
+                            href="https://burn.dev"
+                            target="_blank"
+                            class="hero-text-link"
+                            >Burn framework</a
+                        >, deployed it to my iPhone 12 via Tauri, and achieved
+                        inference times that make PyTorch look like it's running
+                        on a potato.
+                    </p>
+
+                    <h2>The Problem: Edge AI Without the Cloud</h2>
+
+                    <p>
+                        The use case: plant disease detection for farmers in
+                        areas with zero internet connectivity. Current solutions
+                        require either sending samples to a lab (3-day
+                        turnaround) or expensive cloud inference (requires
+                        connectivity). Neither works in a field in rural
+                        Portugal.
+                    </p>
+
+                    <p>Requirements were brutal:</p>
+                    <ul>
+                        <li>Must work 100% offline</li>
+                        <li>
+                            Must run on devices farmers already own (phones,
+                            laptops)
+                        </li>
+                        <li>
+                            No installation complexity (farmers are not
+                            sysadmins)
+                        </li>
+                        <li>Sub-second inference for real-time feedback</li>
+                    </ul>
+
+                    <h2>Why Rust? The Burn Framework Decision</h2>
+
+                    <p>
+                        I chose Rust and
+                        <a
+                            href="https://github.com/tracel-ai/burn"
+                            target="_blank"
+                            class="hero-text-link"
+                            >Burn</a
+                        >
+                        for three reasons:
+                    </p>
+
+                    <h3>1. Deployment Size</h3>
+                    <p>
+                        A PyTorch deployment requires ~7.1GB of dependencies.
+                        Burn compiles to a single binary. My entire model +
+                        runtime comes in at <strong>24MB</strong>. That's a 300x
+                        reduction.
+                    </p>
+
+                    <h3>2. Multi-Platform from One Codebase</h3>
+                    <p>Burn compiles to:</p>
+                    <ul>
+                        <li>
+                            <code>wgpu</code> backend for native GPU
+                            (Vulkan/Metal/DX12)
+                        </li>
+                        <li><code>ndarray</code> for CPU fallback</li>
+                        <li>WASM for browser deployment</li>
+                        <li>Native binaries for Tauri mobile apps</li>
+                    </ul>
+                    <p>
+                        Same model code, same weights, multiple targets. No
+                        Python anywhere in production.
+                    </p>
+
+                    <h3>3. Startup Time</h3>
+                    <p>
+                        PyTorch cold start: ~3 seconds. Burn: instant (<100ms).
+                        For a mobile app, this is the difference between usable
+                        and frustrating.
+                    </p>
+
+                    <h2>Benchmark Results</h2>
+
+                    <p>
+                        I ran standardized benchmarks across three hardware
+                        configurations. All tests: 100 iterations, 10 warmup,
+                        batch size 1, 128x128 input images.
+                    </p>
+
+                    <h3>Burn (Rust) - CUDA Backend</h3>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Model Version</th>
+                                <th>Mean (ms)</th>
+                                <th>p50 (ms)</th>
+                                <th>p99 (ms)</th>
+                                <th>Throughput</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>Baseline</td>
+                                <td>0.39</td>
+                                <td>0.38</td>
+                                <td>0.46</td>
+                                <td>2,559 FPS</td>
+                            </tr>
+                            <tr>
+                                <td>SSL</td>
+                                <td>0.42</td>
+                                <td>0.41</td>
+                                <td>0.53</td>
+                                <td>2,357 FPS</td>
+                            </tr>
+                            <tr>
+                                <td><strong>SSL Optimized</strong></td>
+                                <td><strong>0.39</strong></td>
+                                <td><strong>0.38</strong></td>
+                                <td><strong>0.45</strong></td>
+                                <td><strong>2,579 FPS</strong></td>
+                            </tr>
+                        </tbody>
+                    </table>
+
+                    <h3>Hardware Comparison</h3>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Device</th>
+                                <th>Latency</th>
+                                <th>Throughput</th>
+                                <th>Cost</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><strong>Laptop (RTX 3060)</strong></td>
+                                <td><strong>0.39ms</strong></td>
+                                <td><strong>2,579 FPS</strong></td>
+                                <td>€0 (BYOD)</td>
+                            </tr>
+                            <tr>
+                                <td>Jetson Orin Nano</td>
+                                <td>~120ms</td>
+                                <td>~8 FPS</td>
+                                <td>€350</td>
+                            </tr>
+                            <tr>
+                                <td>iPhone 12 (Tauri/WASM)</td>
+                                <td>~80ms</td>
+                                <td>~12 FPS</td>
+                                <td>€0 (BYOD)</td>
+                            </tr>
+                            <tr>
+                                <td>CPU Only</td>
+                                <td>~250ms</td>
+                                <td>~4 FPS</td>
+                                <td>€0</td>
+                            </tr>
+                        </tbody>
+                    </table>
+
+                    <p>
+                        The Jetson numbers killed our original plan. €350
+                        hardware that's 8x slower than a phone? We pivoted hard
+                        to BYOD (Bring Your Own Device).
+                    </p>
+
+                    <div class="blog-image-wrapper">
+                        <img
+                            src="images/mobile-pwa.png"
+                            alt="PlantVillage AI running on iPhone via Tauri"
+                            class="blog-image"
+                            loading="lazy"
+                            width="800"
+                            height="600"
+                        />
+                        <div class="blog-caption">
+                            Figure 1: The Rust model running on my iPhone 12 via
+                            Tauri. Full offline capability, no server required.
+                        </div>
+                    </div>
+
+                    <h2>Model Architecture</h2>
+
+                    <p>
+                        CNN with 4 convolutional blocks, implemented entirely in
+                        Burn:
+                    </p>
+
+                    <pre><code>// Simplified architecture in Burn
+Conv2d(3, 32, 3x3) → BatchNorm → ReLU → MaxPool(2x2)
+Conv2d(32, 64, 3x3) → BatchNorm → ReLU → MaxPool(2x2)
+Conv2d(64, 128, 3x3) → BatchNorm → ReLU → MaxPool(2x2)
+Conv2d(128, 256, 3x3) → BatchNorm → ReLU → MaxPool(2x2)
+GlobalAvgPool → Linear(256, 256) → ReLU → Linear(256, 38)</code></pre>
+
+                    <p>
+                        Input: 128x128 RGB. Output: 38 disease classes from
+                        PlantVillage dataset.
+                    </p>
+
+                    <p>The Burn model definition is clean and type-safe:</p>
+
+                    <pre><code>#[derive(Module, Debug)]
+pub struct PlantClassifier&lt;B: Backend&gt; {
+    conv1: Conv2d&lt;B&gt;,
+    bn1: BatchNorm&lt;B, 2&gt;,
+    conv2: Conv2d&lt;B&gt;,
+    bn2: BatchNorm&lt;B, 2&gt;,
+    conv3: Conv2d&lt;B&gt;,
+    bn3: BatchNorm&lt;B, 2&gt;,
+    conv4: Conv2d&lt;B&gt;,
+    bn4: BatchNorm&lt;B, 2&gt;,
+    fc1: Linear&lt;B&gt;,
+    fc2: Linear&lt;B&gt;,
+}</code></pre>
+
+                    <h2>Semi-Supervised Learning Pipeline</h2>
+
+                    <p>
+                        Labeled agricultural data is expensive. Expert
+                        annotation costs ~€2 per image. For 50,000 images,
+                        that's €100k we don't have.
+                    </p>
+
+                    <p>Solution: SSL with pseudo-labeling.</p>
+
+                    <ol>
+                        <li>Train on 30% labeled data</li>
+                        <li>Run inference on remaining 70%</li>
+                        <li>
+                            Accept predictions with >90% confidence as labels
+                        </li>
+                        <li>Retrain with expanded dataset</li>
+                        <li>Repeat until convergence</li>
+                    </ol>
+
+                    <p>
+                        Result: Accuracy comparable to 60% fully-labeled
+                        training. We effectively tripled our labeled data for
+                        free.
+                    </p>
+
+                    <h2>Deployment: Rust All the Way Down</h2>
+
+                    <p>
+                        This is where it gets fun. The entire deployment
+                        pipeline is Rust:
+                    </p>
+
+                    <h3>Desktop GUI</h3>
+                    <p>
+                        Native app using <code>eframe</code> (Rust
+                        immediate-mode GUI). Same Burn model, native GPU
+                        acceleration.
+                    </p>
+
+                    <h3>Browser (PWA)</h3>
+                    <p>
+                        Export pipeline: Burn → JSON weights → PyTorch (for ONNX
+                        export only) → ONNX → ONNX Runtime Web.
+                    </p>
+                    <p>
+                        The PWA runs entirely offline via Service Worker. First
+                        load caches the 5.7MB model, then it's airplane-mode
+                        ready.
+                    </p>
+
+                    <h3>iPhone 12 (Tauri)</h3>
+                    <p>
+                        This is the crown jewel.
+                        <a
+                            href="https://tauri.app"
+                            target="_blank"
+                            class="hero-text-link"
+                            >Tauri</a
+                        >
+                        lets you build native mobile apps with a Rust backend.
+                        The ML inference runs in Rust, the UI is web-based.
+                    </p>
+
+                    <p>Deployment to my iPhone 12:</p>
+                    <pre><code>cargo tauri ios build
+# Deploy via Xcode or TestFlight</code></pre>
+
+                    <p>
+                        80ms inference on the A14 chip. Not as fast as desktop
+                        GPU, but plenty fast for real-time use. And it's
+                        <strong>running Rust on an iPhone</strong>.
+                    </p>
+
+                    <div class="blog-image-wrapper">
+                        <img
+                            src="images/dashboard-gui.png"
+                            alt="Rust GUI diagnostics dashboard"
+                            class="blog-image"
+                            loading="lazy"
+                            width="800"
+                            height="450"
+                        />
+                        <div class="blog-caption">
+                            Figure 2: Native Rust GUI (eframe) showing model
+                            diagnostics and confidence distributions.
+                        </div>
+                    </div>
+
+                    <h2>Lessons Learned</h2>
+
+                    <ul>
+                        <li>
+                            <strong>Burn is production-ready.</strong> The API
+                            is clean, the backends are solid, and the community
+                            is responsive.
+                        </li>
+                        <li>
+                            <strong
+                                >WASM performance is surprisingly good.</strong
+                            >
+                            80ms on mobile Safari is usable.
+                        </li>
+                        <li>
+                            <strong
+                                >Dedicated edge hardware (Jetson) is often
+                                overkill.</strong
+                            >
+                            Consumer devices are fast enough for most inference
+                            tasks.
+                        </li>
+                        <li>
+                            <strong
+                                >Rust's compile times are... Rust's compile
+                                times.</strong
+                            >
+                            Plan for 5+ minute release builds.
+                        </li>
+                        <li>
+                            <strong>Tauri mobile is the future.</strong> One
+                            codebase, native performance, actual Rust on
+                            iOS/Android.
+                        </li>
+                    </ul>
+
+                    <h2>Conclusion</h2>
+
+                    <p>
+                        What started as "can we run ML on a farm?" became a full
+                        exploration of Rust's ML ecosystem. The answer is
+                        yes—and it's faster and smaller than Python.
+                    </p>
+
+                    <p><strong>Key numbers:</strong></p>
+                    <ul>
+                        <li>24MB deployment (300x smaller than PyTorch)</li>
+                        <li>0.39ms inference / 2,579 FPS on desktop GPU</li>
+                        <li>80ms inference on iPhone 12 via Tauri</li>
+                        <li>€350 hardware cost → €0 (BYOD)</li>
+                        <li>38 disease classes, 30% labeled training data</li>
+                    </ul>
+
+                    <p>
+                        Rust + Burn is a legitimate ML stack. Not for training
+                        transformers, but for edge inference? It's hard to beat.
+                    </p>
+
+                    <p class="article-footer-meta">
+                        Research Project - Semester 5 - Howest MCT |
+                        <a
+                            href="https://github.com/tracel-ai/burn"
+                            target="_blank"
+                            class="hero-text-link"
+                            >Burn Framework</a
+                        >
+                        |
+                        <a
+                            href="https://tauri.app"
+                            target="_blank"
+                            class="hero-text-link"
+                            >Tauri</a
+                        >
+                    </p>
+                </div>
+            </article>
+
+            <section class="next-steps fade-in blog-next-steps">
+                <a href="../index.html#projects" class="next-step-link">
+                    <span class="next-step-label">Liked this deep dive?</span>
+                    See all my projects
+                    <span class="next-step-arrow">→</span>
+                </a>
+            </section>
+        </main>
+
+        <footer>
+            <div class="footer-content">
+                <div class="footer-brand">
+                    <img
+                        src="../logo.svg"
+                        alt="Warre Snaet Logo"
+                        class="footer-logo"
+                    />
+                    <p>WARRE SNAET © 2026</p>
+                </div>
+                <a href="mailto:warresnaet@student.howest.be" class="footer-cta"
+                    >Let's Talk</a
+                >
+            </div>
+        </footer>
+        <script src="../script.js"></script>
+    </body>
+</html>

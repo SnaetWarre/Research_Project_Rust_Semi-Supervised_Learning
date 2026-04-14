@@ -8,7 +8,9 @@
 
 use std::collections::HashMap;
 use std::fs;
+use std::io::{self, Write};
 use std::path::{Path, PathBuf};
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::Instant;
 
 use anyhow::Result;
@@ -33,11 +35,22 @@ use plantvillage_ssl::PlantVillageDataset;
 
 type Backend = TrainingBackend;
 
+static EXPERIMENT_VERBOSE: AtomicBool = AtomicBool::new(false);
+
+#[inline]
+fn experiment_verbose() -> bool {
+    EXPERIMENT_VERBOSE.load(Ordering::Relaxed)
+}
+
 /// Experiment Runner CLI
 #[derive(Parser, Debug)]
 #[command(name = "experiments")]
 #[command(about = "Run research experiments for plant disease classification")]
 struct Cli {
+    /// Log each training epoch (loss, batch counts) while experiments run
+    #[arg(short, long, global = true)]
+    verbose: bool,
+
     #[command(subcommand)]
     command: Commands,
 }
@@ -274,6 +287,7 @@ struct PositionSummary {
 
 fn main() -> Result<()> {
     let cli = Cli::parse();
+    EXPERIMENT_VERBOSE.store(cli.verbose, Ordering::Relaxed);
 
     print_banner();
 
@@ -731,9 +745,9 @@ fn run_incremental_with_limited_labels<B: AutodiffBackend>(
     let learning_rate = 0.0001;
 
     let train_dataset =
-        PlantVillageBurnDataset::new_cached(base_train.clone(), image_size).expect("Failed");
+        PlantVillageBurnDataset::new(base_train.clone(), image_size);
     let val_dataset =
-        PlantVillageBurnDataset::new_cached(base_val.clone(), image_size).expect("Failed");
+        PlantVillageBurnDataset::new(base_val.clone(), image_size);
 
     let batcher = PlantVillageBatcher::<B>::with_image_size(device.clone(), image_size);
 
@@ -752,10 +766,13 @@ fn run_incremental_with_limited_labels<B: AutodiffBackend>(
     let mut epoch_rng = ChaCha8Rng::seed_from_u64(seed);
 
     // Train base model
-    for _epoch in 0..epochs {
+    for epoch in 0..epochs {
         let mut indices: Vec<usize> = (0..train_dataset.len()).collect();
         indices.shuffle(&mut epoch_rng);
         let num_batches = (indices.len() + batch_size - 1) / batch_size;
+
+        let mut epoch_loss = 0.0f64;
+        let mut train_batches = 0usize;
 
         for batch_idx in 0..num_batches {
             let start = batch_idx * batch_size;
@@ -777,15 +794,42 @@ fn run_incremental_with_limited_labels<B: AutodiffBackend>(
                 .init(&output.device())
                 .forward(output, batch.targets);
 
+            let loss_value: f64 = loss.clone().into_scalar().elem();
+            epoch_loss += loss_value;
+            train_batches += 1;
+
             let grads = loss.backward();
             let grads = GradientsParams::from_grads(grads, &model);
             model = optimizer.step(learning_rate, model, grads);
+        }
+
+        if experiment_verbose() {
+            let avg = if train_batches > 0 {
+                epoch_loss / train_batches as f64
+            } else {
+                0.0
+            };
+            println!(
+                "      [base model] epoch {}/{}  train_loss={:.4}  batches={}",
+                epoch + 1,
+                epochs,
+                avg,
+                train_batches
+            );
+            let _ = io::stdout().flush();
         }
     }
 
     // Evaluate base model on base classes
     let base_accuracy_before =
         evaluate::<B>(&model, &val_dataset, &batcher, batch_size, image_size);
+    if experiment_verbose() {
+        println!(
+            "      [base model] validation accuracy: {:.2}%",
+            base_accuracy_before
+        );
+        let _ = io::stdout().flush();
+    }
 
     // Now add new class with LIMITED labels
     let total_classes = base_classes + new_classes;
@@ -831,16 +875,19 @@ fn run_incremental_with_limited_labels<B: AutodiffBackend>(
         .init();
 
     let combined_train_dataset =
-        PlantVillageBurnDataset::new_cached(combined_train, image_size).expect("Failed");
+        PlantVillageBurnDataset::new(combined_train, image_size);
     let combined_val_dataset =
-        PlantVillageBurnDataset::new_cached(combined_val.clone(), image_size).expect("Failed");
+        PlantVillageBurnDataset::new(combined_val.clone(), image_size);
     let new_batcher = PlantVillageBatcher::<B>::with_image_size(device.clone(), image_size);
 
     // Train on combined data
-    for _epoch in 0..epochs {
+    for epoch in 0..epochs {
         let mut indices: Vec<usize> = (0..combined_train_dataset.len()).collect();
         indices.shuffle(&mut epoch_rng);
         let num_batches = (indices.len() + batch_size - 1) / batch_size;
+
+        let mut epoch_loss = 0.0f64;
+        let mut train_batches = 0usize;
 
         for batch_idx in 0..num_batches {
             let start = batch_idx * batch_size;
@@ -862,15 +909,35 @@ fn run_incremental_with_limited_labels<B: AutodiffBackend>(
                 .init(&output.device())
                 .forward(output, batch.targets);
 
+            let loss_value: f64 = loss.clone().into_scalar().elem();
+            epoch_loss += loss_value;
+            train_batches += 1;
+
             let grads = loss.backward();
             let grads = GradientsParams::from_grads(grads, &new_model);
             new_model = new_optimizer.step(learning_rate, new_model, grads);
+        }
+
+        if experiment_verbose() {
+            let avg = if train_batches > 0 {
+                epoch_loss / train_batches as f64
+            } else {
+                0.0
+            };
+            println!(
+                "      [expanded model] epoch {}/{}  train_loss={:.4}  batches={}",
+                epoch + 1,
+                epochs,
+                avg,
+                train_batches
+            );
+            let _ = io::stdout().flush();
         }
     }
 
     // Evaluate on base classes only (to measure forgetting)
     let base_val_dataset =
-        PlantVillageBurnDataset::new_cached(base_val, image_size).expect("Failed");
+        PlantVillageBurnDataset::new(base_val, image_size);
     let base_accuracy_after = evaluate::<B>(
         &new_model,
         &base_val_dataset,
@@ -882,7 +949,7 @@ fn run_incremental_with_limited_labels<B: AutodiffBackend>(
     // Evaluate on new class only
     let new_class_accuracy = if !new_class_val.is_empty() {
         let new_class_val_dataset =
-            PlantVillageBurnDataset::new_cached(new_class_val, image_size).expect("Failed");
+            PlantVillageBurnDataset::new(new_class_val, image_size);
         evaluate::<B>(
             &new_model,
             &new_class_val_dataset,
@@ -905,6 +972,18 @@ fn run_incremental_with_limited_labels<B: AutodiffBackend>(
 
     let forgetting = base_accuracy_before - base_accuracy_after;
     let training_time = start.elapsed().as_secs_f64();
+
+    if experiment_verbose() {
+        println!(
+            "      [expanded model] val: base_after={:.2}% new_cls={:.2}% overall={:.2}% forget={:.2}% time={:.1}s",
+            base_accuracy_after,
+            new_class_accuracy,
+            overall_accuracy,
+            forgetting,
+            training_time
+        );
+        let _ = io::stdout().flush();
+    }
 
     Ok(ScalingResult {
         base_classes,
@@ -1028,9 +1107,9 @@ fn train_with_n_images_per_class<B: AutodiffBackend>(
     let learning_rate = 0.0001;
 
     let train_dataset =
-        PlantVillageBurnDataset::new_cached(train_samples, image_size).expect("Failed to load");
+        PlantVillageBurnDataset::new(train_samples, image_size);
     let val_dataset =
-        PlantVillageBurnDataset::new_cached(val_samples, image_size).expect("Failed to load");
+        PlantVillageBurnDataset::new(val_samples, image_size);
 
     let batcher = PlantVillageBatcher::<B>::with_image_size(device.clone(), image_size);
 
@@ -1048,11 +1127,13 @@ fn train_with_n_images_per_class<B: AutodiffBackend>(
 
     let mut epoch_rng = ChaCha8Rng::seed_from_u64(seed);
 
-    for _epoch in 0..epochs {
-        // Training
+    for epoch in 0..epochs {
         let mut indices: Vec<usize> = (0..train_dataset.len()).collect();
         indices.shuffle(&mut epoch_rng);
         let num_batches = (indices.len() + batch_size - 1) / batch_size;
+
+        let mut epoch_loss = 0.0f64;
+        let mut train_batches = 0usize;
 
         for batch_idx in 0..num_batches {
             let start = batch_idx * batch_size;
@@ -1074,14 +1155,41 @@ fn train_with_n_images_per_class<B: AutodiffBackend>(
                 .init(&output.device())
                 .forward(output, batch.targets);
 
+            let loss_value: f64 = loss.clone().into_scalar().elem();
+            epoch_loss += loss_value;
+            train_batches += 1;
+
             let grads = loss.backward();
             let grads = GradientsParams::from_grads(grads, &model);
             model = optimizer.step(learning_rate, model, grads);
         }
+
+        if experiment_verbose() {
+            let avg = if train_batches > 0 {
+                epoch_loss / train_batches as f64
+            } else {
+                0.0
+            };
+            println!(
+                "      [label efficiency, {} img/class] epoch {}/{}  train_loss={:.4}  batches={}",
+                n_images,
+                epoch + 1,
+                epochs,
+                avg,
+                train_batches
+            );
+            let _ = io::stdout().flush();
+        }
     }
 
-    // Evaluate
     let val_acc = evaluate::<B>(&model, &val_dataset, &batcher, batch_size, image_size);
+    if experiment_verbose() {
+        println!(
+            "      [label efficiency, {} img/class] validation accuracy: {:.2}%",
+            n_images, val_acc
+        );
+        let _ = io::stdout().flush();
+    }
 
     Ok(val_acc)
 }
@@ -1145,9 +1253,9 @@ fn run_incremental_experiment<B: AutodiffBackend>(
     let learning_rate = 0.0001;
 
     let train_dataset =
-        PlantVillageBurnDataset::new_cached(base_train.clone(), image_size).expect("Failed");
+        PlantVillageBurnDataset::new(base_train.clone(), image_size);
     let val_dataset =
-        PlantVillageBurnDataset::new_cached(base_val.clone(), image_size).expect("Failed");
+        PlantVillageBurnDataset::new(base_val.clone(), image_size);
 
     let batcher = PlantVillageBatcher::<B>::with_image_size(device.clone(), image_size);
 
@@ -1166,10 +1274,13 @@ fn run_incremental_experiment<B: AutodiffBackend>(
     let mut epoch_rng = ChaCha8Rng::seed_from_u64(seed);
 
     // Train base model
-    for _epoch in 0..epochs {
+    for epoch in 0..epochs {
         let mut indices: Vec<usize> = (0..train_dataset.len()).collect();
         indices.shuffle(&mut epoch_rng);
         let num_batches = (indices.len() + batch_size - 1) / batch_size;
+
+        let mut epoch_loss = 0.0f64;
+        let mut train_batches = 0usize;
 
         for batch_idx in 0..num_batches {
             let start = batch_idx * batch_size;
@@ -1191,15 +1302,42 @@ fn run_incremental_experiment<B: AutodiffBackend>(
                 .init(&output.device())
                 .forward(output, batch.targets);
 
+            let loss_value: f64 = loss.clone().into_scalar().elem();
+            epoch_loss += loss_value;
+            train_batches += 1;
+
             let grads = loss.backward();
             let grads = GradientsParams::from_grads(grads, &model);
             model = optimizer.step(learning_rate, model, grads);
+        }
+
+        if experiment_verbose() {
+            let avg = if train_batches > 0 {
+                epoch_loss / train_batches as f64
+            } else {
+                0.0
+            };
+            println!(
+                "      [base model] epoch {}/{}  train_loss={:.4}  batches={}",
+                epoch + 1,
+                epochs,
+                avg,
+                train_batches
+            );
+            let _ = io::stdout().flush();
         }
     }
 
     // Evaluate base model on base classes
     let base_accuracy_before =
         evaluate::<B>(&model, &val_dataset, &batcher, batch_size, image_size);
+    if experiment_verbose() {
+        println!(
+            "      [base model] validation accuracy: {:.2}%",
+            base_accuracy_before
+        );
+        let _ = io::stdout().flush();
+    }
 
     // Now add new class and retrain with simple fine-tuning
     // For simplicity, we'll create a new model with more classes and train on all data
@@ -1239,16 +1377,19 @@ fn run_incremental_experiment<B: AutodiffBackend>(
         .init();
 
     let combined_train_dataset =
-        PlantVillageBurnDataset::new_cached(combined_train, image_size).expect("Failed");
+        PlantVillageBurnDataset::new(combined_train, image_size);
     let combined_val_dataset =
-        PlantVillageBurnDataset::new_cached(combined_val.clone(), image_size).expect("Failed");
+        PlantVillageBurnDataset::new(combined_val.clone(), image_size);
     let new_batcher = PlantVillageBatcher::<B>::with_image_size(device.clone(), image_size);
 
     // Train on combined data (simple fine-tuning approach)
-    for _epoch in 0..epochs {
+    for epoch in 0..epochs {
         let mut indices: Vec<usize> = (0..combined_train_dataset.len()).collect();
         indices.shuffle(&mut epoch_rng);
         let num_batches = (indices.len() + batch_size - 1) / batch_size;
+
+        let mut epoch_loss = 0.0f64;
+        let mut train_batches = 0usize;
 
         for batch_idx in 0..num_batches {
             let start = batch_idx * batch_size;
@@ -1270,15 +1411,35 @@ fn run_incremental_experiment<B: AutodiffBackend>(
                 .init(&output.device())
                 .forward(output, batch.targets);
 
+            let loss_value: f64 = loss.clone().into_scalar().elem();
+            epoch_loss += loss_value;
+            train_batches += 1;
+
             let grads = loss.backward();
             let grads = GradientsParams::from_grads(grads, &new_model);
             new_model = new_optimizer.step(learning_rate, new_model, grads);
+        }
+
+        if experiment_verbose() {
+            let avg = if train_batches > 0 {
+                epoch_loss / train_batches as f64
+            } else {
+                0.0
+            };
+            println!(
+                "      [expanded model] epoch {}/{}  train_loss={:.4}  batches={}",
+                epoch + 1,
+                epochs,
+                avg,
+                train_batches
+            );
+            let _ = io::stdout().flush();
         }
     }
 
     // Evaluate on base classes only (to measure forgetting)
     let base_val_dataset =
-        PlantVillageBurnDataset::new_cached(base_val, image_size).expect("Failed");
+        PlantVillageBurnDataset::new(base_val, image_size);
     let base_accuracy_after = evaluate::<B>(
         &new_model,
         &base_val_dataset,
@@ -1289,7 +1450,7 @@ fn run_incremental_experiment<B: AutodiffBackend>(
 
     // Evaluate on new class only
     let new_class_val_dataset =
-        PlantVillageBurnDataset::new_cached(new_class_val, image_size).expect("Failed");
+        PlantVillageBurnDataset::new(new_class_val, image_size);
     let new_class_accuracy = evaluate::<B>(
         &new_model,
         &new_class_val_dataset,
@@ -1309,6 +1470,18 @@ fn run_incremental_experiment<B: AutodiffBackend>(
 
     let forgetting = base_accuracy_before - base_accuracy_after;
     let training_time = start.elapsed().as_secs_f64();
+
+    if experiment_verbose() {
+        println!(
+            "      [expanded model] val: base_after={:.2}% new_cls={:.2}% overall={:.2}% forget={:.2}% time={:.1}s",
+            base_accuracy_after,
+            new_class_accuracy,
+            overall_accuracy,
+            forgetting,
+            training_time
+        );
+        let _ = io::stdout().flush();
+    }
 
     Ok(ScalingResult {
         base_classes,

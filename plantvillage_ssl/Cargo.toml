@@ -5,6 +5,7 @@ edition = "2021"
 authors = ["Warre Snaet"]
 description = "Semi-Supervised Plant Disease Classification using Burn in Rust"
 license = "MIT"
+default-run = "plantvillage_ssl"
 
 [dependencies]
 # ML Framework - Burn with multiple backends

@@ -187,12 +187,12 @@ fn detect_jetson_model() -> Option<String> {
     }
 
     // Try reading from /proc/device-tree/model
-    if let Ok(model) = fs::read_to_string("/proc/device-tree/model") {
+    if let Ok(model) = fs::read_to_string("/proc/device-tree/model" {
         let model = model.trim().trim_end_matches('\0');
         if !model.is_empty() {
-            return Some(model.to_string());
+            return Some(model.to_string())
         }
-    }
+    })
 
     // Fall back to nvidia-smi
     if let Ok(output) = std::process::Command::new("nvidia-smi")

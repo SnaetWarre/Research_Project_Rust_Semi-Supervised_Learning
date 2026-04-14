@@ -1,13 +1,14 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# New Plant Diseases dataset downloader.
-# Dataset: vipoooool/new-plant-diseases-dataset (~87K RGB images, 38 classes).
+# Plant Diseases dataset downloader.
+# Using curl to download the balanced dataset.
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
-DATASET="vipoooool/new-plant-diseases-dataset"
-OUTPUT_DIR="$PROJECT_ROOT/data/plantvillage"
+# Based on original script, it was putting it in PROJECT_ROOT/data/plantvillage or SCRIPT_DIR/data/plantvillage.
+# We'll use SCRIPT_DIR/data/plantvillage to keep it inside Source.
+OUTPUT_DIR="$SCRIPT_DIR/data/plantvillage"
 FORCE=0
 
 # Colors for output
@@ -21,21 +22,17 @@ usage() {
     cat <<EOF
 Usage: $0 [--output-dir PATH] [--force]
 
-Downloads the New Plant Diseases Dataset (balanced, augmented PlantVillage) from Kaggle.
+Downloads the PlantVillage balanced dataset via curl.
 
 This dataset contains:
-  - ~87,000 RGB images of healthy and diseased crop leaves
-  - 38 balanced classes (same as original PlantVillage)
-  - Pre-split into train/ (~70K) and valid/ (~17K) folders
+  - RGB images of healthy and diseased crop leaves
+  - Balanced classes
+  - Pre-split into train/ and valid/ folders
 
 Options:
   --output-dir PATH   Target directory (default: data/plantvillage)
   --force             Re-download even if data exists
   -h, --help          Show this help
-
-Requirements:
-  - kaggle CLI tool (pip install kaggle)
-  - ~/.kaggle/kaggle.json with API credentials
 
 After download, run training with:
   cargo run --release -- train --data-dir data/plantvillage --epochs 50 --cuda
@@ -82,41 +79,16 @@ while [[ $# -gt 0 ]]; do
     esac
 done
 
-# Check if kaggle CLI is installed
-if ! command -v kaggle &> /dev/null; then
-    log_error "kaggle CLI not found. Please install it:"
-    echo "  pip install kaggle"
-    echo ""
-    echo "Then configure your API credentials:"
-    echo "  1. Go to https://www.kaggle.com/settings"
-    echo "  2. Click 'Create New Token' under API section"
-    echo "  3. Save kaggle.json to ~/.kaggle/kaggle.json"
-    echo "  4. chmod 600 ~/.kaggle/kaggle.json"
-    exit 1
-fi
-
-# Check if kaggle credentials exist
-if [[ ! -f "$HOME/.kaggle/kaggle.json" ]]; then
-    log_error "Kaggle credentials not found at ~/.kaggle/kaggle.json"
-    echo ""
-    echo "To set up Kaggle API credentials:"
-    echo "  1. Go to https://www.kaggle.com/settings"
-    echo "  2. Click 'Create New Token' under API section"
-    echo "  3. Save the downloaded kaggle.json to ~/.kaggle/"
-    echo "  4. chmod 600 ~/.kaggle/kaggle.json"
-    exit 1
-fi
-
 # Check if dataset already exists
 if [[ -d "$OUTPUT_DIR/train" && -d "$OUTPUT_DIR/valid" && $FORCE -eq 0 ]]; then
     log_warn "Dataset already exists at $OUTPUT_DIR"
     echo "  Use --force to re-download"
-    
+
     # Show quick stats
     TRAIN_COUNT=$(find "$OUTPUT_DIR/train" -type f -name "*.jpg" -o -name "*.JPG" -o -name "*.jpeg" -o -name "*.png" 2>/dev/null | wc -l)
     VALID_COUNT=$(find "$OUTPUT_DIR/valid" -type f -name "*.jpg" -o -name "*.JPG" -o -name "*.jpeg" -o -name "*.png" 2>/dev/null | wc -l)
     TRAIN_CLASSES=$(find "$OUTPUT_DIR/train" -mindepth 1 -maxdepth 1 -type d 2>/dev/null | wc -l)
-    
+
     echo ""
     log_info "Current dataset stats:"
     echo "  Train images: $TRAIN_COUNT"
@@ -128,45 +100,54 @@ fi
 # Create output directory
 mkdir -p "$OUTPUT_DIR"
 
-log_info "Downloading New Plant Diseases Dataset..."
-log_info "  Source: kaggle.com/datasets/$DATASET"
+log_info "Downloading PlantVillage Dataset via curl..."
 log_info "  Target: $OUTPUT_DIR"
 echo ""
 
 # Download dataset
 cd "$OUTPUT_DIR"
-kaggle datasets download -d "$DATASET" --unzip
+ZIP_FILE="plantvillage-balanced.zip"
 
-# The dataset extracts with a nested structure, let's fix it
-# Expected: New Plant Diseases Dataset(Augmented)/train and .../valid
-if [[ -d "New Plant Diseases Dataset(Augmented)" ]]; then
-    log_info "Reorganizing dataset structure..."
-    
-    # Move train and valid folders up
-    if [[ -d "New Plant Diseases Dataset(Augmented)/train" ]]; then
-        mv "New Plant Diseases Dataset(Augmented)/train" ./train
-    fi
-    if [[ -d "New Plant Diseases Dataset(Augmented)/valid" ]]; then
-        mv "New Plant Diseases Dataset(Augmented)/valid" ./valid
-    fi
-    
-    # Remove the wrapper directory
-    rm -rf "New Plant Diseases Dataset(Augmented)"
+if [[ ! -f "$ZIP_FILE" && ! -d "plantvillage_split_balanced" && ! -d "train" ]]; then
+    curl -L -o "$ZIP_FILE" "https://www.kaggle.com/api/v1/datasets/download/chandraguptsingh/plantvillage-balanced"
+else
+    log_info "Dataset already downloaded or partially extracted, skipping download."
 fi
 
-# Also check for alternate naming
-if [[ -d "new plant diseases dataset(augmented)" ]]; then
+# Check if unzip is installed
+if ! command -v unzip &> /dev/null; then
+    log_error "'unzip' command not found. Please install it (e.g., pacman -S unzip)."
+    exit 1
+fi
+
+if [[ -f "$ZIP_FILE" ]]; then
+    log_info "Extracting dataset..."
+    unzip -q -o "$ZIP_FILE" 2>/dev/null || true
+    rm -f "$ZIP_FILE"
+fi
+
+# The dataset might extract with a nested structure, let's fix it by finding train/valid dirs
+if [[ ! -d "train" || ! -d "valid" ]]; then
     log_info "Reorganizing dataset structure..."
-    
-    if [[ -d "new plant diseases dataset(augmented)/New Plant Diseases Dataset(Augmented)/train" ]]; then
-        mv "new plant diseases dataset(augmented)/New Plant Diseases Dataset(Augmented)/train" ./train
-        mv "new plant diseases dataset(augmented)/New Plant Diseases Dataset(Augmented)/valid" ./valid
-    elif [[ -d "new plant diseases dataset(augmented)/train" ]]; then
-        mv "new plant diseases dataset(augmented)/train" ./train
-        mv "new plant diseases dataset(augmented)/valid" ./valid
+
+    # Find directories named 'train' and 'valid' (or 'val')
+    FOUND_TRAIN=$(find . -mindepth 2 -type d -name "train" | head -n 1)
+    FOUND_VALID=$(find . -mindepth 2 -type d \( -name "valid" -o -name "val" \) | head -n 1)
+
+    if [[ -n "$FOUND_TRAIN" ]]; then
+        mkdir -p ./train
+        mv "$FOUND_TRAIN"/* ./train/ 2>/dev/null || cp -r "$FOUND_TRAIN"/* ./train/
+        rm -rf "$FOUND_TRAIN"
     fi
-    
-    rm -rf "new plant diseases dataset(augmented)"
+    if [[ -n "$FOUND_VALID" ]]; then
+        mkdir -p ./valid
+        mv "$FOUND_VALID"/* ./valid/ 2>/dev/null || cp -r "$FOUND_VALID"/* ./valid/
+        rm -rf "$FOUND_VALID"
+    fi
+
+    # Clean up empty parent directories if needed
+    rm -rf plantvillage_split_balanced 2>/dev/null || true
+    find . -type d -empty -delete 2>/dev/null || true
 fi
 
 # Verify the structure
@@ -196,11 +177,11 @@ echo "  Location:         $OUTPUT_DIR"
 echo ""
 echo "  Dataset Structure:"
 echo "  $OUTPUT_DIR/"
-echo "  ├── train/           (~70K images, 38 classes)"
+echo "  ├── train/           (~images, classes)"
 echo "  │   ├── Apple___Apple_scab/"
 echo "  │   ├── Apple___Black_rot/"
-echo "  │   └── ... (38 balanced classes)"
-echo "  └── valid/           (~17K images, 38 classes)"
+echo "  │   └── ..."
+echo "  └── valid/           (~images, classes)"
 echo "      ├── Apple___Apple_scab/"
 echo "      └── ..."
 echo ""

@@ -3,15 +3,25 @@
 //! This is the main entry point for the PlantVillage plant disease classification
 //! system using semi-supervised learning with the Burn framework.
 
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
-use anyhow::Result;
+use anyhow::{anyhow, Result};
 use clap::{Parser, Subcommand};
 use colored::Colorize;
 use tracing::info;
 
+use burn::data::dataloader::batcher::Batcher;
+use burn::data::dataset::Dataset;
+use burn::module::Module;
+use burn::record::CompactRecorder;
+use burn::tensor::backend::{AutodiffBackend, Backend};
+use burn::tensor::{activation::softmax, Int, Tensor};
 use plantvillage_ssl::backend::TrainingBackend;
+use plantvillage_ssl::dataset::burn_dataset::{PlantVillageBatcher, PlantVillageBurnDataset};
+use plantvillage_ssl::dataset::split::{DatasetSplits, SplitConfig};
+use plantvillage_ssl::model::cnn::{PlantClassifier, PlantClassifierConfig};
 use plantvillage_ssl::utils::logging::{init_logging, LogConfig};
+use plantvillage_ssl::PlantVillageDataset;
 
 /// PlantVillage Semi-Supervised Plant Disease Classification
 ///
@@ -200,6 +210,29 @@ enum Commands {
         output: String,
     },
 
+    /// Evaluate model accuracy and macro F1 on test split (fallback: validation split)
+    Eval {
+        /// Path to the dataset directory
+        #[arg(short, long, default_value = "data/plantvillage")]
+        data_dir: String,
+
+        /// Model checkpoint path (optional). If omitted, latest .mpk from output/simulation is used.
+        #[arg(short, long)]
+        model: Option<String>,
+
+        /// Labeled ratio used in split simulation
+        #[arg(long, default_value = "0.2")]
+        labeled_ratio: f64,
+
+        /// Batch size for evaluation
+        #[arg(short, long, default_value = "64")]
+        batch_size: usize,
+
+        /// Output directory used to auto-discover latest simulation model
+        #[arg(long, default_value = "output/simulation")]
+        simulation_output_dir: String,
+    },
+
     /// Show dataset statistics
     Stats {
         /// Path to the dataset directory
@@ -345,6 +378,22 @@ fn main() -> Result<()> {
             output,
         } => {
             cmd_export(&input_dir, &_format, &output)?;
+        }
+
+        Commands::Eval {
+            data_dir,
+            model,
+            labeled_ratio,
+            batch_size,
+            simulation_output_dir,
+        } => {
+            cmd_eval(
+                &data_dir,
+                model.as_deref(),
+                labeled_ratio,
+                batch_size,
+                &simulation_output_dir,
+            )?;
         }
 
         Commands::Stats {
@@ -719,6 +768,250 @@ fn cmd_simulate(
     println!();
     println!("{}", "Simulation Summary:".green().bold());
     println!("  SSL improvement: {:.2}%", results.improvement());
+
+    Ok(())
+}
+
+fn find_latest_checkpoint(dir: &Path) -> Result<PathBuf> {
+    if !dir.exists() {
+        return Err(anyhow!(
+            "Simulation output directory does not exist: {}",
+            dir.display()
+        ));
+    }
+
+    let mut candidates: Vec<(std::time::SystemTime, PathBuf)> = std::fs::read_dir(dir)?
+        .filter_map(|entry| entry.ok())
+        .map(|entry| entry.path())
+        .filter(|p| {
+            p.is_file()
+                && p.extension()
+                    .and_then(|e| e.to_str())
+                    .map(|e| e.eq_ignore_ascii_case("mpk"))
+                    .unwrap_or(false)
+        })
+        .filter_map(|p| {
+            let modified = std::fs::metadata(&p).ok()?.modified().ok()?;
+            Some((modified, p))
+        })
+        .collect();
+
+    candidates.sort_by(|a, b| b.0.cmp(&a.0));
+
+    candidates
+        .into_iter()
+        .next()
+        .map(|(_, p)| p)
+        .ok_or_else(|| anyhow!("No .mpk checkpoint found in {}", dir.display()))
+}
+
+fn evaluate_with_metrics<B: Backend>(
+    model: &PlantClassifier<B>,
+    dataset: &PlantVillageBurnDataset,
+    batch_size: usize,
+    image_size: usize,
+    num_classes: usize,
+) -> (f64, f64) {
+    let device = <B as Backend>::Device::default();
+    let batcher = PlantVillageBatcher::<B>::with_image_size(device.clone(), image_size);
+    let len = dataset.len();
+
+    if len == 0 || num_classes == 0 {
+        return (0.0, 0.0);
+    }
+
+    let mut correct = 0usize;
+    let mut total = 0usize;
+
+    let mut tp = vec![0usize; num_classes];
+    let mut fp = vec![0usize; num_classes];
+    let mut fn_ = vec![0usize; num_classes];
+
+    for start in (0..len).step_by(batch_size) {
+        let end = (start + batch_size).min(len);
+        let items: Vec<_> = (start..end).filter_map(|i| dataset.get(i)).collect();
+
+        if items.is_empty() {
+            continue;
+        }
+
+        let batch = batcher.batch(items, &device);
+        let output = model.forward(batch.images);
+        let probs = softmax(output, 1);
+        let preds = probs.argmax(1);
+        let [batch_dim, _] = preds.dims();
+
+        let preds_flat: Tensor<B, 1, Int> = preds.reshape([batch_dim]);
+        let pred_vec: Vec<i32> = preds_flat.into_data().to_vec::<i32>().unwrap_or_default();
+
+        let target_vec: Vec<i32> = batch
+            .targets
+            .into_data()
+            .to_vec::<i32>()
+            .unwrap_or_default();
+
+        for (&p_val, &t_val) in pred_vec.iter().zip(target_vec.iter()) {
+            let p = p_val as usize;
+            let t = t_val as usize;
+
+            if p == t {
+                correct += 1;
+                if t < num_classes {
+                    tp[t] += 1;
+                }
+            } else {
+                if p < num_classes {
+                    fp[p] += 1;
+                }
+                if t < num_classes {
+                    fn_[t] += 1;
+                }
+            }
+            total += 1;
+        }
+    }
+
+    let accuracy = if total > 0 {
+        100.0 * correct as f64 / total as f64
+    } else {
+        0.0
+    };
+
+    let mut f1_sum = 0.0f64;
+    let mut counted = 0usize;
+    for c in 0..num_classes {
+        let tp_c = tp[c] as f64;
+        let fp_c = fp[c] as f64;
+        let fn_c = fn_[c] as f64;
+
+        let precision = if (tp_c + fp_c) > 0.0 {
+            tp_c / (tp_c + fp_c)
+        } else {
+            0.0
+        };
+        let recall = if (tp_c + fn_c) > 0.0 {
+            tp_c / (tp_c + fn_c)
+        } else {
+            0.0
+        };
+        let f1 = if (precision + recall) > 0.0 {
+            2.0 * precision * recall / (precision + recall)
+        } else {
+            0.0
+        };
+
+        f1_sum += f1;
+        counted += 1;
+    }
+
+    let macro_f1 = if counted > 0 {
+        100.0 * (f1_sum / counted as f64)
+    } else {
+        0.0
+    };
+
+    (accuracy, macro_f1)
+}
+
+fn cmd_eval(
+    data_dir: &str,
+    model: Option<&str>,
+    labeled_ratio: f64,
+    batch_size: usize,
+    simulation_output_dir: &str,
+) -> Result<()> {
+    use plantvillage_ssl::backend::DefaultBackend;
+
+    info!("Evaluating model");
+    info!("  Data dir: {}", data_dir);
+    info!("  Batch size: {}", batch_size);
+    info!("  Labeled ratio: {}", labeled_ratio);
+
+    if !Path::new(data_dir).exists() {
+        return Err(anyhow!("Dataset directory not found: {}", data_dir));
+    }
+
+    let model_path = if let Some(path) = model {
+        PathBuf::from(path)
+    } else {
+        find_latest_checkpoint(Path::new(simulation_output_dir))?
+    };
+
+    if !model_path.exists() {
+        return Err(anyhow!(
+            "Model checkpoint not found: {}",
+            model_path.display()
+        ));
+    }
+
+    println!("{}", "Evaluation Configuration:".cyan().bold());
+    println!("  📁 Data directory: {}", data_dir);
+    println!("  🧠 Model: {}", model_path.display());
+    println!("  📦 Batch size: {}", batch_size);
+    println!("  🏷️  Labeled ratio: {:.0}%", labeled_ratio * 100.0);
+    println!();
+
+    let dataset = PlantVillageDataset::new(data_dir)?;
+    let images: Vec<(PathBuf, usize, String)> = dataset
+        .samples
+        .iter()
+        .map(|s| {
+            let class_name = dataset
+                .idx_to_class
+                .get(&s.label)
+                .cloned()
+                .unwrap_or_else(|| format!("class_{}", s.label));
+            (s.path.clone(), s.label, class_name)
+        })
+        .collect();
+
+    let split_config = SplitConfig::new(0.10, 0.10, labeled_ratio / 0.80, 42)?;
+    let splits = DatasetSplits::from_images(images, split_config)?;
+
+    let eval_samples: Vec<(PathBuf, usize)> = if !splits.test_set.is_empty() {
+        println!("Using {} samples from test split.", splits.test_set.len());
+        splits
+            .test_set
+            .iter()
+            .map(|x| (x.image_path.clone(), x.label))
+            .collect()
+    } else {
+        println!("Test split empty, falling back to validation split.");
+        splits
+            .validation_set
+            .iter()
+            .map(|x| (x.image_path.clone(), x.label))
+            .collect()
+    };
+
+    let eval_dataset = PlantVillageBurnDataset::new_cached(eval_samples, 128)?;
+    let device = Default::default();
+
+    let model_config = PlantClassifierConfig {
+        num_classes: 38,
+        input_size: 128,
+        dropout_rate: 0.3,
+        in_channels: 3,
+        base_filters: 32,
+    };
+
+    let model_instance: PlantClassifier<DefaultBackend> =
+        PlantClassifier::new(&model_config, &device)
+            .load_file(&model_path, &CompactRecorder::new(), &device)
+            .map_err(|e| anyhow!("Failed to load model {}: {:?}", model_path.display(), e))?;
+
+    let (accuracy, macro_f1) = evaluate_with_metrics::<DefaultBackend>(
+        &model_instance,
+        &eval_dataset,
+        batch_size,
+        128,
+        38,
+    );
+
+    println!();
+    println!("{}", "Evaluation Results:".green().bold());
+    println!("  ✅ Accuracy (Top-1): {:.2}%", accuracy);
+    println!("  ✅ Macro F1:          {:.2}%", macro_f1);
 
     Ok(())
 }

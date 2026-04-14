@@ -5,7 +5,9 @@ This module implements the same CNN architecture as the Rust/Burn implementation
 for comparison and benchmarking purposes.
 
 Author: Warre Snaet
-"""
+
+
+from typi"""
 
 from typing import Optional
 

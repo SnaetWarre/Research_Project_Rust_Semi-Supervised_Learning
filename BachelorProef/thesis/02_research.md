@@ -65,7 +65,7 @@ graph TD
 
 The standard ML stack (Python, PyTorch, CUDA) is optimized for research flexibility and GPU throughput. However, it introduces several challenges for edge deployment:
 
-- **Deployment size:** a minimal PyTorch installation requires approximately 7.1 GB of dependencies.
+- **Deployment size:** running a PyTorch model requires the Python interpreter, the PyTorch library, and supporting packages on the target device. A CUDA-enabled PyTorch wheel alone is in the low gigabytes once unpacked; the full environment grows further with TorchVision, NumPy, and tooling [17][23]. This is comparable in scale to a Rust `target/` build directory (~2 GB), but unlike Rust, Python cannot distill that into a single small binary for distribution.
 - **Startup latency:** Python interpreter initialization takes ~3 seconds, which is noticeable in interactive applications.
 - **Cross-compilation:** deploying Python ML models to iOS, Android, or embedded ARM devices requires wrapper frameworks (CoreML, TFLite, ONNX Runtime) and format conversion steps.
 - **Memory safety:** Python's garbage collector and C++ backend (LibTorch) can introduce unpredictable memory behavior, which is problematic for long-running edge processes.

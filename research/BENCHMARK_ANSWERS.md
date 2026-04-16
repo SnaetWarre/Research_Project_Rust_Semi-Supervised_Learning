@@ -32,7 +32,7 @@ While PyTorch shows a slight advantage in raw inference latency on desktop hardw
 
 | Metric | Burn (Rust) | PyTorch (Python) | Impact |
 |--------|-------------|------------------|--------|
-| **Deployment Size** | **~24 MB** (Single Binary) | **~7.1 GB** (Virtual Env) | **Rust is ~300x smaller** |
+| **Deployment Size** | **~24 MB** (Single Binary) | **Multi‑GB** (Python + CUDA PyTorch wheels + deps; exact `du` depends on install) | **Rust is orders of magnitude smaller** (earlier ~7.1 GB note matched 300×24 MB, not a PyTorch doc figure) |
 | **Startup Time** | Instant (<0.1s) | Slow (~2-3s import) | Rust enables "cold start" usage |
 | **Memory Overhead** | Minimal (System native) | High (Python Interpreter + GC) | Rust leaves RAM for data |
 
@@ -40,10 +40,10 @@ While PyTorch shows a slight advantage in raw inference latency on desktop hardw
 For constrained edge devices:
 1.  **Storage:** PyTorch consumes most of the onboard storage. Rust is negligible.
 2.  **RAM:** PyTorch's heavy runtime reduces the available memory for frame buffering and data caching.
-3.  **Speed:** The 0.68ms latency difference is imperceptible (both >500 FPS), but the **7GB vs 24MB** size difference determines whether the project is viable on constrained hardware.
+3.  **Speed:** The 0.68ms latency difference is imperceptible (both >500 FPS), but the **multi‑GB Python/PyTorch stack vs 24 MB** determines whether the project is viable on constrained hardware.
 
 **Burn** is deemed optimal for edge deployment because:
-1.  **Binary Size & Dependencies:** The Burn application compiles to a single binary, whereas PyTorch requires a heavy Python runtime (hundreds of MBs).
+1.  **Binary Size & Dependencies:** The Burn application compiles to a single binary, whereas PyTorch requires a Python runtime and large native wheels (typically gigabyte-scale for CUDA builds).
 2.  **Memory Safety:** Rust provides compile-time guarantees against memory leaks, which is critical for long-running edge devices.
 3.  **Deployment Simplicity:** No need to manage Python virtual environments or complex `pip` dependency trees on constrained edge devices.
 

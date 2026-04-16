@@ -22,7 +22,7 @@ Plant diseases account for an estimated 20–40% of global crop losses annually.
 
 The research combines a custom lightweight convolutional neural network (CNN) with a pseudo-labeling pipeline built entirely in Rust using the Burn machine learning framework. Starting from only 20% labeled data, the system iteratively assigns pseudo-labels to unlabeled images that exceed a 90% confidence threshold, then retrains on the expanded dataset. Three controlled experiments evaluate critical aspects of real-world deployment: (1) the minimum number of labeled samples per class required for acceptable accuracy, (2) the effect of model scale on catastrophic forgetting when adding new disease classes, and (3) how the position of a new class within an existing taxonomy affects learning difficulty.
 
-The resulting system compiles to a 24 MB binary (300 times smaller than an equivalent PyTorch deployment) and achieves 0.39 ms inference latency (2,579 FPS) on an NVIDIA RTX 3060 GPU. Cross-platform deployment is demonstrated on desktop, iPhone 12 via Tauri (80 ms inference), and CPU-only environments, all without any network dependency. Experimental results show that 100 labeled images per class suffice for over 80% accuracy, that catastrophic forgetting increases six-fold when scaling from 5 to 30 base classes, and that adding a class to a larger taxonomy requires substantially more labeled samples than adding it to a smaller one.
+The resulting system compiles to a single ~26 MB binary that includes all runtime dependencies—compared to a Python/PyTorch deployment that requires a multi-gigabyte environment on the target device—and achieves 0.39 ms inference latency (2,579 FPS) on an NVIDIA RTX 3060 GPU. Cross-platform deployment is demonstrated on desktop, iPhone 12 via Tauri (80 ms inference), and CPU-only environments, all without any network dependency. Experimental results show that 100 labeled images per class suffice for over 80% accuracy, that catastrophic forgetting increases six-fold when scaling from 5 to 30 base classes, and that adding a class to a larger taxonomy requires substantially more labeled samples than adding it to a smaller one.
 
 The findings confirm that Rust and the Burn framework provide a production-viable path for deploying semi-supervised machine learning on edge devices, with significant advantages in deployment size, inference speed, and cross-platform portability compared to Python-based alternatives.
 
@@ -32,6 +32,13 @@ The findings confirm that Rust and the Burn framework provide a production-viabl
 
 ## Table of Contents
 
+**Front matter**
+- [Foreword](00a_foreword.md)
+- [List of Figures and Tables](00b_list_of_figures.md)
+- [List of Abbreviations](00c_abbreviations.md)
+- [Glossary](00d_glossary.md)
+
+**Chapters**
 1. [Introduction](01_introduction.md)
 2. [Research: Literature Study](02_research.md)
 3. [Research Results](03_results.md)
@@ -39,8 +46,9 @@ The findings confirm that Rust and the Burn framework provide a production-viabl
 5. [Advice](05_advice.md)
 6. [Conclusion](06_conclusion.md)
 7. [References](07_references.md)
-8. Appendices
-   - [A: Installation & User Guide](appendices/A_installation_guide.md)
-   - [B: Interview Question Template](appendices/B_interview_template.md)
-   - [C: Guest Session Report: NVISO AI Threats](appendices/C_guest_session_nviso.md)
-   - [D: Guest Session Report: Session 2](appendices/D_guest_session_2.md)
+
+**Appendices**
+- [A: Installation & User Guide](appendices/A_installation_guide.md)
+- [B: Interview Question Template](appendices/B_interview_template.md)
+- [C: Guest Session Report: NVISO AI Threats](appendices/C_guest_session_nviso.md)
+- [D: Guest Session Report: Session 2](appendices/D_guest_session_2.md)

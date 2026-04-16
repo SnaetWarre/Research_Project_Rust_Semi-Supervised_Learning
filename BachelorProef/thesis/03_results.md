@@ -46,7 +46,13 @@ This design means the exact same model code runs on CUDA (for GPU-accelerated tr
 
 ### 3.1.3 Model Size
 
-The trained model weights occupy 5.7 MB on disk. The compiled Rust binary, including the model, the inference runtime, and the application code, totals 24 MB. For comparison, a minimal PyTorch deployment (model + runtime + dependencies) requires approximately 7.1 GB [17]. This represents a **300× reduction** in deployment size, which is critical for distribution to edge devices over limited-bandwidth connections or physical media.
+The trained model weights occupy 5.7 MB on disk. The compiled Rust release binary, including the model, the inference runtime, and the application code, totals approximately 26 MB. The PyTorch checkpoint for the identical CNN architecture is similar in size (a few MB); **the model weights themselves are comparable between the two stacks.**
+
+The critical difference is **what must be present on the end-user's device to run inference.** In Rust, the release binary is the only artefact required: a single 26 MB file that includes the compiled runtime and all dependencies. In Python, running the same model requires the Python interpreter, the PyTorch library (with or without CUDA support), and any additional packages. A CUDA-enabled PyTorch wheel alone is typically in the low gigabytes once unpacked [17][23], and a practical environment (adding TorchVision, NumPy, Pillow, etc.) grows further.
+
+To put this in perspective: the Rust `target/` build directory (analogous to `node_modules` or a Python virtual environment) is itself approximately 2.1 GB on disk, comparable to a PyTorch virtual environment. **Both stacks require gigabytes of tooling during development.** The difference is that Rust's compilation step distills all of that into a single portable binary, while a Python deployment must carry its interpreter and library tree to the target device.
+
+For edge deployment, this means the Rust binary can be distributed via Bluetooth, a USB stick, or a brief mobile data connection. A Python-based deployment requires either pre-installing a multi-gigabyte environment on each device or shipping a container/bundle that includes the interpreter and wheels.
 
 ## 3.2 Semi-Supervised Learning Pipeline
 
@@ -222,7 +228,7 @@ Several observations emerge from the benchmark results:
 
 **The Jetson pivot.** The Jetson Orin Nano, a dedicated edge AI device costing €350, performs worse than the iPhone 12 (120 ms vs. 80 ms). This result directly informed the project's deployment strategy: dedicated edge hardware is unnecessary when consumer devices (phones, laptops) already outperform it. The project pivoted to a BYOD (Bring Your Own Device) model, eliminating hardware costs entirely.
 
-**Deployment size advantage.** The 24 MB compiled binary can be distributed via Bluetooth, USB drive, or a brief mobile data connection. A 7.1 GB PyTorch deployment would require persistent broadband access to distribute, defeating the purpose of an offline-first application.
+**Deployment size advantage.** The ~26 MB compiled binary can be distributed via Bluetooth, USB drive, or a brief mobile data connection. A Python/PyTorch deployment requires a multi-gigabyte environment on the target device, which is impractical over those same channels and undermines an offline-first deployment story.
 
 **Startup time.** PyTorch cold start takes approximately 3 seconds due to Python interpreter initialization and library loading. The Burn binary starts in under 100 ms, which is the threshold below which users perceive an application as "instant."
 

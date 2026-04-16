@@ -71,7 +71,7 @@ The reasoning:
 - An iPhone 12 (80 ms inference) outperforms a Jetson Orin Nano (120 ms) at zero additional hardware cost.
 - Consumer devices have better displays, cameras, and connectivity for distributing updates.
 - The Tauri framework enables a single Rust codebase to target iOS, Android, and desktop.
-- The 24 MB deployment size is small enough to install via Bluetooth, NFC, or a brief mobile connection.
+- The ~26 MB deployment size is small enough to install via Bluetooth, NFC, or a brief mobile connection.
 
 **Exception:** if the deployment requires running the model on a headless device (e.g., a camera trap, an automated greenhouse system), then dedicated hardware may be justified. In this case, consider a Raspberry Pi 4/5 with the CPU backend rather than a GPU-based edge device.
 

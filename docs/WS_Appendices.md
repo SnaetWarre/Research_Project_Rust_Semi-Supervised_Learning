@@ -431,7 +431,7 @@ incremental_learning/
 |--------|-------------------|-------------------------|-------|
 | **Mean Latency** | 1.27 ms | 0.59 ms | Both far exceed 200ms requirement |
 | **Throughput** | ~793 FPS | ~1743 FPS | Desktop GPU (RTX 3060) |
-| **Deployment Size** | ~24 MB | ~7.1 GB | **Rust is 300× smaller** |
+| **Deployment Size** | ~24 MB | Multi‑GB (PyTorch env + deps) | **Rust is orders of magnitude smaller** |
 | **Startup Time** | <0.1s | ~2-3s | Rust has instant cold start |
 | **Model Size** | 1.78 MB | 1.78 MB | Identical architecture |
 | **Parameters** | ~460K | ~460K | Same model |

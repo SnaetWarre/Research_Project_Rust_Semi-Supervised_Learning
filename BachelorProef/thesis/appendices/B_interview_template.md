@@ -27,7 +27,7 @@ These questions are designed for the external reflection interviews (Chapter 4).
 
 4. We use a semi-supervised learning approach (pseudo-labeling with a 90% confidence threshold) to reduce the need for labeled data from 100% to 20%. How do you evaluate this approach? Do you see risks of error propagation?
 
-5. The entire system is implemented in Rust using the Burn ML framework, compiling to a 24 MB binary. What is your reaction to this technology choice compared to the standard Python/PyTorch stack?
+5. The entire system is implemented in Rust using the Burn ML framework, compiling to a ~26 MB binary. What is your reaction to this technology choice compared to the standard Python/PyTorch stack?
 
 6. Our benchmarks show 0.39 ms inference on desktop GPU and 80 ms on iPhone 12. Are these latency numbers sufficient for the use cases you envision?
 

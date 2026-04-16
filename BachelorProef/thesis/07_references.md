@@ -49,3 +49,5 @@ All references follow the IEEE citation style.
 [21] Tauri Contributors, "Tauri: Build Smaller, Faster, and More Secure Desktop and Mobile Applications," *Tauri.app*, 2026. [Online]. Available: https://tauri.app/
 
 [22] Vipoooool, "New Plant Diseases Dataset," *Kaggle*, 2019. [Online]. Available: https://www.kaggle.com/datasets/vipoooool/new-plant-diseases-dataset
+
+[23] PyTorch Contributors, "PyTorch binary wheels (package index)," *download.pytorch.org*, 2026. [Online]. Available: https://download.pytorch.org/whl/torch/

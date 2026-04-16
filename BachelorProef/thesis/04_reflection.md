@@ -7,7 +7,7 @@ This chapter provides a critical evaluation of the research results through two 
 ### 4.1.1 External Expert 1
 
 > **[TODO: Insert name and company/organization]**
-> *[TODO: Insert role/title and brief description of expertise - e.g., "Agricultural Technology Specialist at AgriTech B.V." or "ML Engineer at a precision farming startup"]*
+> *[TODO: Insert role/title and brief description of expertise]*
 
 **Context of the conversation:** [TODO: Describe how you contacted this person and the setting of the interview (in person, video call, etc.)]
 
@@ -32,7 +32,7 @@ This chapter provides a critical evaluation of the research results through two 
 ### 4.1.2 External Expert 2
 
 > **[TODO: Insert name and company/organization]**
-> *[TODO: Insert role/title and brief description of expertise - e.g., "Senior ML Engineer at an edge computing firm" or "Researcher in computer vision at a university"]*
+> *[TODO: Insert role/title and brief description of expertise]*
 
 **Context of the conversation:** [TODO: Describe how you contacted this person and the setting of the interview.]
 
@@ -56,13 +56,13 @@ This chapter provides a critical evaluation of the research results through two 
 
 ### 4.1.3 Synthesis of External Feedback
 
-[TODO: After completing both interviews, write a 1–2 paragraph synthesis that identifies common themes, contrasting viewpoints, and the most actionable feedback. This synthesis should connect the external perspectives to the decisions made during the project.]
+[TODO: After completing both interviews, write a synthesis that identifies common themes, contrasting viewpoints, and the most actionable feedback. This synthesis should connect the external perspectives to the decisions made during the project.]
 
 ## 4.2 Self-Reflection on Results
 
 ### 4.2.1 Strengths
 
-**Deployment size and portability.** The 24 MB binary represents a genuine step change compared to PyTorch's 7.1 GB footprint. This is not an incremental improvement; it fundamentally changes which distribution channels are viable for edge deployment. A model that can be sent via Bluetooth or copied from a USB stick is qualitatively different from one that requires a broadband connection.
+**Deployment size and portability.** The ~26 MB binary represents a genuine step change compared to a Python/PyTorch deployment. Both stacks require gigabytes of tooling during development (Rust's `target/` directory is ~2.1 GB, comparable to a PyTorch virtual environment), but Rust's compilation distills everything into a single portable binary. A Python deployment must carry its interpreter and library tree to the target device. This fundamentally changes which distribution channels are viable for edge deployment: a file that fits on a Bluetooth transfer or a USB stick is qualitatively different from one that requires installing a multi-gigabyte environment first.
 
 **The BYOD pivot.** The benchmark results (Table 3.6) provided a clear, data-driven reason to abandon dedicated edge hardware. The Jetson Orin Nano, at €350, was slower than a phone that farmers already own. This pivot eliminated the single largest cost barrier to deployment.
 

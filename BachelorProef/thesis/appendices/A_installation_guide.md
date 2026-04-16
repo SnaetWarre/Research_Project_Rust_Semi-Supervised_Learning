@@ -9,7 +9,7 @@
 | Git | 2.x | Source code retrieval |
 | Bun | 1.x | Frontend dependency management (GUI only) |
 
-For CPU-only builds, the CUDA Toolkit is not required.
+The CUDA Toolkit is not required for CPU-only builds.
 
 ## A.2 Installation
 
@@ -34,7 +34,7 @@ unzip new-plant-diseases-dataset.zip -d plantvillage_ssl/data/plantvillage/
 # Extract to plantvillage_ssl/data/plantvillage/
 ```
 
-Expected directory structure after extraction:
+The expected directory structure after extraction is:
 
 ```
 plantvillage_ssl/data/plantvillage/
@@ -77,7 +77,7 @@ cargo run --release --bin plantvillage_ssl -- train \
 |:---|:---|
 | `--epochs 30` | Number of training epochs |
 | `--cuda` | Use GPU acceleration |
-| `--labeled-ratio 0.2` | Use 20% of data for supervised training |
+| `--labeled-ratio 0.2` | Use 20% of the data for supervised training |
 
 The trained model is saved to `output/models/plant_classifier_TIMESTAMP`.
 
@@ -101,9 +101,9 @@ cargo run --release --bin plantvillage_ssl -- simulate \
 | `--days 0` | Process all available SSL stream data |
 | `--images-per-day 100` | Batch size per streaming "day" |
 | `--retrain-threshold 200` | Retrain after accumulating 200 pseudo-labels |
-| `--confidence-threshold 0.9` | Only accept predictions with >90% confidence |
+| `--confidence-threshold 0.9` | Only accept predictions with more than 90% confidence |
 
-### A.3.3 Step 3: Copy Best Model
+### A.3.3 Step 3: Copy the Best Model
 
 ```bash
 cp plantvillage_ssl/output/simulation/plant_classifier_ssl_TIMESTAMP.mpk \
@@ -142,7 +142,7 @@ cd plantvillage_ssl/gui
 bun run tauri:build
 ```
 
-The compiled application is in `gui/src-tauri/target/release/`.
+The compiled application can be found in `gui/src-tauri/target/release/`.
 
 ### A.5.3 iOS Deployment (Tauri)
 
@@ -171,8 +171,8 @@ cargo run --release --bin plantvillage_ssl -- experiment --help
 
 | Issue | Solution |
 |:---|:---|
-| CUDA not found | Ensure CUDA Toolkit is installed and `nvcc` is on PATH |
-| Out of GPU memory | Reduce batch size or use `--features cpu` |
-| Dataset not found | Verify the dataset is extracted to `data/plantvillage/` with `train/` and `valid/` subdirectories |
-| Slow compilation | Use `cargo check` for development; reserve `--release` for benchmarks |
+| CUDA not found | Make sure the CUDA Toolkit is installed and that `nvcc` is on the `PATH` |
+| Out of GPU memory | Reduce the batch size or use `--features cpu` |
+| Dataset not found | Verify that the dataset is extracted to `data/plantvillage/` with `train/` and `valid/` subdirectories |
+| Slow compilation | Use `cargo check` during development; keep `--release` for benchmarks |
 | Model file not found | Check the exact timestamp in the model filename |

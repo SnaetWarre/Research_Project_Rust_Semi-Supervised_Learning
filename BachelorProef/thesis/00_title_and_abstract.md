@@ -10,7 +10,7 @@
 | **Student Email** | warresnaet@student.howest.be |
 | **Program** | Multimedia & Creative Technologies (MCT) |
 | **Institution** | Howest University of Applied Sciences |
-| **Internal Promoter** | [TODO: Name of internal promoter] |
+| **Internal Promoter** | Gilles [TODO: achternaam invullen] |
 | **External Promoter** | [TODO: Name of external promoter / 2nd reader] |
 | **Academic Year** | 2025–2026 |
 

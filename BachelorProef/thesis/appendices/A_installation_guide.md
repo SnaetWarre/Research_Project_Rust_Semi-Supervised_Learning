@@ -16,8 +16,8 @@ The CUDA Toolkit is not required for CPU-only builds.
 ### A.2.1 Clone the Repository
 
 ```bash
-git clone https://github.com/[TODO: repository-url]
-cd Fast_Research_Project
+git clone https://github.com/[TODO: repository-ur]
+cd [TODO: repo name]
 ```
 
 ### A.2.2 Download the Dataset

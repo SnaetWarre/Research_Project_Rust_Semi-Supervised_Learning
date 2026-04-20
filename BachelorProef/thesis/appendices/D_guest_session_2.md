@@ -42,6 +42,6 @@
 
 ---
 
-*Report written: [TODO: Month Year]*
+*Report written: June 2026*
 *Student: Warre Snaet*
 *Program: MCT, Research Project*

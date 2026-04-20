@@ -9,7 +9,7 @@ This chapter offers a critical evaluation of the research results through two le
 > **[TODO: Insert name and company/organization]**
 > *[TODO: Insert role/title and brief description of expertise]*
 
-**Context of the conversation:** [TODO: Describe how you contacted this person and the setting of the interview (in person, video call, etc.)]
+**Context of the conversation:** [TODO: Describing how I contacted this person and the setting of the interview (in person, video call, etc.)]
 
 **Key discussion points:**
 
@@ -56,7 +56,8 @@ This chapter offers a critical evaluation of the research results through two le
 
 ### 4.1.3 Synthesis of External Feedback
 
-[TODO: After completing both interviews, write a synthesis that identifies common themes, contrasting viewpoints and the most actionable feedback. This synthesis should connect the external perspectives to the decisions made during the project.]
+[TODO: After both interviews, synthesis here that identifies common themes, contrasting viewpoints and the most actionable feedback.
+Synthesis should connect the external perspectives to the decisions made during the project.]
 
 ## 4.2 Self-Reflection on Results
 

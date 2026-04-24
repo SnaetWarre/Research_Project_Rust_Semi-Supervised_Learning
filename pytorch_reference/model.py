@@ -4,10 +4,8 @@ PyTorch Reference Implementation - Model Architecture
 This module implements the same CNN architecture as the Rust/Burn implementation
 for comparison and benchmarking purposes.
 
-Author: Warre Snaet
-
-
-from typi"""
+Author: Warre Snaet 
+"""
 
 from typing import Optional
 

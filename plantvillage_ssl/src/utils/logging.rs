@@ -256,11 +256,7 @@ impl TrainingLogger {
         self.epoch = epoch;
         self.epoch_start = std::time::Instant::now();
 
-        tracing::info!(
-            "Epoch {}/{} started",
-            epoch + 1,
-            self.total_epochs
-        );
+        tracing::info!("Epoch {}/{} started", epoch + 1, self.total_epochs);
     }
 
     /// Log end of an epoch with metrics
@@ -286,10 +282,7 @@ impl TrainingLogger {
 
     /// Log a new best model
     pub fn log_new_best(&self, accuracy: f64) {
-        tracing::info!(
-            "🎉 New best model! Accuracy: {:.2}%",
-            accuracy * 100.0
-        );
+        tracing::info!("🎉 New best model! Accuracy: {:.2}%", accuracy * 100.0);
     }
 
     /// Log early stopping

@@ -744,10 +744,8 @@ fn run_incremental_with_limited_labels<B: AutodiffBackend>(
     let batch_size = 64;
     let learning_rate = 0.0001;
 
-    let train_dataset =
-        PlantVillageBurnDataset::new(base_train.clone(), image_size);
-    let val_dataset =
-        PlantVillageBurnDataset::new(base_val.clone(), image_size);
+    let train_dataset = PlantVillageBurnDataset::new(base_train.clone(), image_size);
+    let val_dataset = PlantVillageBurnDataset::new(base_val.clone(), image_size);
 
     let batcher = PlantVillageBatcher::<B>::with_image_size(device.clone(), image_size);
 
@@ -874,10 +872,8 @@ fn run_incremental_with_limited_labels<B: AutodiffBackend>(
         .with_weight_decay(Some(burn::optim::decay::WeightDecayConfig::new(1e-4f32)))
         .init();
 
-    let combined_train_dataset =
-        PlantVillageBurnDataset::new(combined_train, image_size);
-    let combined_val_dataset =
-        PlantVillageBurnDataset::new(combined_val.clone(), image_size);
+    let combined_train_dataset = PlantVillageBurnDataset::new(combined_train, image_size);
+    let combined_val_dataset = PlantVillageBurnDataset::new(combined_val.clone(), image_size);
     let new_batcher = PlantVillageBatcher::<B>::with_image_size(device.clone(), image_size);
 
     // Train on combined data
@@ -936,8 +932,7 @@ fn run_incremental_with_limited_labels<B: AutodiffBackend>(
     }
 
     // Evaluate on base classes only (to measure forgetting)
-    let base_val_dataset =
-        PlantVillageBurnDataset::new(base_val, image_size);
+    let base_val_dataset = PlantVillageBurnDataset::new(base_val, image_size);
     let base_accuracy_after = evaluate::<B>(
         &new_model,
         &base_val_dataset,
@@ -948,8 +943,7 @@ fn run_incremental_with_limited_labels<B: AutodiffBackend>(
 
     // Evaluate on new class only
     let new_class_accuracy = if !new_class_val.is_empty() {
-        let new_class_val_dataset =
-            PlantVillageBurnDataset::new(new_class_val, image_size);
+        let new_class_val_dataset = PlantVillageBurnDataset::new(new_class_val, image_size);
         evaluate::<B>(
             &new_model,
             &new_class_val_dataset,
@@ -1106,10 +1100,8 @@ fn train_with_n_images_per_class<B: AutodiffBackend>(
     let batch_size = 64;
     let learning_rate = 0.0001;
 
-    let train_dataset =
-        PlantVillageBurnDataset::new(train_samples, image_size);
-    let val_dataset =
-        PlantVillageBurnDataset::new(val_samples, image_size);
+    let train_dataset = PlantVillageBurnDataset::new(train_samples, image_size);
+    let val_dataset = PlantVillageBurnDataset::new(val_samples, image_size);
 
     let batcher = PlantVillageBatcher::<B>::with_image_size(device.clone(), image_size);
 
@@ -1252,10 +1244,8 @@ fn run_incremental_experiment<B: AutodiffBackend>(
     let batch_size = 64;
     let learning_rate = 0.0001;
 
-    let train_dataset =
-        PlantVillageBurnDataset::new(base_train.clone(), image_size);
-    let val_dataset =
-        PlantVillageBurnDataset::new(base_val.clone(), image_size);
+    let train_dataset = PlantVillageBurnDataset::new(base_train.clone(), image_size);
+    let val_dataset = PlantVillageBurnDataset::new(base_val.clone(), image_size);
 
     let batcher = PlantVillageBatcher::<B>::with_image_size(device.clone(), image_size);
 
@@ -1376,10 +1366,8 @@ fn run_incremental_experiment<B: AutodiffBackend>(
         .with_weight_decay(Some(burn::optim::decay::WeightDecayConfig::new(1e-4f32)))
         .init();
 
-    let combined_train_dataset =
-        PlantVillageBurnDataset::new(combined_train, image_size);
-    let combined_val_dataset =
-        PlantVillageBurnDataset::new(combined_val.clone(), image_size);
+    let combined_train_dataset = PlantVillageBurnDataset::new(combined_train, image_size);
+    let combined_val_dataset = PlantVillageBurnDataset::new(combined_val.clone(), image_size);
     let new_batcher = PlantVillageBatcher::<B>::with_image_size(device.clone(), image_size);
 
     // Train on combined data (simple fine-tuning approach)
@@ -1438,8 +1426,7 @@ fn run_incremental_experiment<B: AutodiffBackend>(
     }
 
     // Evaluate on base classes only (to measure forgetting)
-    let base_val_dataset =
-        PlantVillageBurnDataset::new(base_val, image_size);
+    let base_val_dataset = PlantVillageBurnDataset::new(base_val, image_size);
     let base_accuracy_after = evaluate::<B>(
         &new_model,
         &base_val_dataset,
@@ -1449,8 +1436,7 @@ fn run_incremental_experiment<B: AutodiffBackend>(
     );
 
     // Evaluate on new class only
-    let new_class_val_dataset =
-        PlantVillageBurnDataset::new(new_class_val, image_size);
+    let new_class_val_dataset = PlantVillageBurnDataset::new(new_class_val, image_size);
     let new_class_accuracy = evaluate::<B>(
         &new_model,
         &new_class_val_dataset,

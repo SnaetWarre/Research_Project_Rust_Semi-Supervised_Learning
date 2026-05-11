@@ -10,13 +10,13 @@ use clap::{Parser, Subcommand};
 use colored::Colorize;
 use tracing::info;
 
+use burn::backend::Autodiff;
 use burn::data::dataloader::batcher::Batcher;
 use burn::data::dataset::Dataset;
 use burn::module::Module;
 use burn::record::CompactRecorder;
 use burn::tensor::backend::{AutodiffBackend, Backend};
 use burn::tensor::{activation::softmax, Int, Tensor};
-use plantvillage_ssl::backend::TrainingBackend;
 use plantvillage_ssl::dataset::burn_dataset::{PlantVillageBatcher, PlantVillageBurnDataset};
 use plantvillage_ssl::dataset::split::{DatasetSplits, SplitConfig};
 use plantvillage_ssl::model::cnn::{PlantClassifier, PlantClassifierConfig};
@@ -154,6 +154,10 @@ enum Commands {
         /// Verbose output
         #[arg(long, default_value = "false")]
         verbose: bool,
+
+        /// Use CUDA backend
+        #[arg(long, default_value = "false")]
+        cuda: bool,
     },
 
     /// Simulate streaming data for semi-supervised learning demo
@@ -231,6 +235,10 @@ enum Commands {
         /// Output directory used to auto-discover latest simulation model
         #[arg(long, default_value = "output/simulation")]
         simulation_output_dir: String,
+
+        /// Use CUDA backend
+        #[arg(long, default_value = "false")]
+        cuda: bool,
     },
 
     /// Show dataset statistics
@@ -279,9 +287,6 @@ fn main() -> Result<()> {
             target_accuracy,
             early_stop_patience,
         } => {
-            // Always use CUDA - this project targets GPU
-            let _ = cuda; // Ignore flag, always GPU
-
             let max_samples = if quick {
                 println!(
                     "{}",
@@ -305,7 +310,7 @@ fn main() -> Result<()> {
                 )
             };
 
-            plantvillage_ssl::training::supervised::run_training::<TrainingBackend>(
+            dispatch_training(
                 &data_dir,
                 epochs,
                 batch_size,
@@ -317,6 +322,7 @@ fn main() -> Result<()> {
                 max_samples,
                 augmentation,
                 early_stopping,
+                cuda,
             )?;
         }
 
@@ -325,7 +331,7 @@ fn main() -> Result<()> {
             model,
             cuda: _cuda,
         } => {
-            cmd_infer(&input, &model, true)?;
+            dispatch_infer(&input, &model, _cuda)?;
         }
 
         Commands::Benchmark {
@@ -336,8 +342,9 @@ fn main() -> Result<()> {
             image_size,
             output,
             verbose,
+            cuda,
         } => {
-            cmd_benchmark(
+            dispatch_benchmark(
                 model.as_deref(),
                 iterations,
                 warmup,
@@ -345,6 +352,7 @@ fn main() -> Result<()> {
                 image_size,
                 output.as_deref(),
                 verbose,
+                cuda,
             )?;
         }
 
@@ -357,9 +365,9 @@ fn main() -> Result<()> {
             retrain_threshold,
             labeled_ratio,
             output_dir,
-            cuda: _cuda,
+            cuda,
         } => {
-            cmd_simulate(
+            dispatch_simulate(
                 &data_dir,
                 &model,
                 days,
@@ -368,7 +376,7 @@ fn main() -> Result<()> {
                 retrain_threshold,
                 labeled_ratio,
                 &output_dir,
-                true,
+                cuda,
             )?;
         }
 
@@ -386,13 +394,15 @@ fn main() -> Result<()> {
             labeled_ratio,
             batch_size,
             simulation_output_dir,
+            cuda,
         } => {
-            cmd_eval(
+            dispatch_eval(
                 &data_dir,
                 model.as_deref(),
                 labeled_ratio,
                 batch_size,
                 &simulation_output_dir,
+                cuda,
             )?;
         }
 
@@ -527,13 +537,117 @@ fn cmd_stats(data_dir: &str, show_splits: bool) -> Result<()> {
     Ok(())
 }
 
-fn cmd_infer(input: &str, model: &str, _cuda: bool) -> Result<()> {
+fn dispatch_training(
+    data_dir: &str,
+    epochs: usize,
+    batch_size: usize,
+    learning_rate: f64,
+    labeled_ratio: f64,
+    confidence_threshold: f64,
+    output_dir: &str,
+    seed: u64,
+    max_samples: Option<usize>,
+    use_augmentation: bool,
+    early_stopping: Option<plantvillage_ssl::training::supervised::EarlyStoppingConfig>,
+    cuda: bool,
+) -> Result<()> {
+    if cuda {
+        #[cfg(feature = "cuda")]
+        {
+            return plantvillage_ssl::training::supervised::run_training::<
+                Autodiff<plantvillage_ssl::backend::CudaBackend>,
+            >(
+                data_dir,
+                epochs,
+                batch_size,
+                learning_rate,
+                labeled_ratio,
+                confidence_threshold,
+                output_dir,
+                seed,
+                max_samples,
+                use_augmentation,
+                early_stopping,
+            );
+        }
+
+        #[cfg(not(feature = "cuda"))]
+        {
+            return Err(anyhow!(
+                "This binary was built without CUDA support. Rebuild with `--features cuda`."
+            ));
+        }
+    }
+
+    #[cfg(any(feature = "cpu", feature = "ndarray"))]
+    {
+        plantvillage_ssl::training::supervised::run_training::<
+            Autodiff<plantvillage_ssl::backend::CpuBackend>,
+        >(
+            data_dir,
+            epochs,
+            batch_size,
+            learning_rate,
+            labeled_ratio,
+            confidence_threshold,
+            output_dir,
+            seed,
+            max_samples,
+            use_augmentation,
+            early_stopping,
+        )
+    }
+
+    #[cfg(all(not(feature = "cpu"), not(feature = "ndarray")))]
+    {
+        Err(anyhow!(
+            "This binary was built without a CPU backend. Pass `--cuda` or rebuild with `--features cpu`."
+        ))
+    }
+}
+
+fn dispatch_infer(input: &str, model: &str, cuda: bool) -> Result<()> {
+    if cuda {
+        #[cfg(feature = "cuda")]
+        {
+            return cmd_infer::<plantvillage_ssl::backend::CudaBackend>(
+                input,
+                model,
+                plantvillage_ssl::backend::cuda_backend_name(),
+            );
+        }
+
+        #[cfg(not(feature = "cuda"))]
+        {
+            return Err(anyhow!(
+                "This binary was built without CUDA support. Rebuild with `--features cuda`."
+            ));
+        }
+    }
+
+    #[cfg(any(feature = "cpu", feature = "ndarray"))]
+    {
+        cmd_infer::<plantvillage_ssl::backend::CpuBackend>(
+            input,
+            model,
+            plantvillage_ssl::backend::cpu_backend_name(),
+        )
+    }
+
+    #[cfg(all(not(feature = "cpu"), not(feature = "ndarray")))]
+    {
+        Err(anyhow!(
+            "This binary was built without a CPU backend. Pass `--cuda` or rebuild with `--features cpu`."
+        ))
+    }
+}
+
+fn cmd_infer<B: Backend>(input: &str, model: &str, backend_name: &str) -> Result<()> {
     use burn::module::Module;
     use burn::record::CompactRecorder;
     use burn::tensor::activation::softmax;
     use burn::tensor::Tensor;
     use image::imageops::FilterType;
-    use plantvillage_ssl::backend::{backend_name, default_device, DefaultBackend};
     use plantvillage_ssl::dataset::CLASS_NAMES;
     use plantvillage_ssl::model::cnn::{PlantClassifier, PlantClassifierConfig};
 
@@ -544,7 +658,7 @@ fn cmd_infer(input: &str, model: &str, _cuda: bool) -> Result<()> {
     println!("{}", "Inference Configuration:".cyan().bold());
     println!("  📷 Input:  {}", input);
     println!("  🧠 Model:  {}", model);
-    println!("  🖥️  Backend: {}", backend_name());
+    println!("  🖥️  Backend: {}", backend_name);
     println!();
 
     if !Path::new(input).exists() {
@@ -559,7 +673,7 @@ fn cmd_infer(input: &str, model: &str, _cuda: bool) -> Result<()> {
 
     // Load model
     println!("{}", "Loading model...".cyan());
-    let device = default_device();
+    let device = B::Device::default();
     let config = PlantClassifierConfig {
         num_classes: 38,
         input_size: 128,
@@ -567,7 +681,7 @@ fn cmd_infer(input: &str, model: &str, _cuda: bool) -> Result<()> {
         in_channels: 3,
         base_filters: 32,
     };
-    let model_instance: PlantClassifier<DefaultBackend> = PlantClassifier::new(&config, &device);
+    let model_instance: PlantClassifier<B> = PlantClassifier::new(&config, &device);
     let recorder = CompactRecorder::new();
     let model_instance = model_instance
         .load_file(model, &recorder, &device)
@@ -612,8 +726,8 @@ fn cmd_infer(input: &str, model: &str, _cuda: bool) -> Result<()> {
         }
 
         // Create tensor [1, 3, 128, 128]
-        let tensor: Tensor<DefaultBackend, 1> = Tensor::from_floats(&data[..], &device);
-        let tensor: Tensor<DefaultBackend, 4> = tensor.reshape([1, 3, 128, 128]);
+        let tensor: Tensor<B, 1> = Tensor::from_floats(&data[..], &device);
+        let tensor: Tensor<B, 4> = tensor.reshape([1, 3, 128, 128]);
 
         // Run inference
         let start = std::time::Instant::now();
@@ -666,7 +780,48 @@ fn cmd_infer(input: &str, model: &str, _cuda: bool) -> Result<()> {
     Ok(())
 }
 
-fn cmd_benchmark(
+fn dispatch_benchmark(
+    model: Option<&str>,
+    iterations: usize,
+    warmup: usize,
+    batch_size: usize,
+    image_size: usize,
+    output: Option<&str>,
+    verbose: bool,
+    cuda: bool,
+) -> Result<()> {
+    if cuda {
+        #[cfg(feature = "cuda")]
+        {
+            return cmd_benchmark::<plantvillage_ssl::backend::CudaBackend>(
+                model, iterations, warmup, batch_size, image_size, output, verbose,
+            );
+        }
+
+        #[cfg(not(feature = "cuda"))]
+        {
+            return Err(anyhow!(
+                "This binary was built without CUDA support. Rebuild with `--features cuda`."
+            ));
+        }
+    }
+
+    #[cfg(any(feature = "cpu", feature = "ndarray"))]
+    {
+        cmd_benchmark::<plantvillage_ssl::backend::CpuBackend>(
+            model, iterations, warmup, batch_size, image_size, output, verbose,
+        )
+    }
+
+    #[cfg(all(not(feature = "cpu"), not(feature = "ndarray")))]
+    {
+        Err(anyhow!(
+            "This binary was built without a CPU backend. Pass `--cuda` or rebuild with `--features cpu`."
+        ))
+    }
+}
+
+fn cmd_benchmark<B: Backend>(
     model: Option<&str>,
     iterations: usize,
     warmup: usize,
@@ -675,7 +830,6 @@ fn cmd_benchmark(
     output: Option<&str>,
     verbose: bool,
 ) -> Result<()> {
-    use plantvillage_ssl::backend::{default_device, DefaultBackend};
     use plantvillage_ssl::inference::{run_benchmark, BenchmarkConfig};
     use std::path::PathBuf;
 
@@ -697,10 +851,10 @@ fn cmd_benchmark(
         output_path: output.map(PathBuf::from),
     };
 
-    let device = default_device();
+    let device = B::Device::default();
     let model_path = model.map(std::path::Path::new);
 
-    let _result = run_benchmark::<DefaultBackend>(config, model_path, image_size, &device)?;
+    let _result = run_benchmark::<B>(config, model_path, image_size, &device)?;
 
     // Print JSON output for easy parsing
     if output.is_some() {
@@ -711,7 +865,7 @@ fn cmd_benchmark(
     Ok(())
 }
 
-fn cmd_simulate(
+fn dispatch_simulate(
     data_dir: &str,
     model: &str,
     days: usize,
@@ -720,9 +874,66 @@ fn cmd_simulate(
     retrain_threshold: usize,
     labeled_ratio: f64,
     output_dir: &str,
-    _cuda: bool,
+    cuda: bool,
 ) -> Result<()> {
-    use plantvillage_ssl::backend::{backend_name, TrainingBackend};
+    if cuda {
+        #[cfg(feature = "cuda")]
+        {
+            return cmd_simulate::<Autodiff<plantvillage_ssl::backend::CudaBackend>>(
+                data_dir,
+                model,
+                days,
+                images_per_day,
+                confidence_threshold,
+                retrain_threshold,
+                labeled_ratio,
+                output_dir,
+                plantvillage_ssl::backend::cuda_backend_name(),
+            );
+        }
+
+        #[cfg(not(feature = "cuda"))]
+        {
+            return Err(anyhow!(
+                "This binary was built without CUDA support. Rebuild with `--features cuda`."
+            ));
+        }
+    }
+
+    #[cfg(any(feature = "cpu", feature = "ndarray"))]
+    {
+        cmd_simulate::<Autodiff<plantvillage_ssl::backend::CpuBackend>>(
+            data_dir,
+            model,
+            days,
+            images_per_day,
+            confidence_threshold,
+            retrain_threshold,
+            labeled_ratio,
+            output_dir,
+            plantvillage_ssl::backend::cpu_backend_name(),
+        )
+    }
+
+    #[cfg(all(not(feature = "cpu"), not(feature = "ndarray")))]
+    {
+        Err(anyhow!(
+            "This binary was built without a CPU backend. Pass `--cuda` or rebuild with `--features cpu`."
+        ))
+    }
+}
+
+fn cmd_simulate<B: AutodiffBackend>(
+    data_dir: &str,
+    model: &str,
+    days: usize,
+    images_per_day: usize,
+    confidence_threshold: f64,
+    retrain_threshold: usize,
+    labeled_ratio: f64,
+    output_dir: &str,
+    backend_name: &str,
+) -> Result<()> {
     use plantvillage_ssl::training::{run_simulation, SimulationConfig};
 
     info!("Starting stream simulation");
@@ -745,7 +956,7 @@ fn cmd_simulate(
         (1.0 - labeled_ratio) * 100.0
     );
     println!("  💾 Output directory:   {}", output_dir);
-    println!("  🖥️  Backend:          {}", backend_name());
+    println!("  🖥️  Backend:          {}", backend_name);
     println!();
 
     let config = SimulationConfig {
@@ -763,7 +974,7 @@ fn cmd_simulate(
         retrain_epochs: 5,
     };
 
-    let results = run_simulation::<TrainingBackend>(config)?;
+    let results = run_simulation::<B>(config)?;
 
     println!();
     println!("{}", "Simulation Summary:".green().bold());
@@ -913,15 +1124,63 @@ fn evaluate_with_metrics<B: Backend>(
     (accuracy, macro_f1)
 }
 
-fn cmd_eval(
+fn dispatch_eval(
     data_dir: &str,
     model: Option<&str>,
     labeled_ratio: f64,
     batch_size: usize,
     simulation_output_dir: &str,
+    cuda: bool,
 ) -> Result<()> {
-    use plantvillage_ssl::backend::DefaultBackend;
+    if cuda {
+        #[cfg(feature = "cuda")]
+        {
+            return cmd_eval::<plantvillage_ssl::backend::CudaBackend>(
+                data_dir,
+                model,
+                labeled_ratio,
+                batch_size,
+                simulation_output_dir,
+                plantvillage_ssl::backend::cuda_backend_name(),
+            );
+        }
 
+        #[cfg(not(feature = "cuda"))]
+        {
+            return Err(anyhow!(
+                "This binary was built without CUDA support. Rebuild with `--features cuda`."
+            ));
+        }
+    }
+
+    #[cfg(any(feature = "cpu", feature = "ndarray"))]
+    {
+        cmd_eval::<plantvillage_ssl::backend::CpuBackend>(
+            data_dir,
+            model,
+            labeled_ratio,
+            batch_size,
+            simulation_output_dir,
+            plantvillage_ssl::backend::cpu_backend_name(),
+        )
+    }
+
+    #[cfg(all(not(feature = "cpu"), not(feature = "ndarray")))]
+    {
+        Err(anyhow!(
+            "This binary was built without a CPU backend. Pass `--cuda` or rebuild with `--features cpu`."
+        ))
+    }
+}
+
+fn cmd_eval<B: Backend>(
+    data_dir: &str,
+    model: Option<&str>,
+    labeled_ratio: f64,
+    batch_size: usize,
+    simulation_output_dir: &str,
+    backend_name: &str,
+) -> Result<()> {
     info!("Evaluating model");
     info!("  Data dir: {}", data_dir);
     info!("  Batch size: {}", batch_size);
@@ -949,6 +1208,7 @@ fn cmd_eval(
     println!("  🧠 Model: {}", model_path.display());
     println!("  📦 Batch size: {}", batch_size);
     println!("  🏷️  Labeled ratio: {:.0}%", labeled_ratio * 100.0);
+    println!("  🖥️  Backend: {}", backend_name);
     println!();
 
     let dataset = PlantVillageDataset::new(data_dir)?;
@@ -985,7 +1245,7 @@ fn cmd_eval(
     };
 
     let eval_dataset = PlantVillageBurnDataset::new_cached(eval_samples, 128)?;
-    let device = Default::default();
+    let device = B::Device::default();
 
     let model_config = PlantClassifierConfig {
         num_classes: 38,
@@ -995,18 +1255,12 @@ fn cmd_eval(
         base_filters: 32,
     };
 
-    let model_instance: PlantClassifier<DefaultBackend> =
-        PlantClassifier::new(&model_config, &device)
-            .load_file(&model_path, &CompactRecorder::new(), &device)
-            .map_err(|e| anyhow!("Failed to load model {}: {:?}", model_path.display(), e))?;
+    let model_instance: PlantClassifier<B> = PlantClassifier::new(&model_config, &device)
+        .load_file(&model_path, &CompactRecorder::new(), &device)
+        .map_err(|e| anyhow!("Failed to load model {}: {:?}", model_path.display(), e))?;
 
-    let (accuracy, macro_f1) = evaluate_with_metrics::<DefaultBackend>(
-        &model_instance,
-        &eval_dataset,
-        batch_size,
-        128,
-        38,
-    );
+    let (accuracy, macro_f1) =
+        evaluate_with_metrics::<B>(&model_instance, &eval_dataset, batch_size, 128, 38);
 
     println!();
     println!("{}", "Evaluation Results:".green().bold());

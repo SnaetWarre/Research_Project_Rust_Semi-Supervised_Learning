@@ -6,7 +6,6 @@
 //! - Confusion Matrix
 //! - Top-k accuracy
 
-
 use serde::{Deserialize, Serialize};
 
 /// Comprehensive metrics for model evaluation
@@ -68,7 +67,8 @@ impl Metrics {
         }
 
         // Build confusion matrix
-        let confusion_matrix = ConfusionMatrix::from_predictions(predictions, ground_truth, num_classes);
+        let confusion_matrix =
+            ConfusionMatrix::from_predictions(predictions, ground_truth, num_classes);
 
         // Calculate correct predictions
         let correct_predictions = predictions
@@ -81,16 +81,12 @@ impl Metrics {
 
         // Calculate per-class metrics
         let per_class: Vec<ClassMetrics> = (0..num_classes)
-            .map(|class_idx| {
-                ClassMetrics::from_confusion_matrix(&confusion_matrix, class_idx)
-            })
+            .map(|class_idx| ClassMetrics::from_confusion_matrix(&confusion_matrix, class_idx))
             .collect();
 
         // Calculate macro-averaged metrics
-        let valid_classes: Vec<&ClassMetrics> = per_class
-            .iter()
-            .filter(|m| m.support > 0)
-            .collect();
+        let valid_classes: Vec<&ClassMetrics> =
+            per_class.iter().filter(|m| m.support > 0).collect();
 
         let num_valid = valid_classes.len() as f64;
 
@@ -154,7 +150,8 @@ impl Metrics {
             .iter()
             .zip(ground_truth.iter())
             .filter(|(probs, &gt)| {
-                let mut indexed: Vec<(usize, f32)> = probs.iter().enumerate().map(|(i, &p)| (i, p)).collect();
+                let mut indexed: Vec<(usize, f32)> =
+                    probs.iter().enumerate().map(|(i, &p)| (i, p)).collect();
                 indexed.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap());
                 indexed.iter().take(5).any(|(idx, _)| *idx == gt)
             })
@@ -172,13 +169,34 @@ impl Metrics {
         output.push_str("╔══════════════════════════════════════════════════════════════╗\n");
         output.push_str("║                    Evaluation Metrics                        ║\n");
         output.push_str("╠══════════════════════════════════════════════════════════════╣\n");
-        output.push_str(&format!("║ Accuracy:          {:6.2}%                                  ║\n", self.accuracy * 100.0));
-        output.push_str(&format!("║ Top-5 Accuracy:    {:6.2}%                                  ║\n", self.top5_accuracy * 100.0));
-        output.push_str(&format!("║ Macro Precision:   {:6.2}%                                  ║\n", self.macro_precision * 100.0));
-        output.push_str(&format!("║ Macro Recall:      {:6.2}%                                  ║\n", self.macro_recall * 100.0));
-        output.push_str(&format!("║ Macro F1:          {:6.2}%                                  ║\n", self.macro_f1 * 100.0));
-        output.push_str(&format!("║ Weighted F1:       {:6.2}%                                  ║\n", self.weighted_f1 * 100.0));
-        output.push_str(&format!("║ Total Samples:     {:6}                                    ║\n", self.total_samples));
+        output.push_str(&format!(
+            "║ Accuracy:          {:6.2}%                                  ║\n",
+            self.accuracy * 100.0
+        ));
+        output.push_str(&format!(
+            "║ Top-5 Accuracy:    {:6.2}%                                  ║\n",
+            self.top5_accuracy * 100.0
+        ));
+        output.push_str(&format!(
+            "║ Macro Precision:   {:6.2}%                                  ║\n",
+            self.macro_precision * 100.0
+        ));
+        output.push_str(&format!(
+            "║ Macro Recall:      {:6.2}%                                  ║\n",
+            self.macro_recall * 100.0
+        ));
+        output.push_str(&format!(
+            "║ Macro F1:          {:6.2}%                                  ║\n",
+            self.macro_f1 * 100.0
+        ));
+        output.push_str(&format!(
+            "║ Weighted F1:       {:6.2}%                                  ║\n",
+            self.weighted_f1 * 100.0
+        ));
+        output.push_str(&format!(
+            "║ Total Samples:     {:6}                                    ║\n",
+            self.total_samples
+        ));
         output.push_str("╚══════════════════════════════════════════════════════════════╝\n");
 
         output
@@ -371,9 +389,7 @@ impl ConfusionMatrix {
 
     /// Get the number of correct predictions (diagonal sum)
     pub fn correct(&self) -> usize {
-        (0..self.num_classes)
-            .map(|i| self.get(i, i))
-            .sum()
+        (0..self.num_classes).map(|i| self.get(i, i)).sum()
     }
 
     /// Get overall accuracy
@@ -389,22 +405,14 @@ impl ConfusionMatrix {
     /// Get the row sums (actual class counts)
     pub fn row_sums(&self) -> Vec<usize> {
         (0..self.num_classes)
-            .map(|row| {
-                (0..self.num_classes)
-                    .map(|col| self.get(row, col))
-                    .sum()
-            })
+            .map(|row| (0..self.num_classes).map(|col| self.get(row, col)).sum())
             .collect()
     }
 
     /// Get the column sums (predicted class counts)
     pub fn col_sums(&self) -> Vec<usize> {
         (0..self.num_classes)
-            .map(|col| {
-                (0..self.num_classes)
-                    .map(|row| self.get(row, col))
-                    .sum()
-            })
+            .map(|col| (0..self.num_classes).map(|row| self.get(row, col)).sum())
             .collect()
     }
 

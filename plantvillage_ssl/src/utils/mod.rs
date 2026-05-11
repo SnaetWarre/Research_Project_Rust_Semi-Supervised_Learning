@@ -21,7 +21,7 @@ pub mod metrics;
 // Re-export main types for convenience
 pub use error::{PlantVillageError, Result};
 pub use logging::init_logging;
-pub use metrics::{Metrics, ConfusionMatrix};
+pub use metrics::{ConfusionMatrix, Metrics};
 
 /// Format a duration in a human-readable way
 pub fn format_duration(seconds: f64) -> String {

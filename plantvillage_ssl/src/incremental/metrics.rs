@@ -357,7 +357,9 @@ impl Default for MethodComparison {
 
 #[cfg(test)]
 mod tests {
-    use super::super::{ExperimentMetadata, IncrementalConfig, IncrementalMethod, TrainingMetrics};
+    use super::super::{
+        ExperimentMetadata, IncrementalConfig, IncrementalMethod, StepMetrics, TrainingMetrics,
+    };
     use super::*;
 
     #[test]

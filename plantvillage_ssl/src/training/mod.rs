@@ -15,19 +15,21 @@
 //! 4. Retrain model with augmented dataset
 //! 5. Repeat until convergence or data exhaustion
 
-pub mod supervised;
 pub mod pseudo_label;
 pub mod scheduler;
 pub mod simulation;
 pub mod ssl_incremental;
+pub mod supervised;
 pub mod trainer;
 
 // Re-export main types for convenience
 pub use pseudo_label::{PseudoLabelConfig, PseudoLabeler};
-pub use simulation::{run_simulation, SimulationConfig, SimulationResults};
 pub use scheduler::LRScheduler as LearningRateScheduler;
 pub use scheduler::LRScheduler as SchedulerType;
-pub use ssl_incremental::{SSLIncrementalConfig, SSLIncrementalResults, run_ssl_incremental_experiment};
+pub use simulation::{run_simulation, SimulationConfig, SimulationResults};
+pub use ssl_incremental::{
+    run_ssl_incremental_experiment, SSLIncrementalConfig, SSLIncrementalResults,
+};
 pub use trainer::{Trainer, TrainingState};
 
 // Re-export TrainingConfig from model::config where it's defined

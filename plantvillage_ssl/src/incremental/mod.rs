@@ -3,11 +3,11 @@
 //! This crate implements various incremental learning strategies that allow
 //! models to learn new plant disease classes without catastrophic forgetting.
 
+pub mod ewc;
 pub mod finetuning;
 pub mod lwf;
-pub mod ewc;
-pub mod rehearsal;
 pub mod metrics;
+pub mod rehearsal;
 
 use burn::tensor::backend::Backend;
 use serde::{Deserialize, Serialize};

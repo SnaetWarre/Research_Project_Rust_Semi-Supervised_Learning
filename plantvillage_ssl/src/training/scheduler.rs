@@ -9,9 +9,7 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum LRScheduler {
     /// Constant learning rate (no scheduling)
-    Constant {
-        lr: f64,
-    },
+    Constant { lr: f64 },
 
     /// Step decay: reduce LR by factor at specified epochs
     StepDecay {
@@ -21,10 +19,7 @@ pub enum LRScheduler {
     },
 
     /// Exponential decay: lr = initial_lr * decay_rate^epoch
-    Exponential {
-        initial_lr: f64,
-        decay_rate: f64,
-    },
+    Exponential { initial_lr: f64, decay_rate: f64 },
 
     /// Cosine annealing: smooth decay following cosine curve
     CosineAnnealing {
@@ -455,8 +450,7 @@ mod tests {
 
     #[test]
     fn test_reduce_on_plateau() {
-        let mut state =
-            ReduceOnPlateauState::new(0.1, 0.5, 3, 1e-6, PlateauMode::Min);
+        let mut state = ReduceOnPlateauState::new(0.1, 0.5, 3, 1e-6, PlateauMode::Min);
 
         // Metric improves
         assert_eq!(state.step(1.0), 0.1);

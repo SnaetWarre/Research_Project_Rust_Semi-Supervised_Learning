@@ -12,14 +12,14 @@
 //! - Memory-efficient processing
 //! - Latency profiling and monitoring
 
-pub mod predictor;
 pub mod benchmark;
+pub mod predictor;
 pub mod runner;
 
 // Re-export main types for convenience
-pub use predictor::{Predictor, PredictionResult};
-pub use benchmark::{BenchmarkConfig, BenchmarkResult, LatencyStats, DeviceInfo, Timer};
-pub use runner::{BenchmarkOutput, run_benchmark, run_quick_benchmark, run_thorough_benchmark};
+pub use benchmark::{BenchmarkConfig, BenchmarkResult, DeviceInfo, LatencyStats, Timer};
+pub use predictor::{PredictionResult, Predictor};
+pub use runner::{run_benchmark, run_quick_benchmark, run_thorough_benchmark, BenchmarkOutput};
 
 /// Target latency for deployment (milliseconds)
 pub const TARGET_LATENCY_MS: f64 = 200.0;

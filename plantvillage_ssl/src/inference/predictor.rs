@@ -6,7 +6,7 @@
 use std::path::{Path, PathBuf};
 use std::time::{Duration, Instant};
 
-use image::{DynamicImage, imageops::FilterType};
+use image::{imageops::FilterType, DynamicImage};
 use serde::{Deserialize, Serialize};
 
 use crate::dataset::{class_name, NUM_CLASSES};
@@ -84,9 +84,7 @@ impl PredictionResult {
             .max_by(|(_, a), (_, b)| a.partial_cmp(b).unwrap())
             .unwrap_or((0, &0.0));
 
-        let class_name_str = class_name(predicted_class)
-            .unwrap_or("Unknown")
-            .to_string();
+        let class_name_str = class_name(predicted_class).unwrap_or("Unknown").to_string();
 
         // Get top-5 predictions
         let mut indexed: Vec<(usize, f32)> = probabilities
@@ -152,7 +150,10 @@ impl PredictionResult {
             self.class_name, self.predicted_class
         ));
         output.push_str(&format!("Confidence: {:.2}%\n", self.confidence * 100.0));
-        output.push_str(&format!("Inference time: {:.2} ms\n", self.inference_time_ms));
+        output.push_str(&format!(
+            "Inference time: {:.2} ms\n",
+            self.inference_time_ms
+        ));
 
         output.push_str("\nTop-5 predictions:\n");
         for (i, (idx, name, prob)) in self.top_k.iter().enumerate() {
@@ -271,10 +272,7 @@ impl Predictor {
         // TODO: Implement true batched inference for efficiency
         // For now, process one at a time
 
-        paths
-            .iter()
-            .map(|path| self.predict_file(path))
-            .collect()
+        paths.iter().map(|path| self.predict_file(path)).collect()
     }
 }
 
@@ -340,7 +338,11 @@ impl std::fmt::Display for BatchPredictionStats {
         writeln!(f, "Batch Prediction Statistics:")?;
         writeln!(f, "  Total images: {}", self.total_images)?;
         writeln!(f, "  Total time: {:.2} ms", self.total_time_ms)?;
-        writeln!(f, "  Average time/image: {:.2} ms", self.avg_time_per_image_ms)?;
+        writeln!(
+            f,
+            "  Average time/image: {:.2} ms",
+            self.avg_time_per_image_ms
+        )?;
         writeln!(f, "  Min time: {:.2} ms", self.min_time_ms)?;
         writeln!(f, "  Max time: {:.2} ms", self.max_time_ms)?;
         writeln!(f, "  Throughput: {:.2} images/sec", self.throughput)?;
@@ -378,8 +380,7 @@ mod tests {
     fn test_prediction_entropy() {
         // Uniform distribution has high entropy
         let uniform_probs = vec![1.0 / 39.0; 39];
-        let uniform_result =
-            PredictionResult::new(uniform_probs, Duration::from_millis(10), None);
+        let uniform_result = PredictionResult::new(uniform_probs, Duration::from_millis(10), None);
 
         // Confident prediction has low entropy
         let mut confident_probs = vec![0.001; 39];

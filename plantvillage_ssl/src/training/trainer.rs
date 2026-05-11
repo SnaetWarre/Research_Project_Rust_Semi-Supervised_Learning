@@ -140,10 +140,7 @@ impl<B: AutodiffBackend> Trainer<B> {
     ///
     /// # Returns
     /// * (average_loss, accuracy)
-    pub fn train_epoch_labeled(
-        &mut self,
-        batches: &[PlantVillageBatch<B>],
-    ) -> (f64, f64) {
+    pub fn train_epoch_labeled(&mut self, batches: &[PlantVillageBatch<B>]) -> (f64, f64) {
         let mut total_loss = 0.0;
         let mut correct = 0usize;
         let mut total = 0usize;
@@ -170,10 +167,7 @@ impl<B: AutodiffBackend> Trainer<B> {
 
             // Calculate accuracy
             let predictions = output.argmax(1).squeeze::<1>();
-            let batch_correct_tensor = predictions
-                .equal(batch.targets.clone())
-                .int()
-                .sum();
+            let batch_correct_tensor = predictions.equal(batch.targets.clone()).int().sum();
             let batch_correct: i64 = batch_correct_tensor.into_scalar().elem();
             correct += batch_correct as usize;
             total += batch.targets.dims()[0];
@@ -183,7 +177,9 @@ impl<B: AutodiffBackend> Trainer<B> {
             let grads = GradientsParams::from_grads(grads, &self.model);
 
             // Update parameters
-            self.model = self.optimizer.step(self.state.current_lr, self.model.clone(), grads);
+            self.model = self
+                .optimizer
+                .step(self.state.current_lr, self.model.clone(), grads);
 
             self.state.iteration += 1;
             self.state.samples_seen += batch.targets.dims()[0];
@@ -259,10 +255,7 @@ impl<B: AutodiffBackend> Trainer<B> {
 
             // Calculate accuracy
             let predictions = output.argmax(1).squeeze::<1>();
-            let batch_correct_tensor = predictions
-                .equal(batch.targets.clone())
-                .int()
-                .sum();
+            let batch_correct_tensor = predictions.equal(batch.targets.clone()).int().sum();
             let batch_correct: i64 = batch_correct_tensor.into_scalar().elem();
             correct += batch_correct as usize;
             total += batch.targets.dims()[0];
@@ -270,7 +263,9 @@ impl<B: AutodiffBackend> Trainer<B> {
             // Backward and update
             let grads = loss.backward();
             let grads = GradientsParams::from_grads(grads, &self.model);
-            self.model = self.optimizer.step(self.state.current_lr, self.model.clone(), grads);
+            self.model = self
+                .optimizer
+                .step(self.state.current_lr, self.model.clone(), grads);
 
             self.state.iteration += 1;
             self.state.samples_seen += batch.targets.dims()[0];
@@ -300,7 +295,9 @@ impl<B: AutodiffBackend> Trainer<B> {
             // Backward and update
             let grads = loss.backward();
             let grads = GradientsParams::from_grads(grads, &self.model);
-            self.model = self.optimizer.step(self.state.current_lr, self.model.clone(), grads);
+            self.model = self
+                .optimizer
+                .step(self.state.current_lr, self.model.clone(), grads);
 
             self.state.iteration += 1;
             self.state.samples_seen += batch.targets.dims()[0];
@@ -324,7 +321,8 @@ impl<B: AutodiffBackend> Trainer<B> {
             0.0
         };
 
-        self.state.record_train_loss(avg_labeled_loss + avg_pseudo_loss);
+        self.state
+            .record_train_loss(avg_labeled_loss + avg_pseudo_loss);
 
         info!(
             "Epoch {} SSL: labeled_loss = {:.4}, pseudo_loss = {:.4}, accuracy = {:.2}%",
@@ -405,11 +403,7 @@ impl<B: AutodiffBackend> Trainer<B> {
             let predictions = output.argmax(1).squeeze::<1>();
 
             // Count correct predictions
-            let batch_correct_tensor = predictions
-                .clone()
-                .equal(batch.targets.clone())
-                .int()
-                .sum();
+            let batch_correct_tensor = predictions.clone().equal(batch.targets.clone()).int().sum();
             let batch_correct: i64 = batch_correct_tensor.into_scalar().elem();
             correct += batch_correct as usize;
             total += batch.targets.dims()[0];
@@ -435,7 +429,8 @@ impl<B: AutodiffBackend> Trainer<B> {
         let avg_loss = total_loss / num_batches as f64;
 
         // Calculate detailed metrics
-        let mut metrics = Metrics::from_predictions(&all_predictions, &all_targets, self.num_classes);
+        let mut metrics =
+            Metrics::from_predictions(&all_predictions, &all_targets, self.num_classes);
         metrics.loss = Some(avg_loss);
         metrics.accuracy = accuracy;
 

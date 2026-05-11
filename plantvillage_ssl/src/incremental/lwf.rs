@@ -424,7 +424,7 @@ mod tests {
             initial_classes: 5,
             classes_per_step: 5,
             num_steps: 1,
-            method: crate::IncrementalMethod::LwF {
+            method: crate::incremental::IncrementalMethod::LwF {
                 temperature: 2.0,
                 lambda: 1.0,
             },

@@ -158,8 +158,7 @@ impl BenchmarkResult {
     /// Load results from a JSON file
     pub fn load(path: &std::path::Path) -> std::io::Result<Self> {
         let json = std::fs::read_to_string(path)?;
-        serde_json::from_str(&json)
-            .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e))
+        serde_json::from_str(&json).map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e))
     }
 
     /// Check if latency meets the target (in milliseconds)
@@ -178,37 +177,126 @@ impl BenchmarkResult {
 
 impl std::fmt::Display for BenchmarkResult {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        writeln!(f, "╔══════════════════════════════════════════════════════════════╗")?;
-        writeln!(f, "║              Benchmark Results                               ║")?;
-        writeln!(f, "╠══════════════════════════════════════════════════════════════╣")?;
+        writeln!(
+            f,
+            "╔══════════════════════════════════════════════════════════════╗"
+        )?;
+        writeln!(
+            f,
+            "║              Benchmark Results                               ║"
+        )?;
+        writeln!(
+            f,
+            "╠══════════════════════════════════════════════════════════════╣"
+        )?;
         writeln!(f, "║ Device: {:54} ║", self.device_info.name)?;
         writeln!(f, "║ Timestamp: {:51} ║", &self.timestamp[..19])?;
-        writeln!(f, "╠══════════════════════════════════════════════════════════════╣")?;
-        writeln!(f, "║ Latency Statistics                                           ║")?;
-        writeln!(f, "║   Mean:     {:8.2} ms                                      ║", self.latency.mean_ms)?;
-        writeln!(f, "║   Std Dev:  {:8.2} ms                                      ║", self.latency.std_ms)?;
-        writeln!(f, "║   Min:      {:8.2} ms                                      ║", self.latency.min_ms)?;
-        writeln!(f, "║   Max:      {:8.2} ms                                      ║", self.latency.max_ms)?;
-        writeln!(f, "║   P50:      {:8.2} ms                                      ║", self.latency.p50_ms)?;
-        writeln!(f, "║   P95:      {:8.2} ms                                      ║", self.latency.p95_ms)?;
-        writeln!(f, "║   P99:      {:8.2} ms                                      ║", self.latency.p99_ms)?;
-        writeln!(f, "╠══════════════════════════════════════════════════════════════╣")?;
-        writeln!(f, "║ Throughput: {:8.1} images/second                          ║", self.throughput)?;
-        writeln!(f, "╠══════════════════════════════════════════════════════════════╣")?;
-        writeln!(f, "║ Configuration                                                ║")?;
-        writeln!(f, "║   Batch Size:   {:5}                                        ║", self.config.batch_size)?;
-        writeln!(f, "║   Iterations:   {:5}                                        ║", self.config.iterations)?;
-        writeln!(f, "║   Warmup:       {:5}                                        ║", self.config.warmup_iterations)?;
+        writeln!(
+            f,
+            "╠══════════════════════════════════════════════════════════════╣"
+        )?;
+        writeln!(
+            f,
+            "║ Latency Statistics                                           ║"
+        )?;
+        writeln!(
+            f,
+            "║   Mean:     {:8.2} ms                                      ║",
+            self.latency.mean_ms
+        )?;
+        writeln!(
+            f,
+            "║   Std Dev:  {:8.2} ms                                      ║",
+            self.latency.std_ms
+        )?;
+        writeln!(
+            f,
+            "║   Min:      {:8.2} ms                                      ║",
+            self.latency.min_ms
+        )?;
+        writeln!(
+            f,
+            "║   Max:      {:8.2} ms                                      ║",
+            self.latency.max_ms
+        )?;
+        writeln!(
+            f,
+            "║   P50:      {:8.2} ms                                      ║",
+            self.latency.p50_ms
+        )?;
+        writeln!(
+            f,
+            "║   P95:      {:8.2} ms                                      ║",
+            self.latency.p95_ms
+        )?;
+        writeln!(
+            f,
+            "║   P99:      {:8.2} ms                                      ║",
+            self.latency.p99_ms
+        )?;
+        writeln!(
+            f,
+            "╠══════════════════════════════════════════════════════════════╣"
+        )?;
+        writeln!(
+            f,
+            "║ Throughput: {:8.1} images/second                          ║",
+            self.throughput
+        )?;
+        writeln!(
+            f,
+            "╠══════════════════════════════════════════════════════════════╣"
+        )?;
+        writeln!(
+            f,
+            "║ Configuration                                                ║"
+        )?;
+        writeln!(
+            f,
+            "║   Batch Size:   {:5}                                        ║",
+            self.config.batch_size
+        )?;
+        writeln!(
+            f,
+            "║   Iterations:   {:5}                                        ║",
+            self.config.iterations
+        )?;
+        writeln!(
+            f,
+            "║   Warmup:       {:5}                                        ║",
+            self.config.warmup_iterations
+        )?;
 
         if let Some(ref mem) = self.memory {
-            writeln!(f, "╠══════════════════════════════════════════════════════════════╣")?;
-            writeln!(f, "║ Memory Usage                                                 ║")?;
-            writeln!(f, "║   GPU Used:     {:6.1} MB                                    ║", mem.gpu_used_mb)?;
-            writeln!(f, "║   GPU Total:    {:6.1} MB                                    ║", mem.gpu_total_mb)?;
-            writeln!(f, "║   CPU RSS:      {:6.1} MB                                    ║", mem.cpu_rss_mb)?;
+            writeln!(
+                f,
+                "╠══════════════════════════════════════════════════════════════╣"
+            )?;
+            writeln!(
+                f,
+                "║ Memory Usage                                                 ║"
+            )?;
+            writeln!(
+                f,
+                "║   GPU Used:     {:6.1} MB                                    ║",
+                mem.gpu_used_mb
+            )?;
+            writeln!(
+                f,
+                "║   GPU Total:    {:6.1} MB                                    ║",
+                mem.gpu_total_mb
+            )?;
+            writeln!(
+                f,
+                "║   CPU RSS:      {:6.1} MB                                    ║",
+                mem.cpu_rss_mb
+            )?;
         }
 
-        writeln!(f, "╚══════════════════════════════════════════════════════════════╝")?;
+        writeln!(
+            f,
+            "╚══════════════════════════════════════════════════════════════╝"
+        )?;
         Ok(())
     }
 }
@@ -317,7 +405,10 @@ impl MemoryStats {
 fn get_gpu_memory() -> Option<(f64, f64)> {
     // Try nvidia-smi first
     let output = std::process::Command::new("nvidia-smi")
-        .args(["--query-gpu=memory.used,memory.total", "--format=csv,noheader,nounits"])
+        .args([
+            "--query-gpu=memory.used,memory.total",
+            "--format=csv,noheader,nounits",
+        ])
         .output()
         .ok()?;
 
@@ -404,7 +495,8 @@ impl DeviceInfo {
                 let version_info = String::from_utf8_lossy(&output.stdout);
                 if let Some(line) = version_info.lines().find(|l| l.contains("release")) {
                     if let Some(version) = line.split("release").nth(1) {
-                        info.cuda_version = Some(version.split(',').next().unwrap_or("").trim().to_string());
+                        info.cuda_version =
+                            Some(version.split(',').next().unwrap_or("").trim().to_string());
                     }
                 }
             }

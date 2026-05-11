@@ -102,9 +102,13 @@ fn extract_weights<B: Backend>(model: &PlantClassifier<B>) -> ModelWeights {
         // Conv block 1
         conv1_conv_weight: tensor_to_data(model.conv1.conv.weight.val()),
         conv1_conv_bias: tensor_to_data(
-            model.conv1.conv.bias.clone()
+            model
+                .conv1
+                .conv
+                .bias
+                .clone()
                 .expect("Conv bias should exist")
-                .val()
+                .val(),
         ),
         conv1_bn_gamma: tensor_to_data(model.conv1.bn.gamma.val()),
         conv1_bn_beta: tensor_to_data(model.conv1.bn.beta.val()),
@@ -114,9 +118,13 @@ fn extract_weights<B: Backend>(model: &PlantClassifier<B>) -> ModelWeights {
         // Conv block 2
         conv2_conv_weight: tensor_to_data(model.conv2.conv.weight.val()),
         conv2_conv_bias: tensor_to_data(
-            model.conv2.conv.bias.clone()
+            model
+                .conv2
+                .conv
+                .bias
+                .clone()
                 .expect("Conv bias should exist")
-                .val()
+                .val(),
         ),
         conv2_bn_gamma: tensor_to_data(model.conv2.bn.gamma.val()),
         conv2_bn_beta: tensor_to_data(model.conv2.bn.beta.val()),
@@ -126,9 +134,13 @@ fn extract_weights<B: Backend>(model: &PlantClassifier<B>) -> ModelWeights {
         // Conv block 3
         conv3_conv_weight: tensor_to_data(model.conv3.conv.weight.val()),
         conv3_conv_bias: tensor_to_data(
-            model.conv3.conv.bias.clone()
+            model
+                .conv3
+                .conv
+                .bias
+                .clone()
                 .expect("Conv bias should exist")
-                .val()
+                .val(),
         ),
         conv3_bn_gamma: tensor_to_data(model.conv3.bn.gamma.val()),
         conv3_bn_beta: tensor_to_data(model.conv3.bn.beta.val()),
@@ -138,9 +150,13 @@ fn extract_weights<B: Backend>(model: &PlantClassifier<B>) -> ModelWeights {
         // Conv block 4
         conv4_conv_weight: tensor_to_data(model.conv4.conv.weight.val()),
         conv4_conv_bias: tensor_to_data(
-            model.conv4.conv.bias.clone()
+            model
+                .conv4
+                .conv
+                .bias
+                .clone()
                 .expect("Conv bias should exist")
-                .val()
+                .val(),
         ),
         conv4_bn_gamma: tensor_to_data(model.conv4.bn.gamma.val()),
         conv4_bn_beta: tensor_to_data(model.conv4.bn.beta.val()),
@@ -149,17 +165,9 @@ fn extract_weights<B: Backend>(model: &PlantClassifier<B>) -> ModelWeights {
 
         // FC layers
         fc1_weight: tensor_to_data(model.fc1.weight.val()),
-        fc1_bias: tensor_to_data(
-            model.fc1.bias.clone()
-                .expect("FC1 bias should exist")
-                .val()
-        ),
+        fc1_bias: tensor_to_data(model.fc1.bias.clone().expect("FC1 bias should exist").val()),
         fc2_weight: tensor_to_data(model.fc2.weight.val()),
-        fc2_bias: tensor_to_data(
-            model.fc2.bias.clone()
-                .expect("FC2 bias should exist")
-                .val()
-        ),
+        fc2_bias: tensor_to_data(model.fc2.bias.clone().expect("FC2 bias should exist").val()),
     }
 }
 
@@ -197,7 +205,7 @@ fn main() -> Result<()> {
     // Save as JSON (for Python to load)
     let json_path = args.output.join("weights.json");
     println!("Saving weights to: {:?}", json_path);
-    
+
     let json_data = serde_json::to_string(&weights)?;
     let mut file = File::create(&json_path)?;
     file.write_all(json_data.as_bytes())?;

@@ -303,9 +303,9 @@ impl<B: Backend> PlantClassifierLite<B> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use burn_cuda::Cuda;
+    use burn_ndarray::NdArray;
 
-    type TestBackend = Cuda;
+    type TestBackend = NdArray;
 
     #[test]
     fn test_plant_classifier_output_shape() {

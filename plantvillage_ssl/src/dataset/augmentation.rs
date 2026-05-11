@@ -194,13 +194,15 @@ impl Augmenter {
 
         // Apply contrast adjustment
         if self.config.contrast_prob > 0.0 && rng.gen::<f32>() < self.config.contrast_prob {
-            let factor = 1.0 + rng.gen_range(-self.config.contrast_delta..=self.config.contrast_delta);
+            let factor =
+                1.0 + rng.gen_range(-self.config.contrast_delta..=self.config.contrast_delta);
             result = self.adjust_contrast(&result, factor);
         }
 
         // Apply saturation adjustment
         if self.config.saturation_prob > 0.0 && rng.gen::<f32>() < self.config.saturation_prob {
-            let factor = 1.0 + rng.gen_range(-self.config.saturation_delta..=self.config.saturation_delta);
+            let factor =
+                1.0 + rng.gen_range(-self.config.saturation_delta..=self.config.saturation_delta);
             result = self.adjust_saturation(&result, factor);
         }
 
@@ -452,11 +454,7 @@ impl Augmenter {
     }
 
     /// Full preprocessing pipeline: augment (optional), resize, convert to tensor
-    pub fn preprocess(
-        &self,
-        img: DynamicImage,
-        rng: Option<&mut ChaCha8Rng>,
-    ) -> Vec<f32> {
+    pub fn preprocess(&self, img: DynamicImage, rng: Option<&mut ChaCha8Rng>) -> Vec<f32> {
         let mut result = img;
 
         // Apply augmentations if RNG is provided

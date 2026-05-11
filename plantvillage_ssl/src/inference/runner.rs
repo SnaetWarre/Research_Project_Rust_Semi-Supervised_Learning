@@ -5,7 +5,6 @@
 
 use std::path::Path;
 
-
 use anyhow::Result;
 use burn::{
     module::Module,
@@ -15,8 +14,8 @@ use burn::{
 use colored::Colorize;
 use serde::{Deserialize, Serialize};
 
+use super::benchmark::{BenchmarkConfig, BenchmarkResult, DeviceInfo, LatencyStats, Timer};
 use crate::model::cnn::{PlantClassifier, PlantClassifierConfig};
-use super::benchmark::{BenchmarkConfig, BenchmarkResult, LatencyStats, DeviceInfo, Timer};
 
 /// Benchmark results in a format compatible with the comparison script
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -92,9 +91,9 @@ pub fn run_benchmark<B: Backend>(
     let model_config = PlantClassifierConfig {
         num_classes: 38,
         input_size: image_size,
-        dropout_rate: 0.3,  // Must match training config
+        dropout_rate: 0.3, // Must match training config
         in_channels: 3,
-        base_filters: 32,   // Must match training config
+        base_filters: 32, // Must match training config
     };
 
     let model: PlantClassifier<B> = if let Some(path) = model_path {
@@ -189,15 +188,23 @@ pub fn run_benchmark<B: Backend>(
     println!("  Batch size: {}", output.batch_size);
     println!("  Image size: {}x{}", output.image_size, output.image_size);
     println!();
-    println!("  {} {} ± {} ms", "Mean latency:".green(),
+    println!(
+        "  {} {} ± {} ms",
+        "Mean latency:".green(),
         format!("{:.2}", output.mean_ms).bold(),
-        format!("{:.2}", output.std_ms));
-    println!("  P50/P95/P99: {:.2}/{:.2}/{:.2} ms",
-        output.p50_ms, output.p95_ms, output.p99_ms);
+        format!("{:.2}", output.std_ms)
+    );
+    println!(
+        "  P50/P95/P99: {:.2}/{:.2}/{:.2} ms",
+        output.p50_ms, output.p95_ms, output.p99_ms
+    );
     println!("  Min/Max: {:.2}/{:.2} ms", output.min_ms, output.max_ms);
     println!();
-    println!("  {} {} FPS", "Throughput:".green(),
-        format!("{:.1}", output.throughput_fps).bold());
+    println!(
+        "  {} {} FPS",
+        "Throughput:".green(),
+        format!("{:.1}", output.throughput_fps).bold()
+    );
 
     if output.model_size_mb > 0.0 {
         println!("  Model size: {:.2} MB", output.model_size_mb);
@@ -207,12 +214,19 @@ pub fn run_benchmark<B: Backend>(
     let target_latency_ms = 200.0;
     if output.mean_ms <= target_latency_ms {
         println!();
-        println!("{} Meets target latency of {} ms!",
-            "✓".green().bold(), target_latency_ms);
+        println!(
+            "{} Meets target latency of {} ms!",
+            "✓".green().bold(),
+            target_latency_ms
+        );
     } else {
         println!();
-        println!("{} Exceeds target latency of {} ms by {:.1} ms",
-            "⚠".yellow().bold(), target_latency_ms, output.mean_ms - target_latency_ms);
+        println!(
+            "{} Exceeds target latency of {} ms by {:.1} ms",
+            "⚠".yellow().bold(),
+            target_latency_ms,
+            output.mean_ms - target_latency_ms
+        );
     }
 
     // Save to file if output path specified
@@ -246,12 +260,12 @@ pub fn run_thorough_benchmark<B: Backend>(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use burn_cuda::Cuda;
+    use burn_ndarray::NdArray;
 
     #[test]
     fn test_quick_benchmark() {
         let device = Default::default();
-        let result = run_quick_benchmark::<Cuda>(&device);
+        let result = run_quick_benchmark::<NdArray>(&device);
         assert!(result.is_ok());
 
         let output = result.unwrap();

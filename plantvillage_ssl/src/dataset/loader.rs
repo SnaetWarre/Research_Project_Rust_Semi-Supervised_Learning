@@ -97,7 +97,7 @@ impl PlantVillageDataset {
         // Check if this is the new dataset structure (with train/ and valid/ subdirs)
         let train_dir = root_dir.join("train");
         let valid_dir = root_dir.join("valid");
-        
+
         let source_dirs: Vec<PathBuf> = if train_dir.exists() && valid_dir.exists() {
             info!("Detected New Plant Diseases Dataset structure (train/ + valid/)");
             info!("Merging train and valid folders for SSL training...");
@@ -119,7 +119,7 @@ impl PlantVillageDataset {
                 }
             }
         }
-        
+
         let mut class_dirs: Vec<String> = class_set.into_iter().collect();
         class_dirs.sort();
 
@@ -143,18 +143,19 @@ impl PlantVillageDataset {
         let mut sample_id: usize = 0;
 
         for source_dir in &source_dirs {
-            let source_name = source_dir.file_name()
+            let source_name = source_dir
+                .file_name()
                 .map(|n| n.to_string_lossy().to_string())
                 .unwrap_or_else(|| "root".to_string());
-            
+
             for class_name in &class_dirs {
                 let class_dir = source_dir.join(class_name);
-                
+
                 // Skip if this class doesn't exist in this source dir
                 if !class_dir.exists() {
                     continue;
                 }
-                
+
                 let label = class_to_idx[class_name];
                 let mut class_count = 0;
 
@@ -249,7 +250,8 @@ impl PlantVillageDataset {
                 let pixel = rgb.get_pixel(x as u32, y as u32);
                 tensor[0 * height * width + y * width + x] = pixel[0] as f32 / 255.0; // R
                 tensor[1 * height * width + y * width + x] = pixel[1] as f32 / 255.0; // G
-                tensor[2 * height * width + y * width + x] = pixel[2] as f32 / 255.0; // B
+                tensor[2 * height * width + y * width + x] = pixel[2] as f32 / 255.0;
+                // B
             }
         }
 
@@ -314,5 +316,3 @@ impl DatasetStats {
         }
     }
 }
-
-

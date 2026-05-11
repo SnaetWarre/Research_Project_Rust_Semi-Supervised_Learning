@@ -45,7 +45,7 @@ pub struct DataSeries {
 pub struct BarData {
     pub label: String,
     pub value: f64,
-    pub color: String
+    pub color: String,
 }
 
 /// Generate a line chart SVG

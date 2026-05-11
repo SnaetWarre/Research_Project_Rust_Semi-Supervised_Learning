@@ -110,8 +110,10 @@ mod tests {
 
     #[test]
     fn test_result_context() {
-        let result: std::result::Result<i32, std::io::Error> =
-            Err(std::io::Error::new(std::io::ErrorKind::NotFound, "file not found"));
+        let result: std::result::Result<i32, std::io::Error> = Err(std::io::Error::new(
+            std::io::ErrorKind::NotFound,
+            "file not found",
+        ));
 
         let with_context = result.context("Failed to read file");
         assert!(with_context.is_err());

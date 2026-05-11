@@ -84,6 +84,10 @@ data/plantvillage/
     └── ... (38 class directories)
 ```
 
+The loader merges the Kaggle `train/` and `valid/` folders before creating the
+project's own SSL split. Reported validation/test metrics use that internal
+split, not the original Kaggle `valid/` directory.
+
 ### 3. Verify Dataset
 
 ```bash
@@ -205,6 +209,9 @@ The dataset is split into pools to simulate real-world conditions:
 2. **Validation Set (10%)** - For hyperparameter tuning
 3. **Labeled Pool (20%)** - Initial labeled training data
 4. **Stream Pool (60%)** - Simulates incoming camera images
+
+These pools are created after merging Kaggle `train/` and `valid/`, so the
+provided Kaggle split is not reused directly.
 
 ---
 

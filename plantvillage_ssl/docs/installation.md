@@ -230,6 +230,10 @@ data/plantvillage/
     └── ... (38 class directories)
 ```
 
+For SSL experiments, the application merges the Kaggle `train/` and `valid/`
+folders and then creates its own deterministic test/validation/labeled/stream
+split. The original Kaggle `valid/` folder is not used as the validation set.
+
 ---
 
 ## Verifying Installation

@@ -84,7 +84,6 @@ impl EarlyStoppingConfig {
 /// * `_confidence_threshold` - Threshold for pseudo-labeling (not used in supervised training)
 /// * `output_dir` - Directory to save model checkpoints
 /// * `seed` - Random seed for reproducibility
-/// * `max_samples` - Maximum samples to use (for quick testing)
 /// * `use_augmentation` - Enable data augmentation during training
 /// * `early_stopping` - Configuration for early stopping at target accuracy
 pub fn run_training<B>(
@@ -96,7 +95,6 @@ pub fn run_training<B>(
     _confidence_threshold: f64,
     output_dir: &str,
     seed: u64,
-    max_samples: Option<usize>,
     use_augmentation: bool,
     early_stopping: Option<EarlyStoppingConfig>,
 ) -> Result<()>
@@ -139,18 +137,6 @@ where
         .map(|s| (s.path.clone(), s.label, s.class_name.clone()))
         .collect();
 
-    // Limit samples if max_samples is specified
-    let images_to_use: Vec<(PathBuf, usize, String)> = match max_samples {
-        Some(max) => {
-            // Shuffle first, then take max samples to maintain class diversity
-            let mut rng = ChaCha8Rng::seed_from_u64(seed);
-            let mut shuffled = all_images.clone();
-            shuffled.shuffle(&mut rng);
-            shuffled.into_iter().take(max).collect()
-        }
-        None => all_images,
-    };
-
     // SplitConfig applies labeled/stream fractions after test+validation are removed.
     // Convert the CLI ratio from "fraction of total dataset" to "fraction of remaining pool".
     let remaining_fraction = 1.0 - 0.10 - 0.10;
@@ -166,7 +152,7 @@ where
         stratified: true,
     };
 
-    let splits = DatasetSplits::from_images(images_to_use, split_config)
+    let splits = DatasetSplits::from_images(all_images, split_config)
         .map_err(|e| anyhow::anyhow!("Failed to create splits: {:?}", e))?;
 
     let split_stats = splits.stats();

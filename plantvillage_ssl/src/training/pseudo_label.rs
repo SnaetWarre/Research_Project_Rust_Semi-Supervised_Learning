@@ -197,6 +197,10 @@ impl PseudoLabeler {
     ) -> Vec<PseudoLabeledImage> {
         let threshold = self.current_threshold();
         let mut new_pseudo_labels = Vec::new();
+        let hidden_by_id: HashMap<u64, &HiddenLabelImage> = hidden_labels
+            .iter()
+            .map(|hidden| (hidden.image_id, hidden))
+            .collect();
 
         // Check if buffer is at capacity
         if self.pseudo_labels.len() >= MAX_PSEUDO_LABELS {
@@ -207,7 +211,7 @@ impl PseudoLabeler {
             return new_pseudo_labels;
         }
 
-        for (pred, hidden) in predictions.iter().zip(hidden_labels.iter()) {
+        for pred in predictions {
             self.stats.total_processed += 1;
 
             // Check confidence threshold
@@ -225,10 +229,22 @@ impl PseudoLabeler {
                 }
             }
 
+            let hidden = if let Some(hidden) = hidden_by_id.get(&pred.image_id) {
+                *hidden
+            } else if hidden_labels.len() == 1 {
+                &hidden_labels[0]
+            } else {
+                warn!(
+                    "Skipping prediction for image id {} because no matching hidden label was found",
+                    pred.image_id
+                );
+                continue;
+            };
+
             // Create pseudo-label
             let is_correct = pred.predicted_label == hidden.hidden_label;
             let pseudo_label = PseudoLabeledImage {
-                image_path: hidden.image_path.clone(),
+                image_path: pred.image_path.clone(),
                 predicted_label: pred.predicted_label,
                 confidence: pred.confidence,
                 ground_truth: hidden.hidden_label,
@@ -564,6 +580,54 @@ mod tests {
         assert_eq!(labeler.stats().correct_predictions, 1);
         assert_eq!(labeler.stats().incorrect_predictions, 1);
         assert!((labeler.pseudo_label_accuracy() - 0.5).abs() < 0.001);
+    }
+
+    #[test]
+    fn test_predictions_match_hidden_labels_by_image_id() {
+        let config = PseudoLabelConfig {
+            confidence_threshold: 0.8,
+            max_per_class: None,
+            retrain_threshold: 100,
+            ..Default::default()
+        };
+
+        let mut labeler = PseudoLabeler::new(config);
+
+        let hidden_labels = vec![
+            create_test_hidden(1, 10),
+            create_test_hidden(2, 20),
+            create_test_hidden(3, 30),
+        ];
+
+        // Simulate image id 10 failing to load: predictions only exist for ids 20 and 30.
+        // Positional zip would compare prediction id 20 against hidden id 10 and mark it wrong.
+        let predictions = vec![
+            Prediction {
+                image_path: PathBuf::from("test_image_20.jpg"),
+                predicted_label: 2,
+                confidence: 0.95,
+                probabilities: vec![0.0, 0.0, 0.95],
+                image_id: 20,
+                ground_truth: Some(2),
+            },
+            Prediction {
+                image_path: PathBuf::from("test_image_30.jpg"),
+                predicted_label: 3,
+                confidence: 0.95,
+                probabilities: vec![0.0, 0.0, 0.0, 0.95],
+                image_id: 30,
+                ground_truth: Some(3),
+            },
+        ];
+
+        let labels = labeler.process_predictions(&predictions, &hidden_labels);
+
+        assert_eq!(labels.len(), 2);
+        assert!(labels.iter().all(|label| label.is_correct));
+        assert_eq!(labels[0].image_id, 20);
+        assert_eq!(labels[0].ground_truth, 2);
+        assert_eq!(labels[1].image_id, 30);
+        assert_eq!(labels[1].ground_truth, 3);
     }
 
     #[test]

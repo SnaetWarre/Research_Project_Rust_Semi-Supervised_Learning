@@ -27,6 +27,14 @@ cargo build --release
     --model-path output/models/best_model.mpk
 ```
 
+## Dataset Splitting
+
+When the Kaggle dataset contains `train/` and `valid/`, the loader merges both
+folders first. The project then creates its own deterministic SSL split:
+10% test, 10% validation, 20% labeled training, and 60% unlabeled stream by
+default. The Kaggle `valid/` folder is therefore treated as additional source
+data, not as the validation set used in reported metrics.
+
 ## Structure
 
 ```

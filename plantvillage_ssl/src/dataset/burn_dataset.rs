@@ -8,6 +8,8 @@
 //! - `PlantVillageBatcher`: Standard batcher without augmentation (for validation/inference)
 //! - `AugmentingBatcher`: Applies on-the-fly augmentation (for training)
 
+use std::collections::hash_map::DefaultHasher;
+use std::hash::{Hash, Hasher};
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicUsize, Ordering};
 
@@ -17,6 +19,7 @@ use burn::prelude::*;
 use image::imageops::FilterType;
 use image::{DynamicImage, ImageReader};
 use indicatif::{ProgressBar, ProgressStyle};
+use rand::SeedableRng;
 use rand_chacha::ChaCha8Rng;
 use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
@@ -465,9 +468,7 @@ impl<B: Backend> Batcher<B, RawPlantVillageItem, PlantVillageBatch<B>> for Augme
         let mut images_data = Vec::with_capacity(batch_size * channels * height * width);
         let mut targets_data = Vec::with_capacity(batch_size);
 
-        // Create a thread-local RNG for this batch (no lock contention across threads)
-        use rand::SeedableRng;
-        let batch_seed = rand::random::<u64>();
+        let batch_seed = self.batch_seed(&items);
         let mut rng = ChaCha8Rng::seed_from_u64(batch_seed);
 
         for item in items {
@@ -500,6 +501,21 @@ impl<B: Backend> Batcher<B, RawPlantVillageItem, PlantVillageBatch<B>> for Augme
             Tensor::<B, 1, Int>::from_data(TensorData::new(targets_data, [batch_size]), device);
 
         PlantVillageBatch { images, targets }
+    }
+}
+
+impl<B: Backend> AugmentingBatcher<B> {
+    fn batch_seed(&self, items: &[RawPlantVillageItem]) -> u64 {
+        let mut hasher = DefaultHasher::new();
+        self.seed.hash(&mut hasher);
+        self.image_size.hash(&mut hasher);
+
+        for item in items {
+            item.path.hash(&mut hasher);
+            item.label.hash(&mut hasher);
+        }
+
+        hasher.finish()
     }
 }
 

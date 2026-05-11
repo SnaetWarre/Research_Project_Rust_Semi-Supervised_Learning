@@ -89,10 +89,6 @@ enum Commands {
         #[arg(long, default_value = "42")]
         seed: u64,
 
-        /// Quick test mode - use only 500 samples for fast verification
-        #[arg(long, default_value = "false")]
-        quick: bool,
-
         /// Enable data augmentation during training (improves generalization)
         #[arg(long, default_value = "false")]
         augmentation: bool,
@@ -281,22 +277,11 @@ fn main() -> Result<()> {
             output_dir,
             cuda,
             seed,
-            quick,
             augmentation,
             no_early_stop,
             target_accuracy,
             early_stop_patience,
         } => {
-            let max_samples = if quick {
-                println!(
-                    "{}",
-                    "🚀 Quick test mode: using only 500 samples".yellow().bold()
-                );
-                Some(500usize)
-            } else {
-                None
-            };
-
             // Configure early stopping
             let early_stopping = if no_early_stop {
                 None
@@ -319,7 +304,6 @@ fn main() -> Result<()> {
                 confidence_threshold,
                 &output_dir,
                 seed,
-                max_samples,
                 augmentation,
                 early_stopping,
                 cuda,
@@ -546,7 +530,6 @@ fn dispatch_training(
     confidence_threshold: f64,
     output_dir: &str,
     seed: u64,
-    max_samples: Option<usize>,
     use_augmentation: bool,
     early_stopping: Option<plantvillage_ssl::training::supervised::EarlyStoppingConfig>,
     cuda: bool,
@@ -565,7 +548,6 @@ fn dispatch_training(
                 confidence_threshold,
                 output_dir,
                 seed,
-                max_samples,
                 use_augmentation,
                 early_stopping,
             );
@@ -592,7 +574,6 @@ fn dispatch_training(
             confidence_threshold,
             output_dir,
             seed,
-            max_samples,
             use_augmentation,
             early_stopping,
         )

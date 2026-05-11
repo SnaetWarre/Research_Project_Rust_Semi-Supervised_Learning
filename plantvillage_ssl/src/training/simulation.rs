@@ -111,14 +111,17 @@ where
         .map(|s| (s.path.clone(), s.label, s.class_name.clone()))
         .collect();
 
-    // Calculate stream fraction: remaining after test (10%), validation (10%), and labeled
-    let stream_fraction = 1.0 - config.labeled_ratio; // Maximize for SSL!
+    // SplitConfig applies labeled/stream fractions after test+validation are removed.
+    // Convert the CLI ratio from "fraction of total dataset" to "fraction of remaining pool".
+    let remaining_fraction = 1.0 - 0.10 - 0.10;
+    let labeled_fraction_of_remaining = config.labeled_ratio / remaining_fraction;
+    let stream_fraction = 1.0 - labeled_fraction_of_remaining;
 
     let split_config = SplitConfig {
         test_fraction: 0.10,
         validation_fraction: 0.10,
-        labeled_fraction: config.labeled_ratio, // Use CLI-configured ratio!
-        stream_fraction,                        // Maximize for SSL!
+        labeled_fraction: labeled_fraction_of_remaining,
+        stream_fraction,
         seed: config.seed,
         stratified: true,
     };

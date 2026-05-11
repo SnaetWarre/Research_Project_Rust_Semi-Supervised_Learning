@@ -151,12 +151,17 @@ where
         None => all_images,
     };
 
+    // SplitConfig applies labeled/stream fractions after test+validation are removed.
+    // Convert the CLI ratio from "fraction of total dataset" to "fraction of remaining pool".
+    let remaining_fraction = 1.0 - 0.10 - 0.10;
+    let labeled_fraction_of_remaining = labeled_ratio / remaining_fraction;
+
     // Create stratified splits using the proper splitting logic
     let split_config = SplitConfig {
-        test_fraction: 0.0, // We'll use validation as our held-out set for now
+        test_fraction: 0.10,
         validation_fraction: 0.10,
-        labeled_fraction: labeled_ratio,
-        stream_fraction: 1.0 - labeled_ratio, // Remaining for stream pool
+        labeled_fraction: labeled_fraction_of_remaining,
+        stream_fraction: 1.0 - labeled_fraction_of_remaining,
         seed,
         stratified: true,
     };

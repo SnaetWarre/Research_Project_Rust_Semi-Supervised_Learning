@@ -88,7 +88,7 @@ These questions are meant for the external reflection interviews (Chapter 4). Th
 
 2. What techniques would you recommend for monitoring pseudo-label quality over time? In my SSL pipeline, pseudo-labels are accumulated and used for retraining after a threshold is reached. How would you detect and mitigate error propagation in such a loop?
 
-3. My initial CNN is trained on only 20% of the dataset (~100 labeled images per class). From your experience with medical/biomedical image datasets, is this a realistic scenario? How does this compare to labeled data availability in your work (e.g., kidney segmentation, 3D head assessment)?
+3. My initial CNN is trained on only 20% of the full dataset (~17,400 images out of ~87,000, which is roughly ~458 labeled images per class across 38 classes). The remaining data is split into 60% unlabeled SSL stream, 10% validation, and 10% test. From your experience with medical/biomedical image datasets, is this a realistic scenario? How does this compare to labeled data availability in your work (e.g., kidney segmentation, 3D head assessment)?
 
 ## Section 2: CNN Architecture & Image Processing
 

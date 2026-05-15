@@ -1,6 +1,6 @@
 # 4. Reflection
 
-This chapter offers a critical evaluation of the research results through two lenses: feedback from external experts with relevant industry or academic experience, and a broader analysis of the implications of this work. The thesis guidelines require meaningful input from at least two external persons; their complete interviews are included in the appendices.
+This chapter gives a critical evaluation of the research results from two angles: feedback from external experts with relevant industry or academic experience, and a broader reflection on what this work means in practice. The thesis guidelines require meaningful input from at least two external persons. Their complete interviews are included in the appendices.
 
 ## 4.1 External Reflection
 
@@ -63,15 +63,15 @@ Synthesis should connect the external perspectives to the decisions made during 
 
 ### 4.2.1 Strengths
 
-**Deployment size and portability.** The binary of roughly 26 MB is a genuine step change compared to a Python/PyTorch deployment. Both stacks need gigabytes of tooling during development (Rust's `target/` directory is around 2.1 GB, which is comparable to a PyTorch virtual environment), but Rust's compilation distils everything down into a single portable binary. A Python deployment, by contrast, still has to carry its interpreter and library tree along to the target device. That fundamentally changes which distribution channels are viable for edge deployment: a file that fits on a Bluetooth transfer or a USB stick is qualitatively different from one that requires a multi-gigabyte environment to be installed first.
+**Deployment size and portability.** The binary of roughly 26 MB is a real improvement compared with a Python/PyTorch deployment. Both stacks need gigabytes of tooling during development. Rust's `target/` directory is around 2.1 GB, which is comparable to a PyTorch virtual environment. The difference is that Rust's compilation reduces everything to a single portable binary. A Python deployment still has to bring its interpreter and library tree to the target device. That changes which distribution channels are realistic for edge deployment. A file that fits on a Bluetooth transfer or a USB stick is very different from a system that first needs a multi-gigabyte environment.
 
 **The BYOD pivot.** The benchmark results (Table 3.6) provided a clear, data-driven reason to walk away from dedicated edge hardware. The Jetson Orin Nano, at €350, turned out to be slower than a phone that farmers already own. That pivot removed the single largest cost barrier to deployment.
 
-**Experimental rigour.** The three controlled experiments give quantitative answers to questions that are often only addressed qualitatively in the literature: how much labeled data is actually enough (100 per class), how forgetting scales with model size (6×), and how the position of a new class affects the difficulty of learning it (substantially).
+**Experimental rigour.** The three controlled experiments give quantitative answers to questions that are often only discussed qualitatively in the literature: how much labeled data is actually enough, how forgetting scales with model size, and how the position of a new class affects the difficulty of learning it.
 
 ### 4.2.2 Weaknesses and Limitations
 
-**Pseudo-label quality is bounded by the initial model.** The effectiveness of the SSL pipeline is fundamentally limited by the accuracy of the model that was trained on the 20% labeled subset. If the initial model systematically misclassifies certain disease classes, those errors propagate through the pseudo-labeling cycle. Techniques such as co-training, where two models look at different views of the data, could mitigate this, but they were not implemented because of the VRAM constraints on edge devices.
+**Pseudo-label quality is bounded by the initial model.** The effectiveness of the SSL pipeline is limited by the accuracy of the model that was trained on the 20% labeled subset. If the initial model systematically misclassifies certain disease classes, those errors can continue through the pseudo-labeling cycle. Techniques such as co-training, where two models look at different views of the data, could reduce this risk, but they were not implemented because of the VRAM constraints on edge devices.
 
 **No field validation.** All experiments were carried out on the PlantVillage dataset under controlled conditions. Real-world agricultural images differ in important ways: varying lighting, background vegetation, leaf angle, camera quality and the presence of several diseases on the same leaf. The model's performance on field-captured images is therefore unknown and is very likely lower than the numbers reported here.
 
@@ -79,40 +79,40 @@ Synthesis should connect the external perspectives to the decisions made during 
 
 **Single dataset evaluation.** The experiments were carried out exclusively on PlantVillage. Generalisation to other agricultural datasets (different crops, different disease profiles, different imaging conditions) has not been validated.
 
-## 4.3 Broader Impact Analysis
+## 4.3 Broader Implications
 
-### 4.3.1 Implementation Barriers
+### 4.3.1 Practical Barriers to Deployment
 
-Deploying an offline AI system in the field comes with challenges that go beyond the purely technical:
+Building the system is one thing. Getting it into the hands of someone who would actually use it is another. During development, a few things became clear about what stands between a working prototype and a useful tool:
 
-- **Digital literacy:** farmers in regions where offline operation is most needed may have limited experience with smartphone applications. The UI has to be simple, with clear visual feedback and minimal text.
-- **Device diversity:** the BYOD model means that the system has to work on a wide range of Android and iOS devices with varying camera quality and processing power.
-- **Trust in AI:** a farmer who receives an incorrect diagnosis may lose trust in the system altogether. False-positive rates have to be communicated transparently, and the system should report a confidence level rather than presenting a single definitive answer.
-- **Update distribution:** the initial installation is small enough for offline distribution, but model updates (new classes, improved weights) still need a distribution mechanism, possibly through agricultural extension workers or community access points.
+The biggest issue is trust. If the model confidently says "bacterial spot" and the farmer treats for that, but it turns out to be something else, the tool has done more harm than good. That is why the GUI shows a confidence bar instead of only a single answer. Even then, a non-technical user might not know how to interpret a 72% confidence score. The interface has to be honest about uncertainty without becoming confusing, and that is a UX problem as much as an ML problem.
 
-### 4.3.2 Business Value
+Device diversity is another concern. The BYOD strategy means the system has to work on whatever phone or laptop someone happens to own. The cross-platform benchmarks (Table 3.6) show that it can work across hardware, but the preprocessing bug on iOS (Section 3.6.3), where BGRA versus RGB channel ordering silently produced wrong classifications, is exactly the kind of problem that only appears on real devices. There will probably be more bugs like that on devices I have not tested.
 
-The economic argument for this approach is relatively simple:
+Finally, there is the update problem. The initial installation is small enough (26 MB) to distribute offline, but what happens when the model improves or a new disease class is added? Agricultural extension workers or local community centres could serve as distribution points, but that requires coordination that goes beyond software engineering.
 
-- **Annotation cost reduction:** SSL brings the labeled data requirement down by roughly 60 to 80%, which translates into tens of thousands of euros saved in annotation costs for every new deployment.
-- **Hardware cost elimination:** the pivot from dedicated edge hardware (€350 per unit) to BYOD removes the capital expenditure entirely.
-- **No recurring cloud costs:** zero inference API calls means zero per-prediction charges. The marginal cost of each classification after deployment is effectively zero.
-- **Faster time-to-diagnosis:** sub-second inference replaces a multi-day laboratory turnaround, which allows farmers to act before diseases have time to spread.
+### 4.3.2 Economic Case
 
-### 4.3.3 Societal Impact
+The numbers from this project make a straightforward economic argument:
 
-Plant disease detection has direct implications for food security. The FAO estimates that plant pests and diseases cause up to 40% of crop losses globally, with an annual economic impact of more than $220 billion [15]. Smallholder farmers in Sub-Saharan Africa and South Asia are disproportionately affected.
+- The SSL pipeline reduces the labeling requirement from 100% of the dataset down to roughly 20%, which translates directly into annotation budget savings. At €2 per image, that is the difference between €100,000 and €20,000 for a 50,000-image dataset.
+- The BYOD pivot eliminates hardware costs entirely. The Jetson Orin Nano benchmark (Table 3.6) showed that a €350 dedicated device was actually slower than a phone, so there is no reason to buy one.
+- Once installed, the marginal cost of each classification is zero: no cloud API calls, no per-prediction charges, no bandwidth costs.
 
-An offline, phone-based disease detection tool removes two critical access barriers: internet connectivity and specialised equipment. If the accuracy demonstrated in this research translates to field conditions, a tool of this kind could enable earlier intervention, reduce crop losses and improve food security for some of the world's most vulnerable farming communities.
+These savings are real, but they only matter if the model is accurate enough to be useful. The experimental results suggest it is (85%+ with SSL), but that has only been validated on PlantVillage imagery, not on field photos.
 
-The offline-first architecture also has a privacy advantage, as pointed out in the NVISO guest session on AI threats (Appendix C). Because the model runs entirely on the device, no agricultural data is transmitted to an external server. That eliminates the risk of data exfiltration and removes the need for data processing agreements, which is a practical benefit for deployment in regions with varying data protection regulations.
+### 4.3.3 Why This Matters Beyond the Lab
+
+The offline-first architecture has a practical advantage that goes beyond connectivity. Because the model runs entirely on the user's device, no data leaves the phone. The NVISO guest session on AI threats (Appendix C) highlighted how easily image data can be repurposed once it reaches an external server. With local inference, that risk simply does not exist, which also means there are no GDPR or data processing agreements to worry about.
+
+Whether this kind of tool would actually reduce crop losses is a question I cannot answer from a computer science thesis. What I can say is that the technical barriers, such as deployment size, connectivity requirements and inference speed, are no longer the main bottleneck. The remaining barriers are about trust, usability and distribution. Those need field trials and user research, not only more engineering.
 
 ### 4.3.4 Future Research Directions
 
-Several avenues for future work stand out:
+A few directions for future work stand out:
 
-1. **Field validation study:** deploying the system with actual farmers and measuring classification accuracy on real-world images captured under diverse conditions.
-2. **Active learning integration:** rather than using a fixed confidence threshold, the system could identify uncertain samples and request targeted human annotation, which would turn the SSL loop into a human-in-the-loop labeling pipeline.
-3. **Federated learning:** multiple deployed devices could periodically aggregate model updates without sharing raw data, which would allow the model to improve continuously while preserving privacy.
-4. **Multi-disease detection:** extending the model so that it can handle images that contain several simultaneous diseases on a single leaf.
-5. **Burn ecosystem contributions:** contributing missing features (mixed-precision training, model quantisation) back to the open-source Burn framework.
+1. **Field validation:** deploying the system with actual users and measuring classification accuracy on real-world images, with different lighting, backgrounds and camera quality. The PlantVillage results are promising, but controlled benchmarks and real-world performance are different things.
+2. **Active learning:** instead of discarding every low-confidence sample, the system could flag uncertain predictions and ask for human input. That would turn the SSL loop into a targeted labeling tool.
+3. **Federated learning:** multiple deployed devices could share model updates without sharing raw images, which would allow the model to improve over time while keeping data local.
+4. **Multi-disease detection:** extending the model to handle images where several diseases appear on the same leaf simultaneously.
+5. **Burn ecosystem contributions:** contributing missing features (mixed-precision training, model quantisation) back to the open-source framework.

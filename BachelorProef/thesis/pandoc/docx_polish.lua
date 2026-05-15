@@ -22,5 +22,9 @@ function Image(img)
   if w == nil or w == "" then
     attrs.width = "5.9in"
   end
-  return img
+  -- Centre the image paragraph in Word output
+  local center_open = pandoc.RawInline("openxml",
+    '<w:pPr><w:jc w:val="center"/></w:pPr>')
+  return { center_open, img }
 end
+

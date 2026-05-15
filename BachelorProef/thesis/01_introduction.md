@@ -2,17 +2,19 @@
 
 ## 1.1 Context and Motivation
 
-Plant diseases are responsible for an estimated 20 to 40% of global agricultural production losses each year [15]. For smallholder farmers, who together produce roughly one third of the world's food, a single undetected outbreak can be the difference between a profitable harvest and financial ruin. Early and accurate identification of plant diseases is therefore not merely a technological convenience but an economic necessity.
+Machine learning has become a very important tool for image classification, but deploying trained models outside cloud environments is still a real engineering challenge. The standard ML stack, Python, PyTorch and CUDA, is built for research flexibility and GPU throughput. It is less suited for shipping a working classifier to a phone or to a field laptop that may not have an internet connection. A typical PyTorch deployment needs the Python interpreter, the PyTorch library and a set of supporting packages. Together, these can take several gigabytes on the target device. That is acceptable on a cloud server, but it quickly becomes a problem for practical edge scenarios.
 
-Current diagnostic methods fall into two broad categories. The first one is laboratory analysis, where leaf samples are physically sent to an expert for examination. This approach is accurate but slow, with turnaround times measured in days, and it does not scale economically. The second category covers cloud-based machine learning systems, which upload images of diseased plants to a remote server for classification. These are faster than laboratory analysis, but they introduce a hard dependency on internet connectivity, which is precisely what is missing in many of the rural regions where agriculture is at its most vulnerable.
+Rust offers a different deployment model. It compiles to a single binary with no interpreter and no garbage collector. Its type system catches many problems at compile time, which is useful for ML processes that have to run reliably. The build system also supports cross-compilation to ARM, iOS, Android and WebAssembly. In this project, that means the deployment can go from a multi-gigabyte Python environment to a 26 MB binary that can even be distributed on a USB stick.
 
-This creates a clear gap. Farmers need fast, accurate and accessible disease detection that works without an internet connection, on the devices they already own. The solution has to be light enough to run on a smartphone or a low-power laptop, and it must not require a data connection beyond the initial installation.
+The difficult part is training. Rust's ML ecosystem is still young, and many frameworks focus more on inference than on the full training loop. Semi-supervised learning (SSL) combines a small set of labeled data with a large pool of unlabeled data. To do that properly, the implementation needs pseudo-labeling, confidence filtering and repeated retraining cycles. This is more demanding than simple inference, and it tests whether the training API is mature enough. For this thesis, the main question is whether Rust's ML ecosystem, and specifically the Burn framework, can support this workflow while still keeping the deployment advantages.
+
+This thesis investigates exactly that, using plant disease classification as the test case. The PlantVillage dataset (38 disease classes, roughly 87,000 images) provides a realistic and well-understood benchmark. Plant disease detection is also a natural fit for edge deployment: the farmers who need it most often work in areas with limited connectivity, and the diagnostic tools that are currently available either depend on cloud access or require expensive laboratory analysis.
 
 ## 1.2 The Labeling Problem
 
-Any machine learning model for plant disease classification needs large amounts of labeled training data. Expert annotation of agricultural imagery costs roughly €2 per image [16]. For a dataset of 50,000 images covering 38 disease classes, that amounts to a labeling budget of €100,000, a figure that is prohibitive for most research projects and entirely impractical for field deployment in developing regions.
+Any image classification model needs labeled training data, and expert annotation is expensive. In the agricultural domain, having a plant pathologist label images costs roughly €2 per image [16]. For a dataset of 50,000 images across 38 classes, that becomes €100,000, which is too expensive for many projects.
 
-Semi-supervised learning (SSL) offers a way out of this dependency. By training an initial model on a small labeled subset and then using that model to generate pseudo-labels for the remaining unlabeled data, SSL can reach accuracy levels that are comparable to fully supervised training at a fraction of the annotation cost. The main challenge is making sure that the pseudo-labels are accurate enough to improve the model rather than degrade it during retraining.
+Semi-supervised learning offers a way to reduce that cost. By training an initial model on a small labeled subset and then using that model to generate pseudo-labels for the remaining unlabeled data, SSL can approach the accuracy of fully supervised training at a fraction of the annotation budget. The challenge is making sure that the pseudo-labels are accurate enough to improve the model rather than degrade it, which comes down to careful confidence thresholding and retraining design.
 
 ## 1.3 Research Question
 
@@ -35,7 +37,7 @@ This question is broken down into the following sub-questions:
 
 ## 1.4 Scope and Approach
 
-The research focuses on the PlantVillage dataset (38 disease classes and roughly 87,000 images) and uses a custom lightweight convolutional neural network (CNN) rather than pretrained models or Vision Transformers. The full pipeline, from training to deployment, is implemented in Rust using the Burn framework. The system is designed to run fully offline, with no network calls during inference.
+The research focuses on implementing a complete SSL pipeline in Rust with the Burn framework, validated on the PlantVillage dataset with 38 disease classes and roughly 87,000 images. The model is a custom lightweight convolutional neural network (CNN) designed for edge deployment. It is not a pretrained model and not a Vision Transformer. The full pipeline, from training to deployment, compiles into a single binary that runs fully offline.
 
 The experimental work is organised around three axes:
 

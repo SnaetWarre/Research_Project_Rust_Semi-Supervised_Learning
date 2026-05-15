@@ -10,7 +10,7 @@ All references follow the IEEE citation style.
 
 [3] K. P. Singh and P. Gupta, "Semi-supervised learning for plant leaf disease detection," *Journal of Plant Diseases and Protection*, 2024. [Online]. Available: https://link.springer.com/journal/41348
 
-[4] E. Ilsever and A. Baz, "Consistency regularization-based semi-supervised learning for plant disease recognition," *Journal of King Saud University – Computer and Information Sciences*, vol. 36, 2024. [Online]. Available: https://www.sciencedirect.com/journal/journal-of-king-saud-university-computer-and-information-sciences
+[4] E. Ilsever and A. Baz, "Consistency regularization-based semi-supervised learning for plant disease recognition," *Journal of King Saud University - Computer and Information Sciences*, vol. 36, 2024. [Online]. Available: https://www.sciencedirect.com/journal/journal-of-king-saud-university-computer-and-information-sciences
 
 [5] W. Wang et al., "Self-supervised learning for plant disease classification with MAE and CBAM," *Computers and Electronics in Agriculture*, vol. 216, 2024. [Online]. Available: https://www.sciencedirect.com/journal/computers-and-electronics-in-agriculture
 
@@ -40,11 +40,11 @@ All references follow the IEEE citation style.
 
 [17] PyTorch Contributors, "PyTorch Installation Guide," *PyTorch.org*, 2026. [Online]. Available: https://pytorch.org/get-started/locally/
 
-[18] M. McCloskey and N. J. Cohen, "Catastrophic interference in connectionist networks: The sequential learning problem," *Psychology of Learning and Motivation*, vol. 24, pp. 109–165, 1989.
+[18] M. McCloskey and N. J. Cohen, "Catastrophic interference in connectionist networks: The sequential learning problem," *Psychology of Learning and Motivation*, vol. 24, pp. 109-165, 1989.
 
-[19] J. Kirkpatrick et al., "Overcoming catastrophic forgetting in neural networks," *Proceedings of the National Academy of Sciences*, vol. 114, no. 13, pp. 3521–3526, 2017. [Online]. Available: https://arxiv.org/abs/1612.00796
+[19] J. Kirkpatrick et al., "Overcoming catastrophic forgetting in neural networks," *Proceedings of the National Academy of Sciences*, vol. 114, no. 13, pp. 3521-3526, 2017. [Online]. Available: https://arxiv.org/abs/1612.00796
 
-[20] Z. Li and D. Hoiem, "Learning without Forgetting," *IEEE Transactions on Pattern Analysis and Machine Intelligence*, vol. 40, no. 12, pp. 2935–2947, 2018. [Online]. Available: https://arxiv.org/abs/1606.09282
+[20] Z. Li and D. Hoiem, "Learning without Forgetting," *IEEE Transactions on Pattern Analysis and Machine Intelligence*, vol. 40, no. 12, pp. 2935-2947, 2018. [Online]. Available: https://arxiv.org/abs/1606.09282
 
 [21] Tauri Contributors, "Tauri: Build Smaller, Faster, and More Secure Desktop and Mobile Applications," *Tauri.app*, 2026. [Online]. Available: https://tauri.app/
 

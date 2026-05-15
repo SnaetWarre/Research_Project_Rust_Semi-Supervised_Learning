@@ -174,5 +174,5 @@ cargo run --release --bin plantvillage_ssl -- experiment --help
 | CUDA not found | Make sure the CUDA Toolkit is installed and that `nvcc` is on the `PATH` |
 | Out of GPU memory | Reduce the batch size or use `--features cpu` |
 | Dataset not found | Verify that the dataset is extracted to `data/plantvillage/` with `train/` and `valid/` subdirectories |
-| Slow compilation | Use `cargo check` during development; keep `--release` for benchmarks |
+| Slow compilation | Use `cargo check` during development, and keep `--release` for benchmarks |
 | Model file not found | Check the exact timestamp in the model filename |

@@ -2,7 +2,7 @@
 
 **Speaker:** NVISO (www.nviso.eu)
 **Date:** January 2026
-**Student:** Warre Snaet | Howest MCT | Research Project 2025–2026
+**Student:** Warre Snaet | Howest MCT | Research Project 2025-2026
 
 ---
 
@@ -69,10 +69,10 @@ AI systems have built-in safety mechanisms ("guardrails"), but these can be circ
 ### Preventive Measures
 
 1. **Training and awareness:** educate employees about AI-related threats and create awareness of deepfakes and social engineering.
-2. **Authentication procedures:** multi-factor verification for sensitive actions; call-back procedures for unexpected requests.
+2. **Authentication procedures:** multi-factor verification for sensitive actions, and call-back procedures for unexpected requests.
 3. **Secure email and browser activity:** content filtering, DNS filtering, blocking of active content.
 4. **Incident response plan:** clear procedures for when an attack is detected, with defined escalation paths and contact persons.
-5. **Network segmentation:** limit lateral movement after a breach; isolate critical systems.
+5. **Network segmentation:** limit lateral movement after a breach, and isolate critical systems.
 
 ### Securing AI Tools for End Users
 
@@ -120,7 +120,7 @@ This guest session was relevant for my research project for several reasons:
 - AI-generated deepfakes are **surprisingly easy** to create with very little source material.
 - Social engineering remains a major threat vector, and it is now amplified by AI capabilities.
 - Training and awareness are the first line of defence.
-- AI is simultaneously a **weapon** and a **shield**; the same technology enables both attack and defence.
+- AI is simultaneously a **weapon** and a **shield**, because the same technology enables both attack and defence.
 - SOAR and automation help security teams work more effectively by handling routine tasks.
 
 ---

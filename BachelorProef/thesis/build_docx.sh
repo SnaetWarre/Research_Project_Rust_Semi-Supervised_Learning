@@ -14,21 +14,19 @@
 # document, in Word: cursor after front matter → References → Table of Contents → Custom.
 #
 # Optional environment (combine as needed):
-#   THESIS_GDRIVE_SYNC_DIR WSL path for the Google Drive desktop sync copy (default below).
 #   PANDOC_TOC=1             Insert Pandoc TOC at the top.
+#   BUILD_DOCX_OUT_DIR       Output directory for the generated docx
+#                            (default: /home/warre/ThesisConnectionv2).
 #   BUILD_DOCX_VERBOSE=1     Bash xtrace, verbose strip script.
 #   RCLONE_REMOTE, RCLONE_PATH   Upload via rclone after build (remote name from rclone config;
-#                            RCLONE_PATH = folder on that remote). OAuth from WSL can be awkward;
-#                            Drive desktop sync + THESIS_GDRIVE_SYNC_DIR is often simpler.
+#                            RCLONE_PATH = folder on that remote).
 
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 TEMPLATE="${SCRIPT_DIR}/../template/Template_Bachelorproef_MCT.docx"
-OUT_DIR="${SCRIPT_DIR}/build"
+OUT_DIR="${BUILD_DOCX_OUT_DIR:-/home/warre/ThesisConnectionv2}"
 OUT_FILE="${OUT_DIR}/Bachelorproef_Snaet_2026.docx"
-# After each successful build, the .docx is copied here (mkdir -p, then cp). Override with THESIS_GDRIVE_SYNC_DIR.
-GDRIVE_SYNC_DEFAULT="/mnt/c/Users/G513/Desktop/ThesisConnection"
 LUA_FILTER="${SCRIPT_DIR}/pandoc/docx_polish.lua"
 STRIP_HEADING_NUM="${SCRIPT_DIR}/pandoc/strip_word_heading_list_numbering.py"
 
@@ -101,7 +99,7 @@ pandoc \
   --reference-doc="${TEMPLATE}" \
   --resource-path="${SCRIPT_DIR}:${REPO_ROOT}" \
   --lua-filter="${LUA_FILTER}" \
-  --no-highlight \
+  --highlight-style=tango \
   --metadata=author:"Warre Snaet" \
   "${TOC_ARGS[@]}"
 
@@ -122,21 +120,7 @@ python3 "${STRIP_HEADING_NUM}" "${STRIP_FLAGS[@]}" "${OUT_FILE}"
 SZ2="$(stat -c '%s' "${OUT_FILE}" 2>/dev/null || wc -c < "${OUT_FILE}")"
 log "final: ${OUT_FILE} (${SZ2} bytes)"
 
-# Always copy the finished .docx into the Google Drive desktop sync folder (WSL path).
-if [[ -n "${THESIS_GDRIVE_SYNC_DIR:-}" ]]; then
-  SYNC_DIR="${THESIS_GDRIVE_SYNC_DIR%/}"
-  log "Google Drive sync: using THESIS_GDRIVE_SYNC_DIR → ${SYNC_DIR}"
-else
-  SYNC_DIR="${GDRIVE_SYNC_DEFAULT%/}"
-  log "Google Drive sync: using default folder → ${SYNC_DIR}"
-fi
-DEST_SYNC="${SYNC_DIR}/$(basename "${OUT_FILE}")"
-log "Google Drive sync: mkdir -p ${SYNC_DIR}"
-mkdir -p "${SYNC_DIR}"
-log "Google Drive sync: cp -f ${OUT_FILE} → ${DEST_SYNC}"
-cp -f "${OUT_FILE}" "${DEST_SYNC}"
-SYNC_SZ="$(stat -c '%s' "${DEST_SYNC}" 2>/dev/null || wc -c < "${DEST_SYNC}")"
-log "Google Drive sync: finished (${DEST_SYNC}, ${SYNC_SZ} bytes)"
+
 
 if [[ -n "${RCLONE_REMOTE:-}" ]]; then
   if ! command -v rclone >/dev/null 2>&1; then

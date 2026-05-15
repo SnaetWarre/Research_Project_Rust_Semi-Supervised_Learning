@@ -1,6 +1,6 @@
 # 3. Research Results
 
-This chapter gives a technical description of the system that was built to answer the research question. It covers the overall architecture, the semi-supervised learning pipeline, three controlled experiments on aspects that are critical for deployment, cross-platform benchmarks and the graphical user interface.
+This chapter describes the system that was built to answer the research question. It covers the architecture, the semi-supervised learning pipeline, three controlled experiments that are important for deployment, cross-platform benchmarks and the graphical user interface.
 
 ## 3.1 System Architecture
 
@@ -11,13 +11,13 @@ The project is organised as two separate Rust workspaces:
 - **`plantvillage_ssl`**: the main SSL library and CLI, built on Burn 0.20. This workspace contains the CNN model, the training loop, the pseudo-labeling simulation pipeline, the experiment runner and the Tauri-based GUI application.
 - **`incremental_learning`**: a dedicated workspace for the incremental learning experiments, built on Burn 0.14. It is split into library crates (`plant-core`, `plant-dataset`, `plant-training`, `plant-incremental`) and CLI tools (`train`, `evaluate`, `experiment-runner`).
 
-The split into two workspaces was a deliberate architectural choice. Burn's API changed substantially between versions 0.14 and 0.20, and the incremental learning crate was developed earlier in the project, before the main pipeline was migrated to the newer version. Both workspaces share the same CNN architecture and dataset handling logic, so the experimental results remain comparable.
+The split into two workspaces was a deliberate choice. Burn's API changed substantially between versions 0.14 and 0.20, and the incremental learning crate was developed earlier in the project, before the main pipeline moved to the newer version. Both workspaces share the same CNN architecture and dataset handling logic, so the experimental results remain comparable.
 
 ### 3.1.2 CNN Architecture
 
-The model is a custom lightweight CNN with four convolutional blocks, designed to balance classification accuracy against the memory and compute constraints of edge devices. The architecture is defined as follows:
+The model is a custom lightweight CNN with four convolutional blocks. It was designed to balance classification accuracy with the memory and compute limits of edge devices. The architecture is defined as follows:
 
-```
+```text
 Conv2d(3, 32, 3×3)  → BatchNorm → ReLU → MaxPool(2×2)
 Conv2d(32, 64, 3×3) → BatchNorm → ReLU → MaxPool(2×2)
 Conv2d(64, 128, 3×3) → BatchNorm → ReLU → MaxPool(2×2)
@@ -25,19 +25,44 @@ Conv2d(128, 256, 3×3) → BatchNorm → ReLU → MaxPool(2×2)
 AdaptiveAvgPool → Linear(256, 256) → ReLU → Dropout(0.3) → Linear(256, 38)
 ```
 
-Input images are resized to 128×128 (or 256×256 in some experiments) RGB. The output layer produces 38 logits, one per PlantVillage disease class. The Burn implementation uses Rust's type system to make the model generic over backends:
+Input images are resized to 128×128 (or 256×256 in some experiments) RGB. The output layer produces 38 logits, one per PlantVillage disease class. The Burn implementation uses Rust's type system to make the model generic over backends. Each convolutional block wraps a Conv2d, BatchNorm, ReLU and optional MaxPool:
+
+```rust
+/// A CNN block with Conv2d, BatchNorm, ReLU, and optional MaxPool
+#[derive(Module, Debug)]
+pub struct ConvBlock<B: Backend> {
+    pub conv: Conv2d<B>,
+    pub bn: BatchNorm<B>,
+    pub relu: Relu,
+    pub pool: Option<MaxPool2d>,
+}
+
+impl<B: Backend> ConvBlock<B> {
+    pub fn forward(&self, x: Tensor<B, 4>) -> Tensor<B, 4> {
+        let x = self.conv.forward(x);
+        let x = self.bn.forward(x);
+        let x = self.relu.forward(x);
+        match &self.pool {
+            Some(pool) => pool.forward(x),
+            None => x,
+        }
+    }
+}
+```
+
+The classifier itself composes four of these blocks into the full architecture:
 
 ```rust
 #[derive(Module, Debug)]
 pub struct PlantClassifier<B: Backend> {
-    conv1: ConvBlock<B>,
-    conv2: ConvBlock<B>,
-    conv3: ConvBlock<B>,
-    conv4: ConvBlock<B>,
-    global_pool: AdaptiveAvgPool2d,
-    fc1: Linear<B>,
-    dropout: Dropout,
-    fc2: Linear<B>,
+    pub conv1: ConvBlock<B>,
+    pub conv2: ConvBlock<B>,
+    pub conv3: ConvBlock<B>,
+    pub conv4: ConvBlock<B>,
+    pub global_pool: AdaptiveAvgPool2d,
+    pub fc1: Linear<B>,
+    pub dropout: Dropout,
+    pub fc2: Linear<B>,
     num_classes: usize,
 }
 ```
@@ -46,11 +71,11 @@ As a result, exactly the same model code runs on CUDA (for GPU-accelerated train
 
 ### 3.1.3 Model Size
 
-The trained model weights take up 5.7 MB on disk. The compiled Rust release binary, which includes the model, the inference runtime and the application code, comes to roughly 26 MB. The PyTorch checkpoint for the same CNN architecture is similar in size (a few MB); **the model weights themselves are comparable between both stacks.**
+The trained model weights take up 5.7 MB on disk. The compiled Rust release binary, which includes the model, the inference runtime and the application code, is roughly 26 MB. The PyTorch checkpoint for the same CNN architecture is similar in size, only a few MB. **The model weights themselves are therefore comparable between both stacks.**
 
-The critical difference is **what has to be present on the end-user's device to run inference.** With Rust, the release binary is the only artefact that has to be there: a single 26 MB file that contains the compiled runtime and every dependency. With Python, running the same model requires the Python interpreter, the PyTorch library (with or without CUDA support) and a number of additional packages. A CUDA-enabled PyTorch wheel alone is typically in the low gigabytes once unpacked [17][23], and a practical environment (with TorchVision, NumPy, Pillow and so on) grows further from there.
+The important difference is **what has to be present on the end-user's device to run inference.** With Rust, the release binary is the only artefact that has to be there. It is a single 26 MB file that contains the compiled runtime and the dependencies. With Python, running the same model requires the Python interpreter, the PyTorch library, with or without CUDA support, and several extra packages. A CUDA-enabled PyTorch wheel alone is typically in the low gigabytes once unpacked [17][23], and a practical environment with TorchVision, NumPy, Pillow and similar packages grows further from there.
 
-To put that in perspective: the Rust `target/` build directory, which is analogous to `node_modules` or a Python virtual environment, is itself around 2.1 GB, which is comparable to a PyTorch virtual environment. **Both stacks require gigabytes of tooling during development.** The difference is that Rust's compilation step distills all of that down into a single portable binary, whereas a Python deployment has to carry its interpreter and library tree along to the target device.
+To put that in perspective, the Rust `target/` build directory, which is comparable to `node_modules` or a Python virtual environment, is itself around 2.1 GB. That is similar to a PyTorch virtual environment. **Both stacks require gigabytes of tooling during development.** The difference is that Rust's compilation step reduces all of that to a single portable binary, while a Python deployment has to carry its interpreter and library tree to the target device.
 
 For edge deployment, this means that the Rust binary can be distributed over Bluetooth, on a USB stick or through a brief mobile data connection. A Python-based deployment either requires a multi-gigabyte environment to be pre-installed on every device or forces the team to ship a container or bundle that includes the interpreter and wheels.
 
@@ -67,7 +92,7 @@ The PlantVillage dataset (roughly 87,000 images across 38 classes) is split into
 | Validation | 10% | Hyperparameter tuning and early stopping |
 | Test | 10% | Final evaluation (never seen during training) |
 
-The labeled ratio is intentionally kept low at 20%, so that the setup simulates a realistic scenario in which only a small amount of expert-annotated data is available.
+The labeled ratio is intentionally kept low at 20%. This simulates a realistic situation where only a limited amount of expert-annotated data is available.
 
 ### 3.2.2 Training Pipeline
 
@@ -93,7 +118,7 @@ The SSL pipeline improves validation accuracy from roughly 70 to 75% (the superv
 
 ## 3.3 Incremental Learning Experiments
 
-Three controlled experiments were carried out to evaluate aspects of the system that are critical for real-world deployment: how much labeled data is actually needed, what happens when new disease classes have to be added to an existing model, and whether the difficulty of adding a class depends on the size of the existing taxonomy.
+Three controlled experiments were carried out to evaluate parts of the system that matter for real-world deployment: how much labeled data is actually needed, what happens when new disease classes have to be added to an existing model, and whether the difficulty of adding a class depends on the size of the existing taxonomy.
 
 ### 3.3.1 Experiment 1: Label Efficiency Curve
 
@@ -124,7 +149,7 @@ The model was trained from scratch at seven different labeled data quantities, r
 1. With only 5 labeled images per class, the model reaches just 34.21% accuracy, which is barely above random for 38 classes (2.63%).
 2. The sharpest improvement happens between 25 and 100 images per class, where accuracy jumps from 57.89% to 85.53%.
 3. Beyond 100 images per class, returns diminish quickly: going from 100 to 200 yields only a 3.22 percentage point gain.
-4. **Practical recommendation:** a minimum of 100 labeled images per class is needed for production-viable accuracy (above 80%). SSL methods are essential for bridging the gap whenever fewer labels are available.
+4. **Practical recommendation:** a minimum of 100 labeled images per class is needed for production-viable accuracy, meaning above 80%. SSL methods are useful for bridging the gap whenever fewer labels are available.
 
 ### 3.3.2 Experiment 2: Class Scaling Effect
 
@@ -151,7 +176,7 @@ Two scenarios were compared. In Scenario A, a model was trained on 5 base classe
 1. The large-base model (30 classes) shows **6× more forgetting** than the small-base model (1.26% versus 0.21%). The model is measurably more biased towards existing classes when the base is larger.
 2. New class accuracy drops by 3.02 percentage points in the large-base scenario (96.98% versus 100.00%), which confirms that class competition increases as the number of existing classes grows.
 3. Training time scales roughly linearly with the number of classes (5.3× longer for 6× more base classes).
-4. **Practical recommendation:** for production systems with many existing classes, use incremental learning methods such as Learning without Forgetting (LwF), Elastic Weight Consolidation (EWC) or rehearsal-based approaches to keep catastrophic forgetting under control. Accuracy on existing classes should be monitored after every model update.
+4. **Practical recommendation:** for production systems with many existing classes, use incremental learning methods such as Learning without Forgetting (LwF), Elastic Weight Consolidation (EWC) or rehearsal-based approaches to keep catastrophic forgetting under control. Accuracy on existing classes should be checked after every model update.
 
 ### 3.3.3 Experiment 3: New Class Position Effect
 
@@ -193,7 +218,7 @@ Both scenarios were evaluated at five labeling levels: 5, 10, 25, 50 and 100 lab
 1. Learning a new class is substantially harder as the 31st class than as the 6th class. At 50 labeled samples, the 6th class already reaches 84.27% accuracy while the 31st class only reaches 25.62%.
 2. The 6th class passes 70% accuracy with just 50 samples. The 31st class does not reach 70% accuracy at any of the tested sample counts (up to 100).
 3. Negative forgetting values in the small-base scenario (for example -2.84% at 50 samples) show that the model occasionally improves on existing classes during incremental training, probably because the additional data acts as implicit regularisation.
-4. **Practical recommendation:** when the deployment scenario assumes that new disease classes will be added over time, start with a comprehensive base model. Adding classes to a large taxonomy requires considerably more labeled data than adding them to a small one. SSL pseudo-labeling can help bridge that gap by generating extra training samples for the new class.
+4. **Practical recommendation:** when the deployment scenario assumes that new disease classes will be added over time, start with a broad base model. Adding classes to a large taxonomy requires much more labeled data than adding them to a small one. SSL pseudo-labeling can help bridge that gap by generating extra training samples for the new class.
 
 ## 3.4 Deployment and Benchmarks
 
@@ -220,15 +245,15 @@ The system was benchmarked on four hardware configurations. All tests used the s
 
 ### 3.4.2 Analysis
 
-A few things stand out in the benchmark results:
+A few things stand out in the benchmark results.
 
-**Desktop GPU performance.** At 0.39 ms per inference (2,579 FPS), the model sits well below the real-time threshold on desktop hardware. The SSL training does not degrade inference speed: the optimised SSL model matches the supervised baseline in latency while benefiting from higher accuracy.
+**Desktop GPU performance.** At 0.39 ms per inference, or 2,579 FPS, the model is well below the real-time threshold on desktop hardware. The SSL training does not make inference slower. The optimised SSL model matches the supervised baseline in latency while benefiting from higher accuracy.
 
 **Mobile performance.** The iPhone 12, running the model through Tauri's Rust backend, reaches roughly 80 ms per inference (around 12 FPS). That is comfortably within the usability threshold for a camera-based application where a farmer points a phone at a leaf and waits for a classification.
 
-**The Jetson pivot.** The Jetson Orin Nano, which is a dedicated edge AI device costing €350, performs worse than the iPhone 12 (120 ms versus 80 ms). That result directly shaped the project's deployment strategy: dedicated edge hardware is unnecessary when the consumer devices (phones, laptops) that people already own outperform it. The project therefore shifted to a BYOD (Bring Your Own Device) model and eliminated hardware costs altogether.
+**The Jetson pivot.** The Jetson Orin Nano, which is a dedicated edge AI device costing €350, performs worse than the iPhone 12, with 120 ms compared to 80 ms. That result directly shaped the project's deployment strategy. Dedicated edge hardware is not needed when consumer devices, such as phones and laptops, already outperform it. The project therefore shifted to a BYOD (Bring Your Own Device) model and removed the extra hardware cost.
 
-**Deployment size advantage.** The compiled binary of roughly 26 MB can be distributed over Bluetooth, a USB drive or a brief mobile data connection. A Python/PyTorch deployment requires a multi-gigabyte environment on the target device, which is impractical over those same channels and undermines an offline-first deployment story.
+**Deployment size advantage.** The compiled binary of roughly 26 MB can be distributed over Bluetooth, a USB drive or a short mobile data connection. A Python/PyTorch deployment requires a multi-gigabyte environment on the target device, which is not practical over those same channels and makes offline-first deployment harder.
 
 **Startup time.** A PyTorch cold start takes about 3 seconds because of Python interpreter initialisation and library loading. The Burn binary starts in under 100 ms, which is the threshold below which users tend to perceive an application as "instant".
 
@@ -261,13 +286,13 @@ A number of technical challenges came up during development that are worth docum
 
 ### 3.6.1 Burn Version Migration
 
-Development started on Burn 0.14 in the `incremental_learning` workspace. Partway through the project, Burn 0.20 was released with significant API changes, in particular to the `Module` trait, the optimizer API and the tensor serialisation format. Rather than migrate the incremental learning code in the middle of an ongoing experiment, a second workspace (`plantvillage_ssl`) was created on Burn 0.20 for the main SSL pipeline. This kept the experimental results from the incremental learning workspace reproducible, at the cost of maintaining two parallel codebases with the same model architecture.
+Development started on Burn 0.14 in the `incremental_learning` workspace. Partway through the project, Burn 0.20 was released with important API changes, especially to the `Module` trait, the optimizer API and the tensor serialisation format. Instead of migrating the incremental learning code in the middle of an ongoing experiment, a second workspace (`plantvillage_ssl`) was created on Burn 0.20 for the main SSL pipeline. This kept the experimental results from the incremental learning workspace reproducible, but it also meant maintaining two parallel codebases with the same model architecture.
 
 Model weights cannot be transferred directly between Burn versions. To share trained models across workspaces, a JSON-based weight export and import mechanism was added. It introduces an extra conversion step, but it preserves weight compatibility across versions.
 
 ### 3.6.2 CUDA Memory Management
 
-During the pseudo-labeling simulation, the training loop creates and destroys thousands of tensors per epoch. Burn's CUDA backend allocates GPU memory through a caching allocator, but under sustained load, fragmentation can cause out-of-memory errors even when the total allocated memory is still below the device limit. The fix was to insert explicit synchronisation points at the end of each retraining cycle, so that the allocator could compact its memory pools. On the 6 GB RTX 3060 used for development, this reduced peak memory usage from roughly 5.8 GB to 4.2 GB.
+During the pseudo-labeling simulation, the training loop creates and destroys thousands of tensors per epoch. Burn's CUDA backend allocates GPU memory through a caching allocator, but under sustained load, fragmentation can cause out-of-memory errors even when the total allocated memory is still below the device limit. The fix was to insert explicit synchronisation points at the end of each retraining cycle, so the allocator could compact its memory pools. On the 6 GB RTX 3060 used for development, this reduced peak memory usage from roughly 5.8 GB to 4.2 GB.
 
 ### 3.6.3 Cross-Platform Image Preprocessing
 

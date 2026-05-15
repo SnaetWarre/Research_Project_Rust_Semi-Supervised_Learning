@@ -2,7 +2,7 @@
 
 **Speaker:** [TODO: Speaker name / organization]
 **Date:** [TODO: Date of session]
-**Student:** Warre Snaet | Howest MCT | Research Project 2025–2026
+**Student:** Warre Snaet | Howest MCT | Research Project 2025-2026
 
 ---
 
@@ -38,7 +38,7 @@
 
 ## Key Takeaways
 
-- [TODO: 3–5 bullet points summarizing the most important points from the session]
+- [TODO: 3-5 bullet points summarizing the most important points from the session]
 
 ---
 

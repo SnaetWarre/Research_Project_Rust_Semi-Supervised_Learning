@@ -1,6 +1,6 @@
 # 2. Research: Literature Study
 
-This chapter sets out the theoretical background that is needed to understand the research and its results. In line with the thesis guidelines, only topics that fall **outside the standard MCT curriculum** are discussed in depth; the intended audience consists of IT professionals. The chapter covers semi-supervised learning theory, the Rust machine learning ecosystem, incremental learning (catastrophic forgetting), edge AI deployment, and the PlantVillage dataset.
+This chapter explains the theoretical background that is needed to understand the research and the results. In line with the thesis guidelines, only topics that fall **outside the standard MCT curriculum** are discussed in depth. The intended audience is IT professionals. The chapter covers semi-supervised learning theory, the Rust machine learning ecosystem, incremental learning, edge AI deployment and the PlantVillage dataset.
 
 ## 2.1 Semi-Supervised Learning
 
@@ -20,7 +20,7 @@ Pseudo-labeling is one of the simplest and most effective SSL techniques. The pr
 4. Retrain the model on the combined labeled and pseudo-labeled data.
 5. Repeat until convergence.
 
-The critical design choice here is the **confidence threshold**. A threshold that is set too low admits noisy pseudo-labels that can degrade the model's performance, a phenomenon that is commonly referred to as confirmation bias. A threshold that is set too high discards too many samples and limits the benefit that can be extracted from the unlabeled data. This is the **quantity to quality trade-off** described by Chen et al. in SoftMatch [13], which proposes an adaptive weighting scheme to balance both concerns.
+The critical design choice here is the **confidence threshold**. If the threshold is too low, noisy pseudo-labels enter the training set and can make the model worse. This is usually called confirmation bias. If the threshold is too high, too many samples are rejected and the unlabeled data is not used enough. This is the **quantity to quality trade-off** described by Chen et al. in SoftMatch [13], where an adaptive weighting scheme is proposed to balance both concerns.
 
 ### 2.1.3 Related Work in Plant Disease Classification
 
@@ -28,7 +28,7 @@ Several recent studies have applied SSL to plant disease detection with good res
 
 **Ambiguity-Aware Semi-Supervised Learning (AaSSL).** Pham et al. (2025) address the problem of ambiguous samples near the decision boundary. Their method explicitly filters these samples out rather than accepting them as pseudo-labels. With only 5% of the data labeled, accuracy improved from 90.74% to 94.09% [1]. This idea directly influenced the confidence-threshold filtering used in this project.
 
-**Mean Teacher and Consistency Regularization.** Ilsever and Baz (2024) apply a student–teacher architecture to the PlantVillage dataset. The teacher's weights are an exponential moving average (EMA) of the student's weights, and a consistency loss is applied under different augmentations. That approach reached 88.50% accuracy with 5% labeled data [4]. It is effective, but the Mean Teacher approach requires two models to be held in memory at the same time, which is a real constraint on edge devices with limited VRAM.
+**Mean Teacher and Consistency Regularization.** Ilsever and Baz (2024) apply a student-teacher architecture to the PlantVillage dataset. The teacher's weights are an exponential moving average (EMA) of the student's weights, and a consistency loss is applied under different augmentations. That approach reached 88.50% accuracy with 5% labeled data [4]. It is effective, but Mean Teacher requires two models in memory at the same time. That is a real constraint on edge devices with limited VRAM.
 
 **Semi-supervised jute leaf disease classification.** Jannat (2025) shows that a lightweight CNN combined with SSL on 10% labeled and 90% unlabeled data can reach 97.89% accuracy, specifically with mobile and edge deployment in mind [2]. This result supports the broader idea that simple architectures paired with effective SSL can outperform more complex models in constrained environments.
 
@@ -54,7 +54,7 @@ graph TD
 ```
 *Figure 2.1: Flowchart of the implemented pseudo-labeling pipeline.*
 
-1. **A single model** rather than a student–teacher setup (keeps the VRAM usage within edge device limits).
+1. **A single model** rather than a student-teacher setup, to keep the VRAM usage within edge device limits.
 2. **A high confidence threshold (0.9)** to prioritise label precision over recall, following the ambiguity-aware filtering principle from Pham et al.
 3. **A retrain threshold of 200 samples** to batch pseudo-labels together rather than adding them one at a time, which reduces the overhead of retraining.
 4. **Label-consistent augmentations** (random crop, horizontal flip, brightness jitter): augmentations that do not alter the semantic content of the image.
@@ -65,12 +65,12 @@ graph TD
 
 The standard ML stack (Python, PyTorch, CUDA) is optimised for research flexibility and GPU throughput. For edge deployment, however, it runs into several issues:
 
-- **Deployment size.** Running a PyTorch model requires the Python interpreter, the PyTorch library and a number of supporting packages on the target device. A CUDA-enabled PyTorch wheel on its own is in the low gigabytes once unpacked; the full environment grows further once TorchVision, NumPy and tooling are added [17][23]. That is comparable in scale to a Rust `target/` build directory (around 2 GB), but unlike Rust, Python has no way to distill that into a single small binary for distribution.
+- **Deployment size.** Running a PyTorch model requires the Python interpreter, the PyTorch library and a number of supporting packages on the target device. A CUDA-enabled PyTorch wheel on its own is already in the low gigabytes once unpacked. The full environment grows further once TorchVision, NumPy and tooling are added [17][23]. That is comparable in scale to a Rust `target/` build directory, around 2 GB, but unlike Rust, Python has no way to reduce that to a single small binary for distribution.
 - **Startup latency.** Python interpreter initialisation takes about 3 seconds, which is very noticeable in interactive applications.
 - **Cross-compilation.** Deploying Python ML models to iOS, Android or embedded ARM devices requires wrapper frameworks (CoreML, TFLite, ONNX Runtime) and format conversion steps.
 - **Memory safety.** Python's garbage collector and the C++ backend (LibTorch) can cause unpredictable memory behaviour, which is problematic for long-running processes on an edge device.
 
-Rust addresses all of these constraints. It compiles to a single static binary with no runtime dependencies. Its ownership model guarantees memory safety at compile time without a garbage collector. And its build system (Cargo) supports cross-compilation to ARM, WASM, iOS and Android targets out of the box [12].
+Rust addresses these constraints in a different way. It compiles to a single binary with no interpreter. Its ownership model gives memory safety at compile time without a garbage collector. Its build system, Cargo, also supports cross-compilation to ARM, WASM, iOS and Android targets [12].
 
 ### 2.2.2 Framework Comparison
 
@@ -86,22 +86,53 @@ Three Rust ML frameworks were evaluated for this project [14]:
 | **Deployment** | Static binary | Static binary / WASM | Requires LibTorch shared library |
 | **Edge suitability** | High (no heavy dependencies) | High (lightweight) | Medium (complex cross-compilation) |
 
-**Burn** [6][7] is a backend-agnostic framework with a comprehensive training API that supports custom training loops, which is exactly what is needed to implement a pseudo-labeling cycle. Its `Module` derive macro allows for type-safe model definitions that are generic over backends, so the same code compiles against CUDA, CPU, wgpu or WASM targets without any modification.
+**Burn** [6][7] is a backend-agnostic framework with a full training API that supports custom training loops. That is exactly what is needed for a pseudo-labeling cycle. Its `Module` derive macro allows type-safe model definitions that are generic over backends, so the same code can compile against CUDA, CPU, wgpu or WASM targets without changing the model code.
 
 **Candle**, developed by Hugging Face, is strong at inference for large language models and transformer architectures. Its training API, however, is more limited and does not comfortably support the iterative pseudo-labeling loops that SSL relies on.
 
 **tch-rs** provides direct Rust bindings to LibTorch, which is PyTorch's C++ backend. That gives full PyTorch compatibility, but it also reintroduces the dependency on a large C++ shared library (around 1.5 GB), which undoes the deployment size advantage of Rust.
 
-**Conclusion:** Burn was selected for its combination of backend-agnostic deployment, an extensive training API that is suitable for custom SSL loops, and the ability to produce a self-contained static binary for edge devices [8][9][10].
+**Conclusion:** Burn was selected because it combines backend-agnostic deployment, a training API that is suitable for custom SSL loops, and the option to produce a self-contained binary for edge devices [8][9][10].
 
 ### 2.2.3 Burn's Backend Abstraction
 
-A distinctive feature of Burn is its backend abstraction layer. Models are defined as generic structs parameterised over a `Backend` trait:
+A useful feature of Burn is its backend abstraction layer. Models are defined as generic structs parameterised over a `Backend` trait. The following snippet is taken directly from the project's model definition (`plantvillage_ssl/src/model/cnn.rs`):
+
+```rust
+/// Plant Disease Classifier CNN
+#[derive(Module, Debug)]
+pub struct PlantClassifier<B: Backend> {
+    pub conv1: ConvBlock<B>,
+    pub conv2: ConvBlock<B>,
+    pub conv3: ConvBlock<B>,
+    pub conv4: ConvBlock<B>,
+    pub global_pool: AdaptiveAvgPool2d,
+    pub fc1: Linear<B>,
+    pub dropout: Dropout,
+    pub fc2: Linear<B>,
+    num_classes: usize,
+}
+```
+
+The forward pass is equally backend-agnostic:
 
 ```rust
 impl<B: Backend> PlantClassifier<B> {
     pub fn forward(&self, x: Tensor<B, 4>) -> Tensor<B, 2> {
-        // Identical code regardless of backend
+        let x = self.conv1.forward(x);
+        let x = self.conv2.forward(x);
+        let x = self.conv3.forward(x);
+        let x = self.conv4.forward(x);
+
+        let x = self.global_pool.forward(x);
+
+        let [batch_size, channels, _, _] = x.dims();
+        let x = x.reshape([batch_size, channels]);
+
+        let x = self.fc1.forward(x);
+        let x = Relu::new().forward(x);
+        let x = self.dropout.forward(x);
+        self.fc2.forward(x)
     }
 }
 ```
@@ -118,7 +149,7 @@ The same trained model weights can be loaded on any of these backends, which ena
 
 ### 2.3.1 The Problem
 
-In a real-world deployment, the set of plant diseases that the model has to recognise does not stay the same forever. New diseases emerge, new crop varieties are introduced and regional conditions change. A practical system must therefore be able to **add new classes** to an existing model without retraining from scratch on the entire dataset.
+In a real-world deployment, the set of plant diseases that the model has to recognise will not stay the same forever. New diseases appear, new crop varieties are introduced and regional conditions change. A practical system should therefore be able to **add new classes** to an existing model without retraining from scratch on the full dataset.
 
 The main obstacle is **catastrophic forgetting**. When a neural network is fine-tuned on new data, it tends to overwrite the weights that encoded knowledge about the older data, which causes performance on the previously learned classes to degrade [18].
 
@@ -141,13 +172,13 @@ The literature describes three main families of approaches for dealing with cata
 - **Progressive Neural Networks** add new columns of neurons for each new task, with lateral connections to previous columns.
 - **PackNet** prunes and freezes weights after each task, freeing up capacity for subsequent ones.
 
-For this project, the experimental focus is on measuring the severity of catastrophic forgetting under different conditions (base model size, number of labeled samples) in order to establish empirical baselines. The implementation uses straightforward fine-tuning, which isolates the forgetting effect without the confounding variable of a mitigation strategy.
+For this project, the experimental focus is on measuring how severe catastrophic forgetting becomes under different conditions, especially base model size and the number of labeled samples. The implementation uses straightforward fine-tuning. This isolates the forgetting effect, because no mitigation strategy is added on top.
 
 ## 2.4 Edge AI Deployment
 
 ### 2.4.1 Constraints and Requirements
 
-Edge deployment brings constraints that differ fundamentally from cloud or data-centre ML:
+Edge deployment brings constraints that are different from cloud or data-centre ML:
 
 - **Compute:** GPU and CPU capability are limited, so models have to be small and efficient.
 - **Memory:** typically 4 to 8 GB of RAM or VRAM, shared with the operating system and any other applications.
@@ -159,14 +190,14 @@ Edge deployment brings constraints that differ fundamentally from cloud or data-
 
 Several deployment paths exist for ML models on edge devices:
 
-- **ONNX (Open Neural Network Exchange):** a vendor-neutral model format supported by ONNX Runtime, which has backends for CPU, GPU, CoreML (iOS), NNAPI (Android) and WebAssembly. It is widely used but always requires a conversion step from the training framework.
+- **ONNX (Open Neural Network Exchange):** a vendor-neutral model format supported by ONNX Runtime, with backends for CPU, GPU, CoreML (iOS), NNAPI (Android) and WebAssembly. It is widely used, but it always requires a conversion step from the training framework.
 - **TensorFlow Lite (TFLite):** Google's edge inference runtime, optimised for mobile devices. It requires models to be converted from TensorFlow format and has limited support for custom operations.
 - **WebAssembly (WASM):** allows ML models to run inside web browsers at near-native performance. It makes Progressive Web Apps (PWAs) possible and those can work fully offline after the first load.
 - **Native compilation (Rust/C++):** compiling the model and the inference runtime into a single binary removes all dependency management entirely. That is the approach used in this project via Burn.
 
 ### 2.4.3 Tauri for Cross-Platform Deployment
 
-Tauri [21] is a framework for building desktop and mobile applications with a Rust backend and a web-based frontend. Unlike Electron, which bundles a full Chromium browser, Tauri uses the operating system's native webview, and the resulting applications are therefore considerably smaller.
+Tauri [21] is a framework for building desktop and mobile applications with a Rust backend and a web-based frontend. Unlike Electron, which bundles a full Chromium browser, Tauri uses the operating system's native webview. Because of that, the resulting applications are much smaller.
 
 For this project, Tauri makes it possible to produce, from a single codebase:
 - A desktop application (Linux, macOS, Windows) with native GPU access.
@@ -177,7 +208,7 @@ The ML inference runs entirely in the Rust backend and is exposed to the Svelte 
 
 ### 2.4.4 MicroFlow and Rust-Based Inference Engines
 
-Zhang et al. (2024) present MicroFlow, an efficient Rust-based inference engine that is designed specifically for TinyML deployments [12]. MicroFlow shows that Rust's zero-cost abstractions and its lack of a garbage collector make it a realistic language for inference on microcontrollers with as little as 256 KB of RAM. This project targets more capable devices (smartphones, laptops), but MicroFlow validates the broader thesis that Rust is a viable language for production ML inference at the edge.
+Zhang et al. (2024) present MicroFlow, an efficient Rust-based inference engine that is designed specifically for TinyML deployments [12]. MicroFlow shows that Rust's zero-cost abstractions and its lack of a garbage collector make it realistic for inference on microcontrollers with as little as 256 KB of RAM. This project targets more capable devices, such as smartphones and laptops, but MicroFlow supports the broader idea that Rust is a viable language for production ML inference at the edge.
 
 ## 2.5 The PlantVillage Dataset
 
@@ -198,7 +229,7 @@ The dataset contains both diseased and healthy examples for each crop, so the mo
 
 For this project, the existing train and valid split is merged and then re-split according to the four-pool strategy described in Chapter 3 (20% labeled, 60% stream, 10% validation, 10% test). This makes sure that the SSL pipeline has access to a large pool of unlabeled data while also keeping a held-out test set that is never seen during training.
 
-Because the dataset is pre-balanced (roughly 2,000 images per class), the experimental setup is simplified: class imbalance cannot confound the results of the label efficiency and class scaling experiments.
+Because the dataset is pre-balanced, with roughly 2,000 images per class, the experimental setup is simpler. Class imbalance should not distort the results of the label efficiency and class scaling experiments.
 
 ### 2.5.2 Limitations of the Dataset
 

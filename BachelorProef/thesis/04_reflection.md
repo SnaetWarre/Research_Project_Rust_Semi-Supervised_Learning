@@ -58,7 +58,7 @@ Finally, there is the update problem. The initial installation is small enough (
 
 The numbers from this project make a straightforward economic argument:
 
-- The SSL pipeline reduces the labeling requirement from 100% of the dataset down to roughly 20%, which translates directly into annotation budget savings. At €2 per image, that is the difference between €100,000 and €20,000 for a 50,000-image dataset.
+- The SSL pipeline reduces the labeling requirement from 100% of the dataset down to roughly 20%, which translates directly into annotation budget savings. For a 50,000-image dataset, that is the difference between a full expert-annotation budget and a much smaller one, which matters for research groups and agricultural extensions with limited funding.
 - The BYOD pivot eliminates hardware costs entirely. The Jetson Orin Nano benchmark (Table 3.6) showed that a €350 dedicated device was actually slower than a phone, so there is no reason to buy one.
 - Once installed, the marginal cost of each classification is zero: no cloud API calls, no per-prediction charges, no bandwidth costs.
 

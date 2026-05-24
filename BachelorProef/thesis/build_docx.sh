@@ -6,6 +6,7 @@
 # Pipeline:
 #   • --reference-doc → Howest MCT template (Heading 1/2, Normal, …).
 #   • pandoc/docx_polish.lua → page break before each main # heading; default figure width.
+#   • pandoc/polish_docx_layout.py → box code snippets and fit the long title line.
 #   • pandoc/strip_word_heading_list_numbering.py → strips Word list numbering (w:numPr) from
 #     Heading 1/2/4–9 in the output only. The template binds those styles to a multilevel list,
 #     which would otherwise add 1., 2., … before headings that already include chapter numbers.
@@ -28,6 +29,7 @@ TEMPLATE="${SCRIPT_DIR}/../template/Template_Bachelorproef_MCT.docx"
 OUT_DIR="${BUILD_DOCX_OUT_DIR:-/home/warre/ThesisConnectionv2}"
 OUT_FILE="${OUT_DIR}/Bachelorproef_Snaet_2026.docx"
 LUA_FILTER="${SCRIPT_DIR}/pandoc/docx_polish.lua"
+POLISH_LAYOUT="${SCRIPT_DIR}/pandoc/polish_docx_layout.py"
 STRIP_HEADING_NUM="${SCRIPT_DIR}/pandoc/strip_word_heading_list_numbering.py"
 
 # Repo root (plantvillage_ssl/... paths in Markdown resolve from BachelorProef/thesis)
@@ -56,6 +58,11 @@ fi
 
 if [[ ! -f "${LUA_FILTER}" ]]; then
   echo "Lua filter not found: ${LUA_FILTER}" >&2
+  exit 1
+fi
+
+if [[ ! -f "${POLISH_LAYOUT}" ]]; then
+  echo "DOCX layout polish script not found: ${POLISH_LAYOUT}" >&2
   exit 1
 fi
 
@@ -116,6 +123,9 @@ if [[ "${BUILD_DOCX_VERBOSE:-}" == "1" ]]; then
   STRIP_FLAGS=(-v)
 fi
 python3 "${STRIP_HEADING_NUM}" "${STRIP_FLAGS[@]}" "${OUT_FILE}"
+
+log "applying DOCX layout polish (code boxes, fitted title)"
+python3 "${POLISH_LAYOUT}" "${OUT_FILE}"
 
 SZ2="$(stat -c '%s' "${OUT_FILE}" 2>/dev/null || wc -c < "${OUT_FILE}")"
 log "final: ${OUT_FILE} (${SZ2} bytes)"

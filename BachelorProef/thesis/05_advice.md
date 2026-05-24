@@ -99,7 +99,16 @@ Testing on the actual device early reveals:
 | GPU memory on mobile | Model fails to load | Switch to the ndarray (CPU) backend on devices with less than 4 GB of RAM, and drop batch size to 1 |
 | Model format compatibility | Weights trained on Burn 0.20 don't load on 0.14 | Keep version-locked workspaces, and use weight export/import via JSON for cross-version compatibility |
 
-## 5.8 Summary: The Recommended Workflow
+## 5.8 Advice from External Experts (Pending)
+
+The external experts from 2AI-IPCA (Miss Torres and Sir Morais) were contacted with the detailed questions listed in Appendix B. Their specific recommendations on architecture choices, pseudo-labeling strategies, Burn ecosystem maturity and incremental learning mitigation methods are pending. Once received, this section will be updated with their direct advice.
+
+Based on the questions that were sent, the areas where external input is most expected are:
+- Whether the 90% global confidence threshold should be replaced with per-class thresholds.
+- Whether MobileNet or EfficientNet-Lite would be a better backbone for mobile deployment than the custom CNN.
+- Whether rehearsal-based methods are indeed the most practical forgetting mitigation for production teams without dedicated ML research staff.
+
+## 5.9 Summary: The Recommended Workflow
 
 For someone starting this research from scratch, the recommended workflow is:
 

@@ -2,13 +2,16 @@
 
 ## 1.1 Context and Motivation
 
-Machine learning has become a very important tool for image classification, but deploying trained models outside cloud environments is still a real engineering challenge. The standard ML stack, Python, PyTorch and CUDA, is built for research flexibility and GPU throughput. It is less suited for shipping a working classifier to a phone or to a field laptop that may not have an internet connection. A typical PyTorch deployment needs the Python interpreter, the PyTorch library and a set of supporting packages. Together, these can take several gigabytes on the target device. That is acceptable on a cloud server, but it quickly becomes a problem for practical edge scenarios.
+Shipping a machine learning model outside of a cloud environment is still harder than most tutorials suggest. The standard ML stack, Python and PyTorch, is built for research flexibility and GPU throughput. It is less suited for running on a phone or on a field laptop that may not have an internet connection. A typical PyTorch deployment needs the Python interpreter, the PyTorch library and a set of supporting packages. Together, these can take several gigabytes on the target device. That is acceptable on a cloud server, but it quickly becomes a problem for practical edge scenarios.
 
 Rust offers a different deployment model. It compiles to a single binary with no interpreter and no garbage collector. Its type system catches many problems at compile time, which is useful for ML processes that have to run reliably. The build system also supports cross-compilation to ARM, iOS, Android and WebAssembly. In this project, that means the deployment can go from a multi-gigabyte Python environment to a 26 MB binary that can even be distributed on a USB stick.
 
-The difficult part is training. Rust's ML ecosystem is still young, and many frameworks focus more on inference than on the full training loop. Semi-supervised learning (SSL) combines a small set of labeled data with a large pool of unlabeled data. To do that properly, the implementation needs pseudo-labeling, confidence filtering and repeated retraining cycles. This is more demanding than simple inference, and it tests whether the training API is mature enough. For this thesis, the main question is whether Rust's ML ecosystem, and specifically the Burn framework, can support this workflow while still keeping the deployment advantages.
+The difficult part is training. Rust's ML ecosystem is still young, and many frameworks focus more on inference than on the full training loop. Semi-supervised learning (SSL) combines a small set of labeled data with a large pool of unlabeled data. To do that properly, the implementation needs pseudo-labeling, confidence filtering and repeated retraining cycles. This is more demanding than simple inference, and it tests whether the training API is mature enough. The central question of this thesis is whether Rust's ML ecosystem, and specifically the Burn framework, can support this workflow while still keeping the deployment advantages.
 
-This thesis investigates exactly that, using plant disease classification as the test case. The PlantVillage dataset (38 disease classes, roughly 87,000 images) provides a realistic and well-understood benchmark. Plant disease detection is also a natural fit for edge deployment: the farmers who need it most often work in areas with limited connectivity, and the diagnostic tools that are currently available either depend on cloud access or require expensive laboratory analysis.
+Plant disease detection is used here as the concrete benchmark. The PlantVillage dataset (38 disease classes, roughly 87,000 images) provides a realistic and well-understood test case. Plant disease detection is also a natural fit for edge deployment: the people who need it most often work in areas with limited connectivity, and the diagnostic tools that are currently available either depend on cloud access or require expensive laboratory analysis. By building the SSL pipeline for this specific problem, the thesis tests whether Rust can handle a full ML workflow, from training to deployment, in a domain where offline operation really matters.
+
+![Deployment footprint comparison: Python/PyTorch stack versus Rust single binary](figures/deployment_comparison.svg)
+*Figure 1.1: Conceptual comparison of the runtime footprint of a Python/PyTorch deployment versus a compiled Rust binary. The sizes are based on the measurements described in Chapter 3.*
 
 ## 1.2 The Labeling Problem
 
@@ -24,16 +27,13 @@ The central research question of this thesis is:
 
 This question is broken down into the following sub-questions:
 
-1. Which principles and techniques underpin semi-supervised learning, and how can they be applied in practice to plant disease classification?
-2. What is the best-practice approach for implementing neural networks with the Burn framework in Rust, including layer construction and forward passes?
-3. What are the key differences in speed and accuracy between Burn, Candle and tch-rs, and which of them is the most suitable for edge deployment?
-4. How can data augmentation and pseudo-labeling strategies improve training efficiency on limited labeled datasets?
-5. What are the best methods for automatically assigning labels to unlabeled plant leaf images, and how can the reliability of those labels be evaluated?
-6. How can model optimisation techniques such as quantisation or pruning improve inference speed on embedded edge devices?
-7. What trade-offs exist between model accuracy, inference latency and energy consumption on edge hardware?
-8. How does a Burn-based semi-supervised model compare to a PyTorch equivalent on identical hardware?
-9. Which practical implementation obstacles stand in the way of deployment on edge devices, and how can they be resolved?
-10. What is the minimum retraining frequency needed to keep plant disease classification accurate in real-world environments?
+1. Which principles underpin semi-supervised learning, and how can pseudo-labeling be applied to image classification?
+2. What is the best-practice approach for implementing neural networks with the Burn framework in Rust?
+3. How can data augmentation and pseudo-labeling strategies improve training efficiency on limited labeled datasets?
+4. What trade-offs exist between model accuracy, inference latency and deployment size on edge hardware?
+5. How does a Burn-based semi-supervised model compare to a PyTorch equivalent on identical hardware?
+6. How much labeled data is needed for acceptable accuracy, and what happens when new classes are added incrementally?
+7. Which practical obstacles stand in the way of deploying Rust-based ML on edge devices?
 
 ## 1.4 Scope and Approach
 
@@ -53,6 +53,6 @@ This thesis is organised as follows:
 
 - **Chapter 2: Research** presents the literature study. It covers semi-supervised learning techniques, the Rust ML ecosystem, incremental learning theory, edge AI deployment strategies and the PlantVillage dataset.
 - **Chapter 3: Research Results** describes the technical implementation. It covers the system architecture, the SSL training pipeline, the three controlled experiments and their quantitative results, the cross-platform benchmarks and the Tauri-based GUI application.
-- **Chapter 4: Reflection** offers a critical evaluation of the results through interviews with external experts, together with an analysis of the broader implications, including implementation barriers, business value, societal impact and possible directions for future research.
-- **Chapter 5: Advice** gives a practical, step-by-step guide for anyone tackling the same research question, grounded in both the experimental findings and the feedback from external reflection.
+- **Chapter 4: Reflection** offers a critical evaluation of the results through interviews with external experts, together with an analysis of the broader implications, including implementation barriers, privacy benefits and possible directions for future research.
+- **Chapter 5: Advice** gives a practical, step-by-step guide for anyone tackling the same research question, grounded in both the experimental findings and the planned external feedback.
 - **Chapter 6: Conclusion** answers the research question directly by bringing together the key findings from the preceding chapters.

@@ -20,7 +20,7 @@
 
 ### Deepfake Demonstration
 
-The presentation opened with a striking demonstration: a deepfake message "from" Bram Verdegem. It was surprisingly convincing, and it had been created from only **15 seconds** of original audio.
+The presentation opened with a memorable demonstration: a deepfake message "from" Bram Verdegem. It was surprisingly convincing, and it had been created from only **15 seconds** of original audio.
 
 ### Deepfake Ingredients
 

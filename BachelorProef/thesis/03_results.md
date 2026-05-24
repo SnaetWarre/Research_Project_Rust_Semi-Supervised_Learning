@@ -73,7 +73,7 @@ As a result, exactly the same model code runs on CUDA (for GPU-accelerated train
 
 The trained model weights take up 5.7 MB on disk. The compiled Rust release binary, which includes the model, the inference runtime and the application code, is roughly 26 MB. The PyTorch checkpoint for the same CNN architecture is similar in size, only a few MB. **The model weights themselves are therefore comparable between both stacks.**
 
-The important difference is **what has to be present on the end-user's device to run inference.** With Rust, the release binary is the only artefact that has to be there. It is a single 26 MB file that contains the compiled runtime and the dependencies. With Python, running the same model requires the Python interpreter, the PyTorch library, with or without CUDA support, and several extra packages. A CUDA-enabled PyTorch wheel alone is typically in the low gigabytes once unpacked [17][23], and a practical environment with TorchVision, NumPy, Pillow and similar packages grows further from there.
+The important difference is **what has to be present on the end user's device to run inference.** With Rust, the release binary is the only artefact that has to be there. It is a single 26 MB file that contains the compiled runtime and the dependencies. With Python, running the same model requires the Python interpreter, the PyTorch library, with or without CUDA support, and several extra packages. A CUDA-enabled PyTorch wheel alone is typically in the low gigabytes once unpacked [17][23], and a practical environment with TorchVision, NumPy, Pillow and similar packages grows further from there.
 
 To put that in perspective, the Rust `target/` build directory, which is comparable to `node_modules` or a Python virtual environment, is itself around 2.1 GB. That is similar to a PyTorch virtual environment. **Both stacks require gigabytes of tooling during development.** The difference is that Rust's compilation step reduces all of that to a single portable binary, while a Python deployment has to carry its interpreter and library tree to the target device.
 
@@ -86,7 +86,7 @@ For edge deployment, this means that the Rust binary can be distributed over Blu
 The PlantVillage dataset (roughly 87,000 images across 38 classes) is split into four non-overlapping pools:
 
 | Pool | Fraction | Purpose |
-|------|----------|---------|
+|:--|:--:|:--|
 | Labeled (CNN) | 20% | Initial supervised training |
 | Stream (SSL) | 60% | Unlabeled data for pseudo-labeling |
 | Validation | 10% | Hyperparameter tuning and early stopping |
@@ -129,7 +129,7 @@ The model was trained from scratch at seven different labeled data quantities, r
 **Table 3.1:** Label efficiency results
 
 | Images per class | Accuracy (%) | Training time (s) |
-|:---:|:---:|:---:|
+|:--:|:--:|:--:|
 | 5 | 34.21 | 25.6 |
 | 10 | 36.84 | 22.5 |
 | 25 | 57.89 | 54.4 |
@@ -139,7 +139,7 @@ The model was trained from scratch at seven different labeled data quantities, r
 | 500 | 94.47 | 1,101.1 |
 
 ![Label Efficiency Curve](../../plantvillage_ssl/output/experiments/label_efficiency/label_efficiency_curve.svg)
-*Figure 3.1: Accuracy as a function of labeled images per class. The steepest gain occurs between 25 and 100 images per class.*
+*Figure 3.1: Accuracy as a function of labeled images per class.*
 
 ![Label Efficiency Bars](../../plantvillage_ssl/output/experiments/label_efficiency/label_efficiency_bars.svg)
 *Figure 3.2: Bar chart comparison of accuracy at each labeling level.*
@@ -160,7 +160,7 @@ Two scenarios were compared. In Scenario A, a model was trained on 5 base classe
 **Table 3.2:** Class scaling results
 
 | Metric | 5 → 6 classes | 30 → 31 classes |
-|:---|:---:|:---:|
+|:--|:--:|:--:|
 | Base accuracy (before) | 99.83% | 98.76% |
 | Base accuracy (after) | 99.62% | 97.50% |
 | New class accuracy | 100.00% | 96.98% |
@@ -187,7 +187,7 @@ Both scenarios were evaluated at five labeling levels: 5, 10, 25, 50 and 100 lab
 **Table 3.3:** New class accuracy by label count and base size
 
 | Labeled samples | 6th class accuracy | 31st class accuracy | Difference |
-|:---:|:---:|:---:|:---:|
+|:--:|:--:|:--:|:--:|
 | 5 | 3.62% | 0.00% | -3.62 pp |
 | 10 | 5.11% | 0.17% | -4.94 pp |
 | 25 | 60.03% | 19.66% | -40.37 pp |
@@ -197,7 +197,7 @@ Both scenarios were evaluated at five labeling levels: 5, 10, 25, 50 and 100 lab
 **Table 3.4:** Forgetting by label count and base size
 
 | Labeled samples | 5→6 forgetting | 30→31 forgetting | Difference |
-|:---:|:---:|:---:|:---:|
+|:--:|:--:|:--:|:--:|
 | 5 | 0.42% | -0.70% | -1.12 pp |
 | 10 | 1.42% | 0.37% | -1.04 pp |
 | 25 | -0.25% | 0.15% | +0.40 pp |
@@ -229,7 +229,7 @@ The system was benchmarked on four hardware configurations. All tests used the s
 **Table 3.5:** Burn (Rust) CUDA backend: model version comparison
 
 | Model Version | Mean (ms) | p50 (ms) | p99 (ms) | Throughput |
-|:---|:---:|:---:|:---:|:---:|
+|:--|:--:|:--:|:--:|:--:|
 | Baseline | 0.39 | 0.38 | 0.46 | 2,559 FPS |
 | SSL | 0.42 | 0.41 | 0.53 | 2,357 FPS |
 | **SSL Optimized** | **0.39** | **0.38** | **0.45** | **2,579 FPS** |
@@ -237,7 +237,7 @@ The system was benchmarked on four hardware configurations. All tests used the s
 **Table 3.6:** Hardware comparison (SSL Optimized model)
 
 | Device | Latency | Throughput | Cost |
-|:---|:---:|:---:|:---:|
+|:--|:--:|:--:|:--:|
 | **Laptop (RTX 3060)** | **0.39 ms** | **2,579 FPS** | €0 (BYOD) |
 | iPhone 12 (Tauri/WASM) | ~80 ms | ~12 FPS | €0 (BYOD) |
 | Jetson Orin Nano | ~120 ms | ~8 FPS | €350 |
@@ -282,7 +282,7 @@ The application supports:
 
 ## 3.6 Challenges Encountered
 
-A number of technical challenges came up during development that are worth documenting for reproducibility.
+A few technical problems showed up during development that are worth writing down for reproducibility.
 
 ### 3.6.1 Burn Version Migration
 

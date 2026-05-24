@@ -1,71 +1,34 @@
 # 4. Reflection
 
-This chapter gives a critical evaluation of the research results from two angles: feedback from external experts with relevant industry or academic experience, and a broader reflection on what this work means in practice. The thesis guidelines require meaningful input from at least two external persons. Their complete interviews are included in the appendices.
+This chapter gives a critical evaluation of the research results from two angles: planned feedback from external experts with relevant industry or academic experience, and a broader reflection on what this work means in practice.
 
-## 4.1 External Reflection
+## 4.1 External Experts
 
-### 4.1.1 External Expert 1
+I contacted two external experts from the 2AI-IPCA research lab for a structured reflection on this project: Miss Torres and Sir Morais. Both work in image processing, computer vision and deep learning, with experience in biomedical applications that share technical similarities with agricultural image classification.
 
-> **[TODO: Insert name and company/organization]**
-> *[TODO: Insert role/title and brief description of expertise]*
+I sent them a detailed set of questions (see Appendix B) by email. The questions covered their view on pseudo-labeling as a semi-supervised strategy, the suitability of the lightweight CNN architecture, the Burn framework compared to Python/PyTorch, incremental learning in production, and the practical barriers to deploying deep learning models on consumer mobile devices.
 
-**Context of the conversation:** [TODO: Describing how I contacted this person and the setting of the interview (in person, video call, etc.)]
+Their written responses were still pending at the time of writing. The sections below present my own synthesis of the feedback that practitioners in this field typically raise, grounded in the project's experimental results and the literature review from Chapter 2. Once the expert responses arrive, these sections will be updated with their direct input.
 
-**Key discussion points:**
+### 4.1.1 Synthesis of Likely Expert Feedback
 
-**On practical deployment in agricultural settings:**
+Based on the questions that were sent and the technical content of the thesis, the following points represent the kind of feedback that researchers with a background in computer vision and biomedical imaging would most likely highlight:
 
-[TODO: What did this expert say about whether farmers would actually use an offline plant disease detection app? What barriers do they see (digital literacy, trust in AI, device availability)?]
+**On the pseudo-labeling approach.** A 90% confidence threshold with 20% labeled data is a conservative but defensible choice. The risk of confirmation bias exists, as it does in any pseudo-labeling system, but the measured precision above 95% suggests the threshold is doing its job. An external expert would probably ask whether the threshold was evaluated per-class rather than globally, because some disease classes are visually closer to each other than others. They would also likely recommend monitoring calibration curves over time, not only accuracy.
 
-**On the value of SSL for reducing labeling costs:**
+**On the CNN architecture.** A custom four-block CNN is a reasonable starting point for edge deployment, but experts in image analysis often prefer mobile architectures such as MobileNet or EfficientNet-Lite when the target hardware is a phone. The argument for the custom CNN is that it is smaller and simpler to train end to end in Burn, but an external reviewer might point out that transfer learning from a pretrained extractor could close the accuracy gap with fewer labels.
 
-[TODO: How does this expert evaluate the pseudo-labeling approach from a practical standpoint? Is the €2/image annotation cost realistic in their experience? How do they typically handle labeled data acquisition in their work?]
+**On Rust and Burn.** The choice of Rust over Python is the most unusual part of this project from a computer vision research perspective. The likely reaction is mixed: the deployment size and portability advantages are clear, but the ecosystem is less mature. An expert would probably warn that missing features (mixed-precision training, model quantisation, distributed training) could become blockers for larger-scale work, and that team onboarding is harder because the talent pool for Rust ML is smaller than for Python.
 
-**On the Rust/Burn technology choice:**
+**On incremental learning.** The 6× increase in forgetting when scaling from 5 to 30 base classes is a strong result. An expert with production experience would likely confirm that this matches their intuition: larger taxonomies are harder to extend incrementally. They would recommend rehearsal-based methods as the most practical mitigation, because EWC and LwF add complexity that is hard to justify without a dedicated research team.
 
-[TODO: What is their reaction to using Rust instead of Python for ML? Do they see advantages or risks from a maintenance and team perspective?]
+## 4.2 Self-Reflection
 
-**On limitations and potential improvements:**
-
-[TODO: What weaknesses or blind spots did this expert identify? What would they recommend doing differently?]
-
-### 4.1.2 External Expert 2
-
-> **[TODO: Insert name and company/organization]**
-> *[TODO: Insert role/title and brief description of expertise]*
-
-**Context of the conversation:** [TODO: Describe how you contacted this person and the setting of the interview.]
-
-**Key discussion points:**
-
-**On the Burn framework and Rust ML maturity:**
-
-[TODO: How does this expert evaluate the Burn framework's maturity for production use? What are the ecosystem gaps compared to PyTorch/TensorFlow?]
-
-**On incremental learning in production:**
-
-[TODO: What is their experience with adding new classes to deployed models? Do they use EWC, LwF or rehearsal methods in practice? How does the forgetting behavior observed in the experiments compare to what they see in the field?]
-
-**On SSL limitations and pseudo-label quality:**
-
-[TODO: How do they assess the risk of confirmation bias in pseudo-labeling? What techniques do they recommend for monitoring pseudo-label quality over time?]
-
-**On deployment strategy and cross-platform targeting:**
-
-[TODO: What is their opinion on the BYOD pivot away from dedicated edge hardware? What challenges do they foresee with targeting multiple platforms from a single Rust codebase?]
-
-### 4.1.3 Synthesis of External Feedback
-
-[TODO: After both interviews, synthesis here that identifies common themes, contrasting viewpoints and the most actionable feedback.
-Synthesis should connect the external perspectives to the decisions made during the project.]
-
-## 4.2 Self-Reflection on Results
-
-### 4.2.1 Strengths
+### 4.2.1 What Went Well
 
 **Deployment size and portability.** The binary of roughly 26 MB is a real improvement compared with a Python/PyTorch deployment. Both stacks need gigabytes of tooling during development. Rust's `target/` directory is around 2.1 GB, which is comparable to a PyTorch virtual environment. The difference is that Rust's compilation reduces everything to a single portable binary. A Python deployment still has to bring its interpreter and library tree to the target device. That changes which distribution channels are realistic for edge deployment. A file that fits on a Bluetooth transfer or a USB stick is very different from a system that first needs a multi-gigabyte environment.
 
-**The BYOD pivot.** The benchmark results (Table 3.6) provided a clear, data-driven reason to walk away from dedicated edge hardware. The Jetson Orin Nano, at €350, turned out to be slower than a phone that farmers already own. That pivot removed the single largest cost barrier to deployment.
+**The BYOD pivot.** The benchmark results (Table 3.6) provided a clear, data-driven reason to walk away from dedicated edge hardware. The Jetson Orin Nano, at €350, turned out to be slower than a phone that many people already own. That pivot removed the single largest cost barrier to deployment.
 
 **Experimental rigour.** The three controlled experiments give quantitative answers to questions that are often only discussed qualitatively in the literature: how much labeled data is actually enough, how forgetting scales with model size, and how the position of a new class affects the difficulty of learning it.
 
@@ -101,7 +64,7 @@ The numbers from this project make a straightforward economic argument:
 
 These savings are real, but they only matter if the model is accurate enough to be useful. The experimental results suggest it is (85%+ with SSL), but that has only been validated on PlantVillage imagery, not on field photos.
 
-### 4.3.3 Why This Matters Beyond the Lab
+### 4.3.3 Privacy and Local Operation
 
 The offline-first architecture has a practical advantage that goes beyond connectivity. Because the model runs entirely on the user's device, no data leaves the phone. The NVISO guest session on AI threats (Appendix C) highlighted how easily image data can be repurposed once it reaches an external server. With local inference, that risk simply does not exist, which also means there are no GDPR or data processing agreements to worry about.
 

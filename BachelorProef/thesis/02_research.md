@@ -94,6 +94,9 @@ Three Rust ML frameworks were evaluated for this project [14]:
 
 **Conclusion:** Burn was selected because it combines backend-agnostic deployment, a training API that is suitable for custom SSL loops, and the option to produce a self-contained binary for edge devices [8][9][10].
 
+![Conceptual comparison of deployment models for Burn, Candle and tch-rs](figures/framework_deployment.svg)
+*Figure 2.2: Conceptual overview of the runtime dependencies for each Rust ML framework. Burn and Candle compile to a static binary, while tch-rs needs the LibTorch shared library on the target device.*
+
 ### 2.2.3 Burn's Backend Abstraction
 
 A useful feature of Burn is its backend abstraction layer. Models are defined as generic structs parameterised over a `Backend` trait. The following snippet is taken directly from the project's model definition (`plantvillage_ssl/src/model/cnn.rs`):
@@ -173,6 +176,9 @@ The literature describes three main families of approaches for dealing with cata
 - **PackNet** prunes and freezes weights after each task, freeing up capacity for subsequent ones.
 
 For this project, the experimental focus is on measuring how severe catastrophic forgetting becomes under different conditions, especially base model size and the number of labeled samples. The implementation uses straightforward fine-tuning. This isolates the forgetting effect, because no mitigation strategy is added on top.
+
+![Overview of catastrophic forgetting mitigation strategies](figures/forgetting_strategies.svg)
+*Figure 2.3: Conceptual overview of the three main families of forgetting mitigation strategies: regularization, rehearsal and architecture modification.*
 
 ## 2.4 Edge AI Deployment
 

@@ -2,7 +2,7 @@
 
 This thesis set out to answer the question: **How can a semi-supervised neural network be efficiently implemented in Rust for the automatic labeling of partially labeled datasets on an edge device?**
 
-The short answer is: by combining a lightweight custom CNN built with the Burn framework, an iterative pseudo-labeling pipeline with confidence-based filtering, and a cross-platform deployment strategy built around Tauri. The longer answer involves the specific trade-offs, numbers and lessons learned that emerged from the research.
+The short answer is that it can be done by combining a lightweight custom CNN built with the Burn framework, an iterative pseudo-labeling pipeline with confidence-based filtering, and a cross-platform deployment strategy built around Tauri. The longer answer involves the specific trade-offs, numbers and lessons learned that emerged from the research.
 
 The implementation is efficient in the ways that matter for edge deployment. The compiled binary is roughly 26 MB, and that is the only file that needs to be present on the target device. A comparable Python/PyTorch deployment requires several gigabytes of interpreter, libraries and supporting packages, even though the model weights themselves are roughly the same size in both stacks. The Burn binary starts in under 100 ms, compared with about 3 seconds for a PyTorch application. On a desktop GPU, an NVIDIA RTX 3060, the model reaches an inference latency of 0.39 ms, which corresponds to 2,579 FPS. On an iPhone 12 through Tauri, it reaches about 80 ms per inference, which is fast enough for a camera-based classification app.
 

@@ -16,8 +16,8 @@ The CUDA Toolkit is not required for CPU-only builds.
 ### A.2.1 Clone the Repository
 
 ```bash
-git clone https://github.com/[TODO: repository-ur]
-cd [TODO: repo name]
+git clone https://github.com/SnaetWarre/Research_Project_Rust_Semi-Supervised_Learning
+cd Research_Project_Rust_Semi-Supervised_Learning
 ```
 
 ### A.2.2 Download the Dataset

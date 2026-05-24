@@ -38,20 +38,7 @@ Several recent studies have applied SSL to plant disease detection with good res
 
 Based on the literature review, the following design decisions were taken for this project's SSL pipeline:
 
-```mermaid
-graph TD
-    A["Start: Labeled Data (20%)"] --> B[Train Initial CNN]
-    B --> C[Inference on Unlabeled Stream]
-    C --> D{"Confidence >= 0.9?"}
-    D -- Yes --> E[Accept as Pseudo-Label]
-    D -- No --> F[Reject / Discard]
-    E --> G{"Buffer >= 200?"}
-    G -- Yes --> H[Retrain CNN on Labeled + Pseudo]
-    H --> I{"Validation Plateau?"}
-    I -- No --> C
-    I -- Yes --> J[Final Model]
-    G -- No --> C
-```
+![Flowchart of the implemented pseudo-labeling pipeline](figures/pipeline_flowchart.svg)
 *Figure 2.1: Flowchart of the implemented pseudo-labeling pipeline.*
 
 1. **A single model** rather than a student-teacher setup, to keep the VRAM usage within edge device limits.

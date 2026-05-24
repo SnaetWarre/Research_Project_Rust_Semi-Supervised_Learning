@@ -2,7 +2,10 @@
 
 | Figure | Caption | Page |
 |:---|:---|:---:|
+| Figure 1.1 | Deployment footprint comparison: Python/PyTorch stack versus Rust single binary. | Ch. 1 |
 | Figure 2.1 | Flowchart of the implemented pseudo-labeling pipeline, showing the confidence-based filtering loop and the retrain-trigger condition. | Ch. 2 |
+| Figure 2.2 | Conceptual comparison of deployment models for Burn, Candle and tch-rs. | Ch. 2 |
+| Figure 2.3 | Conceptual overview of catastrophic forgetting mitigation strategies. | Ch. 2 |
 | Figure 3.1 | Accuracy as a function of labeled images per class. The steepest gain sits between 25 and 100 images per class. | Ch. 3 |
 | Figure 3.2 | Bar chart comparison of classification accuracy at each labeling level, from 5 to 500 images per class. | Ch. 3 |
 | Figure 3.3 | Visual comparison of accuracy metrics between the small-base (5 classes) and large-base (30 classes) incremental learning scenarios. | Ch. 3 |

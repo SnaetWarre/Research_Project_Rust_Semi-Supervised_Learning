@@ -1,0 +1,206 @@
+<?xml version="1.0" encoding="utf-8" standalone="no"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN"
+  "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<svg xmlns:xlink="http://www.w3.org/1999/xlink" width="373.788973pt" height="254.494488pt" viewBox="0 0 373.788973 254.494488" xmlns="http://www.w3.org/2000/svg" version="1.1">
+ <metadata>
+  <rdf:RDF xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:cc="http://creativecommons.org/ns#" xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">
+   <cc:Work>
+    <dc:type rdf:resource="http://purl.org/dc/dcmitype/StillImage"/>
+    <dc:date>2026-05-24T14:11:39.386816</dc:date>
+    <dc:format>image/svg+xml</dc:format>
+    <dc:creator>
+     <cc:Agent>
+      <dc:title>Matplotlib v3.10.9, https://matplotlib.org/</dc:title>
+     </cc:Agent>
+    </dc:creator>
+   </cc:Work>
+  </rdf:RDF>
+ </metadata>
+ <defs>
+  <style type="text/css">*{stroke-linejoin: round; stroke-linecap: butt}</style>
+ </defs>
+ <g id="figure_1">
+  <g id="patch_1">
+   <path d="M 0 254.494488 
+L 373.788973 254.494488 
+L 373.788973 0 
+L 0 0 
+z
+" style="fill: #ffffff"/>
+  </g>
+  <g id="axes_1">
+   <g id="patch_2">
+    <path d="M 68.314961 55.218898 
+L 140.343307 55.218898 
+L 140.343307 29.026772 
+L 68.314961 29.026772 
+z
+" clip-path="url(#pc49a3039ee)" style="fill: #ffffff; stroke: #004c97; stroke-width: 1.2; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_3">
+    <path d="M 68.314961 127.247244 
+L 140.343307 127.247244 
+L 140.343307 101.055118 
+L 68.314961 101.055118 
+z
+" clip-path="url(#pc49a3039ee)" style="fill: #ffffff; stroke: #888888; stroke-width: 1.2; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_4">
+    <path d="M 68.314961 199.275591 
+L 140.343307 199.275591 
+L 140.343307 173.083465 
+L 68.314961 173.083465 
+z
+" clip-path="url(#pc49a3039ee)" style="fill: #ffffff; stroke: #666666; stroke-width: 1.2; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_5">
+    <path d="M 144.523352 42.122835 
+Q 174.172644 42.122835 202.368491 42.122835 
+" clip-path="url(#pc49a3039ee)" style="fill: none; stroke: #004c97; stroke-width: 1.3; stroke-linecap: round"/>
+    <path d="M 198.368491 40.122835 
+L 202.368491 42.122835 
+L 198.368491 44.122835 
+z
+" clip-path="url(#pc49a3039ee)" style="fill: #004c97; stroke: #004c97; stroke-width: 1.3; stroke-linecap: round"/>
+   </g>
+   <g id="patch_6">
+    <path d="M 210.188976 55.218898 
+L 314.95748 55.218898 
+L 314.95748 29.026772 
+L 210.188976 29.026772 
+z
+" clip-path="url(#pc49a3039ee)" style="fill: #004c97; stroke: #004c97; stroke-width: 1.2; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_7">
+    <path d="M 144.526816 114.151181 
+Q 167.628399 114.151181 189.276538 114.151181 
+" clip-path="url(#pc49a3039ee)" style="fill: none; stroke: #888888; stroke-width: 1.3; stroke-linecap: round"/>
+    <path d="M 185.276538 112.151181 
+L 189.276538 114.151181 
+L 185.276538 116.151181 
+z
+" clip-path="url(#pc49a3039ee)" style="fill: #888888; stroke: #888888; stroke-width: 1.3; stroke-linecap: round"/>
+   </g>
+   <g id="patch_8">
+    <path d="M 197.092913 122.88189 
+L 258.207874 122.88189 
+L 258.207874 101.055118 
+L 197.092913 101.055118 
+z
+" clip-path="url(#pc49a3039ee)" style="fill: #ffffff; stroke: #888888; stroke-width: 1.2; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_9">
+    <path d="M 271.303937 122.88189 
+L 332.418898 122.88189 
+L 332.418898 101.055118 
+L 271.303937 101.055118 
+z
+" clip-path="url(#pc49a3039ee)" style="fill: #ffffff; stroke: #888888; stroke-width: 1.2; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_10">
+    <path d="M 144.525351 186.179528 
+Q 159.988369 186.179528 173.997943 186.179528 
+" clip-path="url(#pc49a3039ee)" style="fill: none; stroke: #666666; stroke-width: 1.3; stroke-linecap: round"/>
+    <path d="M 169.997943 184.179528 
+L 173.997943 186.179528 
+L 169.997943 188.179528 
+z
+" clip-path="url(#pc49a3039ee)" style="fill: #666666; stroke: #666666; stroke-width: 1.3; stroke-linecap: round"/>
+   </g>
+   <g id="patch_11">
+    <path d="M 181.814173 197.092913 
+L 238.56378 197.092913 
+L 238.56378 175.266142 
+L 181.814173 175.266142 
+z
+" clip-path="url(#pc49a3039ee)" style="fill: #ffffff; stroke: #666666; stroke-width: 1.2; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_12">
+    <path d="M 242.748754 186.179528 
+Q 257.117728 186.179528 270.033258 186.179528 
+" clip-path="url(#pc49a3039ee)" style="fill: none; stroke-dasharray: 4.81,2.08; stroke-dashoffset: 0; stroke: #666666; stroke-width: 1.3; stroke-linecap: round"/>
+    <path d="M 266.033258 184.179528 
+L 270.033258 186.179528 
+L 266.033258 188.179528 
+z
+" clip-path="url(#pc49a3039ee)" style="fill: #666666; stroke-dasharray: 4.81,2.08; stroke-dashoffset: 0; stroke: #666666; stroke-width: 1.3; stroke-linecap: round"/>
+   </g>
+   <g id="patch_13">
+    <path d="M 277.851969 201.458268 
+L 345.514961 201.458268 
+L 345.514961 170.900787 
+L 277.851969 170.900787 
+z
+" clip-path="url(#pc49a3039ee)" style="fill: #f0f0f0; stroke: #666666; stroke-width: 1.2; stroke-linejoin: miter"/>
+   </g>
+   <g id="text_1">
+    <text style="font-weight: 700; font-size: 11px; font-family: 'Inter', 'Helvetica', 'Arial', 'DejaVu Sans', sans-serif; text-anchor: start; fill: #004c97" x="24.661417" y="45.158147" transform="rotate(-0 24.661417 45.158147)">Burn</text>
+   </g>
+   <g id="text_2">
+    <text style="font-size: 7.5px; font-family: 'Inter', 'Helvetica', 'Arial', 'DejaVu Sans', sans-serif; fill: #333333" transform="translate(82.449056 39.993186)">Rust source</text>
+    <text style="font-size: 7.5px; font-family: 'Inter', 'Helvetica', 'Arial', 'DejaVu Sans', sans-serif; fill: #333333" transform="translate(78.081478 48.391546)">code + model</text>
+   </g>
+   <g id="text_3">
+    <text style="font-weight: 700; font-size: 11px; font-family: 'Inter', 'Helvetica', 'Arial', 'DejaVu Sans', sans-serif; text-anchor: start; fill: #888888" x="24.661417" y="117.186494" transform="rotate(-0 24.661417 117.186494)">Candle</text>
+   </g>
+   <g id="text_4">
+    <text style="font-size: 7.5px; font-family: 'Inter', 'Helvetica', 'Arial', 'DejaVu Sans', sans-serif; fill: #333333" transform="translate(82.449056 112.021533)">Rust source</text>
+    <text style="font-size: 7.5px; font-family: 'Inter', 'Helvetica', 'Arial', 'DejaVu Sans', sans-serif; fill: #333333" transform="translate(78.081478 120.419892)">code + model</text>
+   </g>
+   <g id="text_5">
+    <text style="font-weight: 700; font-size: 11px; font-family: 'Inter', 'Helvetica', 'Arial', 'DejaVu Sans', sans-serif; text-anchor: start; fill: #666666" x="24.661417" y="189.21484" transform="rotate(-0 24.661417 189.21484)">tch-rs</text>
+   </g>
+   <g id="text_6">
+    <text style="font-size: 7.5px; font-family: 'Inter', 'Helvetica', 'Arial', 'DejaVu Sans', sans-serif; fill: #333333" transform="translate(82.449056 184.049879)">Rust source</text>
+    <text style="font-size: 7.5px; font-family: 'Inter', 'Helvetica', 'Arial', 'DejaVu Sans', sans-serif; fill: #333333" transform="translate(78.081478 192.448238)">code + model</text>
+   </g>
+   <g id="text_7">
+    <text style="font-size: 7px; font-family: 'Inter', 'Helvetica', 'Arial', 'DejaVu Sans', sans-serif; text-anchor: middle; fill: #004c97" x="174.174803" y="31.209449" transform="rotate(-0 174.174803 31.209449)">cargo build --release</text>
+   </g>
+   <g id="text_8">
+    <text style="font-size: 7.5px; font-family: 'Inter', 'Helvetica', 'Arial', 'DejaVu Sans', sans-serif; fill: #ffffff" transform="translate(238.800572 39.993186)">Static binary</text>
+    <text style="font-size: 7.5px; font-family: 'Inter', 'Helvetica', 'Arial', 'DejaVu Sans', sans-serif; fill: #ffffff" transform="translate(227.126939 48.391546)">(CPU/CUDA/WGPU)</text>
+   </g>
+   <g id="text_9">
+    <text style="font-size: 7.5px; font-family: 'Inter', 'Helvetica', 'Arial', 'DejaVu Sans', sans-serif; text-anchor: middle; fill: #004c97" x="262.573228" y="66.132283" transform="rotate(-0 262.573228 66.132283)">~26 MB, no runtime deps</text>
+   </g>
+   <g id="text_10">
+    <text style="font-size: 7px; font-family: 'Inter', 'Helvetica', 'Arial', 'DejaVu Sans', sans-serif; text-anchor: middle; fill: #888888" x="167.626772" y="103.237795" transform="rotate(-0 167.626772 103.237795)">cargo build</text>
+   </g>
+   <g id="text_11">
+    <text style="font-size: 7.5px; font-family: 'Inter', 'Helvetica', 'Arial', 'DejaVu Sans', sans-serif; fill: #333333" transform="translate(216.927737 109.838855)">Static</text>
+    <text style="font-size: 7.5px; font-family: 'Inter', 'Helvetica', 'Arial', 'DejaVu Sans', sans-serif; fill: #333333" transform="translate(215.792191 118.237215)">binary</text>
+   </g>
+   <g id="text_12">
+    <text style="font-size: 7.5px; font-family: 'Inter', 'Helvetica', 'Arial', 'DejaVu Sans', sans-serif; fill: #333333" transform="translate(290.17841 109.838855)">WASM</text>
+    <text style="font-size: 7.5px; font-family: 'Inter', 'Helvetica', 'Arial', 'DejaVu Sans', sans-serif; fill: #333333" transform="translate(287.807706 118.237215)">module</text>
+   </g>
+   <g id="text_13">
+    <text style="font-size: 7.5px; font-family: 'Inter', 'Helvetica', 'Arial', 'DejaVu Sans', sans-serif; text-anchor: middle; fill: #888888" x="264.755906" y="135.977953" transform="rotate(-0 264.755906 135.977953)">Lightweight, inference-focused</text>
+   </g>
+   <g id="text_14">
+    <text style="font-size: 7px; font-family: 'Inter', 'Helvetica', 'Arial', 'DejaVu Sans', sans-serif; text-anchor: middle; fill: #666666" x="159.987402" y="175.266142" transform="rotate(-0 159.987402 175.266142)">cargo build</text>
+   </g>
+   <g id="text_15">
+    <text style="font-size: 7.5px; font-family: 'Inter', 'Helvetica', 'Arial', 'DejaVu Sans', sans-serif; fill: #333333" transform="translate(201.951867 184.049879)">Rust</text>
+    <text style="font-size: 7.5px; font-family: 'Inter', 'Helvetica', 'Arial', 'DejaVu Sans', sans-serif; fill: #333333" transform="translate(198.330773 192.448238)">binary</text>
+   </g>
+   <g id="text_16">
+    <text style="font-size: 7px; font-family: 'Inter', 'Helvetica', 'Arial', 'DejaVu Sans', sans-serif; fill: #666666" transform="translate(241.76215 165.244996)">requires</text>
+    <text style="font-size: 7px; font-family: 'Inter', 'Helvetica', 'Arial', 'DejaVu Sans', sans-serif; fill: #666666" transform="translate(237.613556 173.083465)">at runtime</text>
+   </g>
+   <g id="text_17">
+    <text style="font-size: 7.2px; font-family: 'Inter', 'Helvetica', 'Arial', 'DejaVu Sans', sans-serif; fill: #333333" transform="translate(283.535965 184.135065)">LibTorch shared</text>
+    <text style="font-size: 7.2px; font-family: 'Inter', 'Helvetica', 'Arial', 'DejaVu Sans', sans-serif; fill: #333333" transform="translate(281.002465 192.19749)">library (~1.5 GB)</text>
+   </g>
+   <g id="text_18">
+    <text style="font-size: 7.5px; font-family: 'Inter', 'Helvetica', 'Arial', 'DejaVu Sans', sans-serif; text-anchor: middle; fill: #666666" x="266.938583" y="214.554331" transform="rotate(-0 266.938583 214.554331)">Full PyTorch compatibility, large runtime dependency</text>
+   </g>
+  </g>
+ </g>
+ <defs>
+  <clipPath id="pc49a3039ee">
+   <rect x="7.2" y="7.2" width="349.228346" height="240.094488"/>
+  </clipPath>
+ </defs>
+</svg>

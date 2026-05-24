@@ -19,6 +19,8 @@
 
 | Table | Caption | Page |
 |:---|:---|:---:|
+| Table 2.1 | Comparison of Rust ML frameworks (Burn, Candle, tch-rs). | Ch. 2 |
+| Table 2.2 | Dataset characteristics for the New Plant Diseases Dataset. | Ch. 2 |
 | Table 3.1 | Label efficiency results: classification accuracy and training time at seven labeled-data quantities. | Ch. 3 |
 | Table 3.2 | Class scaling results: accuracy, forgetting and training time when one class is added to a 5-class and a 30-class base model. | Ch. 3 |
 | Table 3.3 | New class accuracy by label count and base size, at five labeling levels from 5 to 100 samples. | Ch. 3 |

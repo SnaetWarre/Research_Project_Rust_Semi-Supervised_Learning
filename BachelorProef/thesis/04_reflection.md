@@ -1,26 +1,14 @@
 # 4. Reflection
 
-This chapter gives a critical evaluation of the research results from two angles: planned feedback from external experts with relevant industry or academic experience, and a broader reflection on what this work means in practice.
+This chapter gives a critical evaluation of the research results. It is divided into three parts: an honest assessment of the external feedback that was sought, a self-reflection on what went well and what did not, and a discussion of the broader implications for deployment.
 
-## 4.1 External Experts
+## 4.1 External Feedback
 
-I contacted two external experts from the 2AI-IPCA research lab for a structured reflection on this project: Miss Torres and Sir Morais. Both work in image processing, computer vision and deep learning, with experience in biomedical applications that share technical similarities with agricultural image classification.
+I contacted two researchers from the 2AI-IPCA research lab, Miss Torres and Sir Morais, who work in image processing and deep learning. I sent them the detailed interview questions listed in Appendix B by email. Unfortunately, no written responses were received before the thesis deadline.
 
-I sent them a detailed set of questions (see Appendix B) by email. The questions covered their view on pseudo-labeling as a semi-supervised strategy, the suitability of the lightweight CNN architecture, the Burn framework compared to Python/PyTorch, incremental learning in production, and the practical barriers to deploying deep learning models on consumer mobile devices.
+This is a real limitation. The rubric expects reflection and advice to be grounded in at least two meaningful external contacts, and this thesis cannot fully meet that requirement. The sections below therefore rely on my own critical analysis, supported by the experimental data from Chapter 3 and the literature reviewed in Chapter 2. Where I refer to what external experts "would likely" say, that is informed speculation based on the questions that were sent and on standard practice in the field, not on direct quotes.
 
-Their written responses were still pending at the time of writing. The sections below present my own synthesis of the feedback that practitioners in this field typically raise, grounded in the project's experimental results and the literature review from Chapter 2. Once the expert responses arrive, these sections will be updated with their direct input.
-
-### 4.1.1 Synthesis of Likely Expert Feedback
-
-Based on the questions that were sent and the technical content of the thesis, the following points represent the kind of feedback that researchers with a background in computer vision and biomedical imaging would most likely highlight:
-
-**On the pseudo-labeling approach.** A 90% confidence threshold with 20% labeled data is a conservative but defensible choice. The risk of confirmation bias exists, as it does in any pseudo-labeling system, but the measured precision above 95% suggests the threshold is doing its job. An external expert would probably ask whether the threshold was evaluated per-class rather than globally, because some disease classes are visually closer to each other than others. They would also likely recommend monitoring calibration curves over time, not only accuracy.
-
-**On the CNN architecture.** A custom four-block CNN is a reasonable starting point for edge deployment, but experts in image analysis often prefer mobile architectures such as MobileNet or EfficientNet-Lite when the target hardware is a phone. The argument for the custom CNN is that it is smaller and simpler to train end to end in Burn, but an external reviewer might point out that transfer learning from a pretrained extractor could close the accuracy gap with fewer labels.
-
-**On Rust and Burn.** The choice of Rust over Python is the most unusual part of this project from a computer vision research perspective. The likely reaction is mixed: the deployment size and portability advantages are clear, but the ecosystem is less mature. An expert would probably warn that missing features (mixed-precision training, model quantisation, distributed training) could become blockers for larger-scale work, and that team onboarding is harder because the talent pool for Rust ML is smaller than for Python.
-
-**On incremental learning.** The 6× increase in forgetting when scaling from 5 to 30 base classes is a strong result. An expert with production experience would likely confirm that this matches their intuition: larger taxonomies are harder to extend incrementally. They would recommend rehearsal-based methods as the most practical mitigation, because EWC and LwF add complexity that is hard to justify without a dedicated research team.
+If the external responses arrive after submission, they can be added as a post-deadline appendix, but the core argument of the thesis does not depend on them.
 
 ## 4.2 Self-Reflection
 
@@ -28,11 +16,13 @@ Based on the questions that were sent and the technical content of the thesis, t
 
 **Deployment size and portability.** The binary of roughly 26 MB is a real improvement compared with a Python/PyTorch deployment. Both stacks need gigabytes of tooling during development. Rust's `target/` directory is around 2.1 GB, which is comparable to a PyTorch virtual environment. The difference is that Rust's compilation reduces everything to a single portable binary. A Python deployment still has to bring its interpreter and library tree to the target device. That changes which distribution channels are realistic for edge deployment. A file that fits on a Bluetooth transfer or a USB stick is very different from a system that first needs a multi-gigabyte environment.
 
-**The BYOD pivot.** The benchmark results (Table 3.6) provided a clear, data-driven reason to walk away from dedicated edge hardware. The Jetson Orin Nano, at €350, turned out to be slower than a phone that many people already own. That pivot removed the single largest cost barrier to deployment.
+**The BYOD pivot.** The benchmark results (Table 3.6) provided a clear, data-driven reason to move away from dedicated edge hardware. The Jetson Orin Nano, at €350, turned out to be slower than a phone that many people already own. That pivot removed the single largest cost barrier to deployment.
 
 **Experimental rigour.** The three controlled experiments give quantitative answers to questions that are often only discussed qualitatively in the literature: how much labeled data is actually enough, how forgetting scales with model size, and how the position of a new class affects the difficulty of learning it.
 
 ### 4.2.2 Weaknesses and Limitations
+
+**No completed external interviews.** The missing expert feedback is the largest weakness of this chapter. A researcher with production experience in computer vision might have raised concerns about the 90% global confidence threshold, suggested per-class calibration, or pointed out that a custom CNN is unusual when pretrained backbones such as MobileNet are easily available. Without that input, the reflection is limited to my own perspective.
 
 **Pseudo-label quality is bounded by the initial model.** The effectiveness of the SSL pipeline is limited by the accuracy of the model that was trained on the 20% labeled subset. If the initial model systematically misclassifies certain disease classes, those errors can continue through the pseudo-labeling cycle. Techniques such as co-training, where two models look at different views of the data, could reduce this risk, but they were not implemented because of the VRAM constraints on edge devices.
 
@@ -66,7 +56,7 @@ These savings are real, but they only matter if the model is accurate enough to 
 
 ### 4.3.3 Privacy and Local Operation
 
-The offline-first architecture has a practical advantage that goes beyond connectivity. Because the model runs entirely on the user's device, no data leaves the phone. The NVISO guest session on AI threats (Appendix C) highlighted how easily image data can be repurposed once it reaches an external server. With local inference, that risk simply does not exist, which also means there are no GDPR or data processing agreements to worry about.
+The offline-first architecture has a practical advantage that goes beyond connectivity. Because the model runs entirely on the user's device, no image data is sent to an external server. That removes server-side data-processing risks and reduces the compliance surface for privacy regulations such as GDPR, because the developer does not need to store or process user images on a backend. It does not remove all legal considerations. If the device itself is managed by an organisation, or if inference logs are collected, GDPR may still apply. Device-level security measures such as local encryption and access control remain important.
 
 Whether this kind of tool would actually reduce crop losses is a question I cannot answer from a computer science thesis. What I can say is that the technical barriers, such as deployment size, connectivity requirements and inference speed, are no longer the main bottleneck. The remaining barriers are about trust, usability and distribution. Those need field trials and user research, not only more engineering.
 

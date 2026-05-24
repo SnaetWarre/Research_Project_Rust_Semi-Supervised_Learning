@@ -107,7 +107,7 @@ AI can also be deployed for **defence**, structured around three pillars:
 
 This guest session was relevant for my research project for several reasons:
 
-1. **Edge deployment and security.** My project runs fully offline on edge devices, which is inherently more secure than cloud-based solutions. Because no data leaves the device, data exfiltration, which is one of the key attack vectors discussed in the session, is impossible by design. That reinforces the security argument for an offline-first architecture.
+1. **Edge deployment and security.** My project runs fully offline on edge devices, which reduces some risks compared with cloud-based solutions. Because no image data is sent to an external server during inference, server-side data exfiltration is not possible. That reinforces the security argument for an offline-first architecture, although device-level risks such as theft, local malware or physical access to stored data still exist.
 
 2. **AI ethics.** The session made clear how important it is to use AI responsibly and to build in guardrails in ML systems. The plant disease detection model does not raise the same misuse concerns as a large language model does, but the principle of building safety-conscious AI applies much more broadly.
 

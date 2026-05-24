@@ -6,14 +6,14 @@ This document lists every figure referenced in the thesis, with precise instruct
 
 ---
 
-## Summary: 9 Figures Total
+## Summary: 10 Figures Total
 
 | # | Caption | File Path | Status | Type |
 |---|---------|-----------|--------|------|
-| 1.1 | Deployment footprint comparison: Python/PyTorch stack versus Rust single binary | `BachelorProef/thesis/figures/deployment_comparison.svg` | **MISSING** | Conceptual diagram |
-| 2.1 | Flowchart of the implemented pseudo-labeling pipeline | *Mermaid diagram in markdown* | **N/A** | Mermaid flowchart (text-based) |
-| 2.2 | Conceptual comparison of deployment models for Burn, Candle and tch-rs | `BachelorProef/thesis/figures/framework_deployment.svg` | **MISSING** | Conceptual diagram |
-| 2.3 | Conceptual overview of catastrophic forgetting mitigation strategies | `BachelorProef/thesis/figures/forgetting_strategies.svg` | **MISSING** | Conceptual diagram |
+| 1.1 | Deployment footprint comparison: Python/PyTorch stack versus Rust single binary | `BachelorProef/thesis/figures/deployment_comparison.svg` | **EXISTS** | Conceptual diagram |
+| 2.1 | Flowchart of the implemented pseudo-labeling pipeline | `BachelorProef/thesis/figures/pipeline_flowchart.svg` | **EXISTS** | Conceptual diagram |
+| 2.2 | Conceptual comparison of deployment models for Burn, Candle and tch-rs | `BachelorProef/thesis/figures/framework_deployment.svg` | **EXISTS** | Conceptual diagram |
+| 2.3 | Conceptual overview of catastrophic forgetting mitigation strategies | `BachelorProef/thesis/figures/forgetting_strategies.svg` | **EXISTS** | Conceptual diagram |
 | 3.1 | Accuracy as a function of labeled images per class | `plantvillage_ssl/output/experiments/label_efficiency/label_efficiency_curve.svg` | **EXISTS** | Line chart |
 | 3.2 | Bar chart comparison of accuracy at each labeling level | `plantvillage_ssl/output/experiments/label_efficiency/label_efficiency_bars.svg` | **EXISTS** | Bar chart |
 | 3.3 | Visual comparison of accuracy metrics between small-base and large-base scenarios | `plantvillage_ssl/output/experiments/class_scaling/class_scaling_comparison.svg` | **EXISTS** | Grouped bar chart |
@@ -29,7 +29,7 @@ This document lists every figure referenced in the thesis, with precise instruct
 
 **File:** `BachelorProef/thesis/figures/deployment_comparison.svg`
 
-**Status:** MISSING
+**Status:** EXISTS
 
 **Description:** A conceptual diagram showing two vertical stacks side by side, representing what needs to be installed on the target device for each deployment model.
 
@@ -66,11 +66,11 @@ This document lists every figure referenced in the thesis, with precise instruct
 
 **Caption:** Flowchart of the implemented pseudo-labeling pipeline.
 
-**File:** Embedded as Mermaid diagram in `02_research.md`
+**File:** `BachelorProef/thesis/figures/pipeline_flowchart.svg`
 
-**Status:** Already rendered by Pandoc from markdown Mermaid syntax.
+**Status:** EXISTS
 
-**Note:** This figure is generated automatically from the Mermaid code block in the markdown. No manual image file is needed. If your PDF/docx build does not render Mermaid, use the Mermaid CLI or an online renderer to export the flowchart as an SVG and save it to `BachelorProef/thesis/figures/pipeline_flowchart.svg`, then update the markdown to reference the image instead of the code block.
+**Note:** This figure is saved as an SVG and referenced directly in `02_research.md`. The Mermaid source is preserved below for reference.
 
 **Mermaid code (already in chapter 2):**
 
@@ -97,7 +97,7 @@ graph TD
 
 **File:** `BachelorProef/thesis/figures/framework_deployment.svg`
 
-**Status:** MISSING
+**Status:** EXISTS
 
 **Description:** A schematic diagram showing three horizontal deployment paths, one per framework.
 
@@ -138,7 +138,7 @@ graph TD
 
 **File:** `BachelorProef/thesis/figures/forgetting_strategies.svg`
 
-**Status:** MISSING
+**Status:** EXISTS
 
 **Description:** A schematic showing three parallel columns, each representing one strategy family.
 
@@ -419,10 +419,10 @@ graph TD
 
 ## Checklist Before Final Submission
 
-- [ ] Figure 1.1 created and saved to `BachelorProef/thesis/figures/deployment_comparison.svg`
-- [ ] Figure 2.1 renders correctly from Mermaid (or exported as SVG)
-- [ ] Figure 2.2 created and saved to `BachelorProef/thesis/figures/framework_deployment.svg`
-- [ ] Figure 2.3 created and saved to `BachelorProef/thesis/figures/forgetting_strategies.svg`
+- [x] Figure 1.1 created and saved to `BachelorProef/thesis/figures/deployment_comparison.svg`
+- [x] Figure 2.1 renders correctly from saved SVG (`BachelorProef/thesis/figures/pipeline_flowchart.svg`)
+- [x] Figure 2.2 created and saved to `BachelorProef/thesis/figures/framework_deployment.svg`
+- [x] Figure 2.3 created and saved to `BachelorProef/thesis/figures/forgetting_strategies.svg`
 - [ ] Figure 3.1 exists at `plantvillage_ssl/output/experiments/label_efficiency/label_efficiency_curve.svg` (regenerate if style is inconsistent)
 - [ ] Figure 3.2 exists at `plantvillage_ssl/output/experiments/label_efficiency/label_efficiency_bars.svg` (regenerate if style is inconsistent)
 - [ ] Figure 3.3 exists at `plantvillage_ssl/output/experiments/class_scaling/class_scaling_comparison.svg` (regenerate if style is inconsistent)

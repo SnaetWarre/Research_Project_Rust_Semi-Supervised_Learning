@@ -72,8 +72,8 @@ fi
 # Title page + abstract only (drop the Markdown “Table of Contents”; Word can add a real TOC).
 TITLE_FRONT="$(mktemp)"
 trap 'rm -f "${TITLE_FRONT}"' EXIT
-head -n 30 "${SCRIPT_DIR}/00_title_and_abstract.md" > "${TITLE_FRONT}"
-log "title front matter: first 30 lines of 00_title_and_abstract.md → ${TITLE_FRONT}"
+head -n 35 "${SCRIPT_DIR}/00_title_and_abstract.md" > "${TITLE_FRONT}"
+log "title front matter: first 35 lines of 00_title_and_abstract.md → ${TITLE_FRONT}"
 
 log "running pandoc → ${OUT_FILE}"
 pandoc \

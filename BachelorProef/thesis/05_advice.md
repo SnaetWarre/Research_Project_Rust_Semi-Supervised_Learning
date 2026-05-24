@@ -12,7 +12,7 @@ The choice of ML framework influences the rest of the development stack, and cha
 | LLM / transformer inference only | Candle | Optimised for inference, lightweight |
 | Full PyTorch compatibility | tch-rs | Direct LibTorch bindings |
 | Minimal deployment size | **Burn** or Candle | Static binary, no runtime dependencies |
-| Cross-platform (iOS, Android, WASM, desktop) | **Burn** | wgpu backend covers all targets |
+| Cross-platform (iOS, Android, WASM, desktop) | **Burn** | wgpu backend covers all targets in principle |
 
 If the use case involves any form of SSL or an iterative training loop, Burn is the recommended choice. Its `Module` derive macro and backend generics mean that the same model code can compile for CUDA training and mobile inference without changing the model itself.
 
@@ -22,9 +22,9 @@ If the use case involves any form of SSL or an iterative training loop, Burn is 
 
 The label efficiency experiment (Table 3.1) provides a clear empirical baseline:
 
-- **Below 25 images per class:** accuracy is too low, under 60%. Do not try to train a model with this little data, because the pseudo-labeling cycle will mostly propagate errors.
+- **Below 25 images per class:** accuracy is too low, under 60%. Training a model with this little data is risky, because the pseudo-labeling cycle will mostly propagate errors.
 - **50 to 100 images per class:** the minimum viable range. At 100 images per class, accuracy reaches 85.53%, which is sufficient for the initial model in an SSL pipeline.
-- **200 or more images per class:** diminishing returns. Any effort spent on labeling past 200 images per class is better invested in improving the pseudo-labeling pipeline.
+- **200 or more images per class:** diminishing returns. Any effort spent on labeling past 200 images per class is better invested in improving the pseudo-labeling pipeline or collecting field data.
 
 **Practical recommendation:** collect at least 100 labeled images per class before starting SSL. If that is not feasible, spend the limited labeling budget on the class pairs that are most easily confused, for example diseases with similar visual symptoms. That gives the initial model the best possible decision boundary where it matters most.
 
@@ -34,7 +34,7 @@ Based on the experimental results and the literature review, the following param
 
 | Parameter | Recommended value | Rationale |
 |:---|:---|:---|
-| Confidence threshold | 0.9 | Balances precision (>95%) against coverage |
+| Confidence threshold | 0.9 | Balances precision against coverage |
 | Retrain threshold | 150-200 samples | Batching reduces training overhead |
 | Labeled data weight | 1.0 | Real labels are ground truth |
 | Pseudo-label weight | 0.5-0.8 | Lower weight acknowledges the uncertainty |
@@ -54,7 +54,7 @@ Based on the experimental results and the literature review, the following param
 
 If the deployment scenario involves adding new disease classes over time, which is very likely in any real-world agricultural application, the experimental results from Chapter 3 provide a few important guidelines:
 
-1. **Start with a broad base model.** The class scaling experiment (Table 3.2) shows that adding a class to a larger base causes 6× more forgetting. Starting with a larger base, however, means that the model already covers more diseases from the beginning, which reduces how often updates are needed.
+1. **Start with a broad base model.** The class scaling experiment (Table 3.2) shows that adding a class to a larger base causes more forgetting. Starting with a larger base, however, means that the model already covers more diseases from the beginning, which reduces how often updates are needed.
 
 2. **Collect enough labeled data for new classes.** The new class position experiment (Table 3.3) shows that adding a 31st class to a 30-class model requires substantially more labeled samples than adding a 6th class to a 5-class model. At 50 labeled samples, the 6th class reaches 84% accuracy while the 31st class only reaches 26%.
 
@@ -64,14 +64,14 @@ If the deployment scenario involves adding new disease classes over time, which 
 
 ## 5.5 Target BYOD Over Dedicated Edge Hardware
 
-The benchmark results (Table 3.6) lead to a strong, and maybe counterintuitive, recommendation: **do not invest in dedicated edge hardware** (Jetson Nano, Coral and similar) for plant disease detection at inference time.
+The benchmark results (Table 3.6) lead to a recommendation that may seem counterintuitive: **for interactive plant disease detection on consumer devices, dedicated edge hardware is usually not the best investment.**
 
 The reasoning is:
 
-- An iPhone 12 (80 ms inference) outperforms a Jetson Orin Nano (120 ms), at zero additional hardware cost.
+- An iPhone 12 (80 ms inference) outperformed a Jetson Orin Nano (120 ms) in this test, at zero additional hardware cost.
 - Consumer devices have better displays, cameras and connectivity for distributing updates.
 - The Tauri framework lets a single Rust codebase target iOS, Android and desktop.
-- The deployment size of roughly 26 MB is small enough to install over Bluetooth, NFC or a brief mobile connection.
+- The deployment size of roughly 26 MB is small enough to install over Bluetooth or a brief mobile connection.
 
 **Exception:** if the deployment requires running the model on a headless device, for example a camera trap or an automated greenhouse system, dedicated hardware can be justified. In that case, a Raspberry Pi 4 or 5 with the CPU backend is usually a better fit than a GPU-based edge device.
 
@@ -81,7 +81,7 @@ One of the most valuable lessons from this project is to deploy to the target de
 
 Testing on the actual device early reveals:
 
-- **Unexpected latency:** the CPU backend can be 600× slower than the GPU backend. The wgpu backend may behave differently on mobile GPUs than it does on desktop GPUs.
+- **Unexpected latency:** the CPU backend can be hundreds of times slower than the GPU backend. The wgpu backend may behave differently on mobile GPUs than it does on desktop GPUs.
 - **Memory pressure:** mobile operating systems aggressively kill background apps that use too much memory. A model that runs fine in isolation can still fail when the phone is also running a camera preview.
 - **Image preprocessing mismatches:** camera APIs return images in a variety of formats (NV21, BGRA, JPEG). Making sure the preprocessing pipeline handles all of these correctly is not a trivial task.
 - **Permissions and sandboxing:** iOS and Android restrict file system access, camera access and background processing. Those restrictions affect how the model is loaded and where inference results can be stored.
@@ -97,18 +97,9 @@ Testing on the actual device early reveals:
 | iOS sideloading | Cannot install without App Store | Use TestFlight for beta distribution, or Xcode direct install for development |
 | Pseudo-label drift | Accuracy degrades over retraining cycles | Cap the ratio of pseudo-labels to real labels at 3:1, and raise the confidence threshold if precision drops below 90% |
 | GPU memory on mobile | Model fails to load | Switch to the ndarray (CPU) backend on devices with less than 4 GB of RAM, and drop batch size to 1 |
-| Model format compatibility | Weights trained on Burn 0.20 don't load on 0.14 | Keep version-locked workspaces, and use weight export/import via JSON for cross-version compatibility |
+| Model format compatibility | Weights trained on Burn 0.20 do not load on 0.14 | Keep version-locked workspaces, and use weight export/import via JSON for cross-version compatibility |
 
-## 5.8 Advice from External Experts (Pending)
-
-The external experts from 2AI-IPCA (Miss Torres and Sir Morais) were contacted with the detailed questions listed in Appendix B. Their specific recommendations on architecture choices, pseudo-labeling strategies, Burn ecosystem maturity and incremental learning mitigation methods are pending. Once received, this section will be updated with their direct advice.
-
-Based on the questions that were sent, the areas where external input is most expected are:
-- Whether the 90% global confidence threshold should be replaced with per-class thresholds.
-- Whether MobileNet or EfficientNet-Lite would be a better backbone for mobile deployment than the custom CNN.
-- Whether rehearsal-based methods are indeed the most practical forgetting mitigation for production teams without dedicated ML research staff.
-
-## 5.9 Summary: The Recommended Workflow
+## 5.8 Summary: The Recommended Workflow
 
 For someone starting this research from scratch, the recommended workflow is:
 
@@ -117,7 +108,7 @@ Week 1:  Set up Burn + Tauri project scaffold
          Deploy a dummy model to the target device
          Verify the deployment pipeline end-to-end
 
-Week 2:  Collect/prepare labeled dataset (≥100 images/class)
+Week 2:  Collect/prepare labeled dataset (>=100 images/class)
          Train initial CNN on labeled subset
          Measure baseline accuracy and inference latency
 

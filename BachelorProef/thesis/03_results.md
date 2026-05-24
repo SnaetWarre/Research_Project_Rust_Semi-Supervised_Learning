@@ -67,13 +67,13 @@ pub struct PlantClassifier<B: Backend> {
 }
 ```
 
-As a result, exactly the same model code runs on CUDA (for GPU-accelerated training), ndarray (for CPU-only environments) and wgpu (for cross-platform GPU inference, including WebGPU and WASM).
+As a result, the same model code compiles for CUDA (for GPU-accelerated training) and ndarray (for CPU-only environments). Burn also supports a wgpu backend for cross-platform GPU inference, but that backend was not tested in this project.
 
 ### 3.1.3 Model Size
 
-The trained model weights take up 5.7 MB on disk. The compiled Rust release binary, which includes the model, the inference runtime and the application code, is roughly 26 MB. The PyTorch checkpoint for the same CNN architecture is similar in size, only a few MB. **The model weights themselves are therefore comparable between both stacks.**
+The trained model weights take up about 916 KB in Burn's native CompactRecorder format. The compiled Rust release binary, which includes the model, the inference runtime and the application code, is roughly 26 MB. The PyTorch checkpoint for the same CNN architecture is similar in size, only a few MB. **The model weights themselves are therefore comparable between both stacks.**
 
-The important difference is **what has to be present on the end user's device to run inference.** With Rust, the release binary is the only artefact that has to be there. It is a single 26 MB file that contains the compiled runtime and the dependencies. With Python, running the same model requires the Python interpreter, the PyTorch library, with or without CUDA support, and several extra packages. A CUDA-enabled PyTorch wheel alone is typically in the low gigabytes once unpacked [11][17], and a practical environment with TorchVision, NumPy, Pillow and similar packages grows further from there.
+The important difference is **what has to be present on the end user's device to run inference.** With Rust, the release binary is the only artefact that has to be there. It is a single 26 MB file that contains the compiled runtime and the dependencies. With Python, running the same model requires the Python interpreter, the PyTorch library, with or without CUDA support, and several extra packages. A CUDA-enabled PyTorch wheel alone is typically in the low gigabytes once unpacked [6][7], and a practical environment with TorchVision, NumPy, Pillow and similar packages grows further from there.
 
 To put that in perspective, the Rust `target/` build directory, which is comparable to `node_modules` or a Python virtual environment, is itself around 2.1 GB. That is similar to a PyTorch virtual environment. **Both stacks require gigabytes of tooling during development.** The difference is that Rust's compilation step reduces all of that to a single portable binary, while a Python deployment has to carry its interpreter and library tree to the target device.
 
@@ -96,7 +96,7 @@ The labeled ratio is intentionally kept low at 20%. This simulates a realistic s
 
 ### 3.2.2 Training Pipeline
 
-**Step 1: Initial supervised training.** The CNN is trained on the 20% labeled pool for 30 epochs using cross-entropy loss, the Adam optimizer and standard data augmentations (random crop, horizontal flip, brightness jitter). This produces a baseline model with roughly 70 to 75% validation accuracy.
+**Step 1: Initial supervised training.** The CNN is trained on the 20% labeled pool for 30 epochs using cross-entropy loss, the Adam optimizer and standard data augmentations (horizontal and vertical flip, rotation, brightness, contrast, saturation, blur and noise). This produces a baseline model with roughly 70 to 75% validation accuracy.
 
 **Step 2: Pseudo-labeling simulation.** The trained model is then used to classify images from the 60% unlabeled stream pool. Images are processed in batches of 100, which are referred to as "images per day" in the streaming simulation. For every image, the model produces a softmax probability distribution over all 38 classes. If the maximum predicted probability is above the **confidence threshold of 0.9**, the image is accepted as a pseudo-labeled sample with the predicted class as its label. Images that fall below this threshold are discarded.
 
@@ -105,7 +105,7 @@ The labeled ratio is intentionally kept low at 20%. This simulates a realistic s
 The pipeline is exposed as a CLI command:
 
 ```bash
-cargo run --release --bin plantvillage_ssl -- simulate \
+cargo run --release --features cuda --bin plantvillage_ssl -- simulate \
     --model "output/models/plant_classifier_TIMESTAMP" \
     --data-dir "data/plantvillage" \
     --cuda --days 0 --labeled-ratio 0.2 \
@@ -114,7 +114,7 @@ cargo run --release --bin plantvillage_ssl -- simulate \
 
 ### 3.2.3 SSL Results
 
-The SSL pipeline improves validation accuracy from roughly 70 to 75% (the supervised baseline on 20% labeled data) to roughly 78 to 85% after the full unlabeled stream has been processed. Pseudo-label precision stays above 95%, which indicates that the 0.9 confidence threshold is effective at filtering out incorrect predictions.
+During development, the SSL pipeline improved validation accuracy from roughly 70 to 75% (the supervised baseline on 20% labeled data) to roughly 78 to 85% after the full unlabeled stream had been processed. Pseudo-label precision appeared to stay above 90%, which suggests that the 0.9 confidence threshold is effective at filtering out incorrect predictions. These values are indicative results from local training runs, not averaged across multiple random seeds or datasets.
 
 ## 3.3 Incremental Learning Experiments
 
@@ -146,7 +146,7 @@ The model was trained from scratch at seven different labeled data quantities, r
 
 **Key findings:**
 
-1. With only 5 labeled images per class, the model reaches just 34.21% accuracy, which is barely above random for 38 classes (2.63%).
+1. With only 5 labeled images per class, the model reaches 34.21% accuracy. That is well above random chance for 38 classes (2.63%), but it is still too low for practical use.
 2. The sharpest improvement happens between 25 and 100 images per class, where accuracy jumps from 57.89% to 85.53%.
 3. Beyond 100 images per class, returns diminish quickly: going from 100 to 200 yields only a 3.22 percentage point gain.
 4. **Practical recommendation:** a minimum of 100 labeled images per class is needed for production-viable accuracy, meaning above 80%. SSL methods are useful for bridging the gap whenever fewer labels are available.
@@ -173,7 +173,7 @@ Two scenarios were compared. In Scenario A, a model was trained on 5 base classe
 
 **Key findings:**
 
-1. The large-base model (30 classes) shows **6× more forgetting** than the small-base model (1.26% versus 0.21%). The model is measurably more biased towards existing classes when the base is larger.
+1. The large-base model (30 classes) shows **6× more forgetting** than the small-base model (1.26 percentage points versus 0.21 percentage points). The model is measurably more biased towards existing classes when the base is larger.
 2. New class accuracy drops by 3.02 percentage points in the large-base scenario (96.98% versus 100.00%), which confirms that class competition increases as the number of existing classes grows.
 3. Training time scales roughly linearly with the number of classes (5.3× longer for 6× more base classes).
 4. **Practical recommendation:** for production systems with many existing classes, use incremental learning methods such as Learning without Forgetting (LwF), Elastic Weight Consolidation (EWC) or rehearsal-based approaches to keep catastrophic forgetting under control. Accuracy on existing classes should be checked after every model update.
@@ -249,9 +249,9 @@ A few things stand out in the benchmark results.
 
 **Desktop GPU performance.** At 0.39 ms per inference, or 2,579 FPS, the model is well below the real-time threshold on desktop hardware. The SSL training does not make inference slower. The optimised SSL model matches the supervised baseline in latency while benefiting from higher accuracy.
 
-**Mobile performance.** The iPhone 12, running the model through Tauri's Rust backend, reaches roughly 80 ms per inference (around 12 FPS). That is comfortably within the usability threshold for a camera-based application where a farmer points a phone at a leaf and waits for a classification.
+**Mobile performance.** The iPhone 12, running the model through Tauri's Rust backend, reached roughly 80 ms per inference (around 12 FPS) in local testing. That is within the usability threshold for a camera-based application where a farmer points a phone at a leaf and waits for a classification, though this measurement was taken on a single device and may vary across iOS versions and hardware revisions.
 
-**The Jetson pivot.** The Jetson Orin Nano, which is a dedicated edge AI device costing €350, performs worse than the iPhone 12, with 120 ms compared to 80 ms. That result directly shaped the project's deployment strategy. Dedicated edge hardware is not needed when consumer devices, such as phones and laptops, already outperform it. The project therefore shifted to a BYOD (Bring Your Own Device) model and removed the extra hardware cost.
+**The Jetson result.** The Jetson Orin Nano, which is a dedicated edge AI device costing €350, performed worse than the iPhone 12 in this test, with 120 ms compared to 80 ms. That result shaped the project's deployment strategy. Consumer devices that many users already own can outperform dedicated low-end edge hardware for this specific model. The project therefore shifted to a BYOD (Bring Your Own Device) model, which removes extra hardware cost.
 
 **Deployment size advantage.** The compiled binary of roughly 26 MB can be distributed over Bluetooth, a USB drive or a short mobile data connection. A Python/PyTorch deployment requires a multi-gigabyte environment on the target device, which is not practical over those same channels and makes offline-first deployment harder.
 
@@ -263,7 +263,7 @@ Three deployment targets were implemented:
 
 1. **Desktop GUI:** a native application with a Svelte 5 and TailwindCSS frontend and a Tauri backend running the Rust Burn model. The GUI offers real-time classification, confidence visualisation and model diagnostics.
 
-2. **Browser (PWA):** an export pipeline converts the Burn model weights to JSON, which are then loaded into an ONNX Runtime Web deployment via a Progressive Web App. The PWA caches the 5.7 MB model through a Service Worker, which makes full offline operation possible after the first load.
+2. **Browser (PWA):** an export pipeline converts the Burn model weights to ONNX format (about 1.8 MB). The ONNX model can be loaded into an ONNX Runtime Web deployment via a Progressive Web App. The PWA can cache the model through a Service Worker, which would make offline operation possible after the first load. This path was prepared but not fully end-to-end tested on all target browsers.
 
 3. **iPhone 12 (Tauri Mobile):** the same Tauri application, compiled for iOS. The Rust inference backend runs natively on the A14 chip, and the web-based UI takes care of the camera interface. Deployment goes through Xcode or TestFlight.
 
@@ -301,3 +301,7 @@ The Tauri mobile deployment brought up preprocessing inconsistencies. Desktop im
 ### 3.6.4 Compilation Times
 
 Full release builds of the `plantvillage_ssl` workspace take roughly 5 to 7 minutes on the development machine (AMD Ryzen 7, 32 GB RAM, NVMe SSD). This is a known characteristic of Rust's monomorphisation and optimisation passes, especially for generic code that is instantiated across multiple backends. During development, `cargo check` (type-checking without code generation) was used for fast iteration, and `--release` builds were reserved for benchmarking and deployment.
+
+## 3.7 Limitations of the Experimental Results
+
+The results in this chapter should be read with the following limitations in mind. All experiments were carried out on the PlantVillage dataset, which consists of relatively uniform lab-like images. Real-world field images differ in lighting, background, camera quality and disease progression, so accuracy on field data is likely to be lower. The SSL accuracy and pseudo-label precision figures are based on single training runs with a fixed random seed, not averaged across multiple seeds or datasets. The mobile inference measurement was taken on one iPhone 12 under controlled conditions. Finally, the wgpu and WASM backends were prepared theoretically but not validated with end-to-end experiments in this project.

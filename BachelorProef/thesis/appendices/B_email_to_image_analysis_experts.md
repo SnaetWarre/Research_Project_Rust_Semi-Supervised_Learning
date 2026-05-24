@@ -34,7 +34,7 @@ Warre Snaet
 
 4. The model uses a lightweight custom CNN with four convolutional blocks, batch normalization, ReLU, max pooling, adaptive average pooling, dropout and two linear layers. It was chosen for edge deployment rather than maximum accuracy. From your experience, is this a defensible architecture for a 38-class image classification task, or would you recommend a mobile architecture such as MobileNet or EfficientNet-Lite?
 
-5. The training pipeline uses augmentations such as random crops, flips and color jitter. In your image-analysis work, which augmentation strategies have you found most useful when labeled data is limited? Are there augmentations you would avoid because they can damage clinically or visually meaningful image features?
+5. The training pipeline uses augmentations such as horizontal and vertical flips, rotation, brightness, contrast, saturation, blur and noise. In your image-analysis work, which augmentation strategies have you found most useful when labeled data is limited? Are there augmentations you would avoid because they can damage clinically or visually meaningful image features?
 
 6. The model mainly processes 128x128 RGB input images to keep memory use and inference time low. For fine-grained visual classification, how would you evaluate whether this resolution is sufficient? Would you test higher resolutions, crops around symptomatic regions, segmentation before classification or another preprocessing approach?
 

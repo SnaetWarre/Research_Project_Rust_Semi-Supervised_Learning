@@ -15,7 +15,7 @@ Plant disease detection is used here as the concrete benchmark. The PlantVillage
 
 ## 1.2 The Labeling Problem
 
-Any image classification model needs labeled training data, and expert annotation is expensive. In the agricultural domain, having a plant pathologist label images requires specialized expertise and is both time-consuming and costly [2]. For a dataset of 50,000 images across 38 classes, the total annotation budget can easily reach tens of thousands of euros, which is too expensive for many projects.
+Any image classification model needs labeled training data, and expert annotation is expensive. In the agricultural domain, having a plant pathologist label images requires specialized expertise and is both time-consuming and costly [1]. For a dataset of 50,000 images across 38 classes, the total annotation budget can easily reach tens of thousands of euros, which is too expensive for many projects.
 
 Semi-supervised learning offers a way to reduce that cost. By training an initial model on a small labeled subset and then using that model to generate pseudo-labels for the remaining unlabeled data, SSL can approach the accuracy of fully supervised training at a fraction of the annotation budget. The challenge is making sure that the pseudo-labels are accurate enough to improve the model rather than degrade it, which comes down to careful confidence thresholding and retraining design.
 
@@ -53,6 +53,6 @@ This thesis is organised as follows:
 
 - **Chapter 2: Research** presents the literature study. It covers semi-supervised learning techniques, the Rust ML ecosystem, incremental learning theory, edge AI deployment strategies and the PlantVillage dataset.
 - **Chapter 3: Research Results** describes the technical implementation. It covers the system architecture, the SSL training pipeline, the three controlled experiments and their quantitative results, the cross-platform benchmarks and the Tauri-based GUI application.
-- **Chapter 4: Reflection** offers a critical evaluation of the results through interviews with external experts, together with an analysis of the broader implications, including implementation barriers, privacy benefits and possible directions for future research.
-- **Chapter 5: Advice** gives a practical, step-by-step guide for anyone tackling the same research question, grounded in both the experimental findings and the planned external feedback.
+- **Chapter 4: Reflection** offers a critical evaluation of the results. It includes an honest statement about the external feedback that was sought but not received, a self-reflection on what went well and what did not, and an analysis of the broader implications, including implementation barriers, privacy considerations and possible directions for future research.
+- **Chapter 5: Advice** gives a practical, step-by-step guide for anyone tackling the same research question, grounded in the experimental findings and the literature review.
 - **Chapter 6: Conclusion** answers the research question directly by bringing together the key findings from the preceding chapters.

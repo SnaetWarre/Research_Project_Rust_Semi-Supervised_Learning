@@ -52,7 +52,7 @@ plantvillage_ssl/data/plantvillage/
 **With GPU (CUDA):**
 ```bash
 cd plantvillage_ssl
-cargo build --release
+cargo build --release --features cuda
 ```
 
 **CPU only:**
@@ -67,7 +67,7 @@ cargo build --release --features cpu
 
 ```bash
 cd plantvillage_ssl
-cargo run --release --bin plantvillage_ssl -- train \
+cargo run --release --features cuda --bin plantvillage_ssl -- train \
     --epochs 30 \
     --cuda \
     --labeled-ratio 0.2
@@ -84,7 +84,7 @@ The trained model is saved to `output/models/plant_classifier_TIMESTAMP`.
 ### A.3.2 Step 2: SSL Simulation (Pseudo-Labeling)
 
 ```bash
-cargo run --release --bin plantvillage_ssl -- simulate \
+cargo run --release --features cuda --bin plantvillage_ssl -- simulate \
     --model "output/models/plant_classifier_TIMESTAMP" \
     --data-dir "data/plantvillage" \
     --cuda \
@@ -112,15 +112,17 @@ cp plantvillage_ssl/output/simulation/plant_classifier_ssl_TIMESTAMP.mpk \
 
 ## A.4 Running Experiments
 
+Experiments are run through a separate `experiments` binary:
+
 ```bash
 # Label efficiency experiment
-cargo run --release --bin plantvillage_ssl -- experiment label-efficiency
+cargo run --release --features cuda --bin experiments -- label-efficiency
 
 # Class scaling experiment
-cargo run --release --bin plantvillage_ssl -- experiment class-scaling
+cargo run --release --features cuda --bin experiments -- class-scaling
 
 # New class position experiment
-cargo run --release --bin plantvillage_ssl -- experiment new-class-position
+cargo run --release --features cuda --bin experiments -- new-class-position
 ```
 
 Results are written to `output/experiments/<experiment-name>/results.json` and `conclusions.txt`. SVG plots are generated automatically.
@@ -155,16 +157,16 @@ cargo tauri ios build
 
 ```bash
 # View all available commands
-cargo run --release --bin plantvillage_ssl -- --help
+cargo run --release --features cuda --bin plantvillage_ssl -- --help
 
 # View training options
-cargo run --release --bin plantvillage_ssl -- train --help
+cargo run --release --features cuda --bin plantvillage_ssl -- train --help
 
 # View simulation options
-cargo run --release --bin plantvillage_ssl -- simulate --help
+cargo run --release --features cuda --bin plantvillage_ssl -- simulate --help
 
 # View experiment options
-cargo run --release --bin plantvillage_ssl -- experiment --help
+cargo run --release --features cuda --bin experiments -- --help
 ```
 
 ## A.7 Troubleshooting

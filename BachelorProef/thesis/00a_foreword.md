@@ -8,7 +8,7 @@ Plant disease detection turned out to be a good fit for this kind of question. T
 
 Choosing Rust for the whole implementation was deliberate, but also a bit experimental. I had been exploring the language on my own for about a year before starting this project, and I wanted to see whether the ML ecosystem around it had matured enough to be a real alternative to Python for this kind of work. The answer, as this thesis documents in detail, is that it mostly has, although there are still some specific limitations that should be understood before making that choice.
 
-I would like to thank Gilles Depypere for the consistent feedback throughout the research and for the practical guidance on scoping the work. I also want to thank Sandro Queirós for reading the drafts critically and for pushing back on certain conclusions in a way that made them stronger. I attempted to contact external experts for additional feedback, but no written responses were received in time for this submission.
+I would like to thank Gilles Depypere for the consistent feedback throughout the research and for the practical guidance on scoping the work. I also want to thank Sandro Queirós for reading the drafts critically and for pushing back on certain conclusions in a way that made them stronger. I also want to thank Pedro Morais from 2AI-IPCA for reviewing the technical approach and sharing his expertise on image classification and data augmentation.
 
 Finally, I want to thank my fellow students in the MCT programme for the many exchanges of ideas and for the encouragement during the past year. I also want to thank my family for their patience during the months when free time was limited.
 

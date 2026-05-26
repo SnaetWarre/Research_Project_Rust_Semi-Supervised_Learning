@@ -1,4 +1,4 @@
-# Appendix C: Guest Session Report: AI Threat Landscape and Defenses
+# Appendix D: Guest Session Report: AI Threat Landscape and Defenses
 
 **Speaker:** NVISO (www.nviso.eu)
 **Date:** January 2026

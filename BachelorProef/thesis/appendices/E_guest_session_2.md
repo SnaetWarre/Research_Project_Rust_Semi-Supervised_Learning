@@ -1,4 +1,4 @@
-# Appendix D: Guest Session Report: Digital Fashion and VR Workflows
+# Appendix E: Guest Session Report: Digital Fashion and VR Workflows
 
 **Speaker:** Holly, CEO of Studio of New World
 **Date:** January 2026

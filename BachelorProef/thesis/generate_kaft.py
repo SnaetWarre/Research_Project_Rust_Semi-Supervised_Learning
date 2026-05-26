@@ -29,7 +29,7 @@ STUDENT_NAME = "Warre Snaet"
 def main():
     doc = Document(str(TEMPLATE))
 
-    # Paragraph 0: Title (Kaft_Style1) — currently empty
+    # Paragraph 0: Title (Kaft_Style1) - currently empty
     doc.paragraphs[0].text = TITLE
 
     # Paragraph 1: Subtitle (Kaft_Style1)
@@ -43,8 +43,8 @@ def main():
     promotor_text += f"\nexternal promotor: {EXTERNAL_PROMOTOR}"
     doc.paragraphs[2].text = promotor_text
 
-    # Paragraph 4: "Research question carried out by" — keep as is
-    # Paragraph 5: Student name (Kaft_Style1) — currently empty
+    # Paragraph 4: "Research question carried out by" - keep as is
+    # Paragraph 5: Student name (Kaft_Style1) - currently empty
     doc.paragraphs[5].text = STUDENT_NAME
 
     # Paragraphs 6-8: fixed text, keep as is

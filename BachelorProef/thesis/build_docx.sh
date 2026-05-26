@@ -136,7 +136,7 @@ if [[ -n "${RCLONE_REMOTE:-}" ]]; then
   if ! command -v rclone >/dev/null 2>&1; then
     log "warning: RCLONE_REMOTE is set but rclone not in PATH; skipping upload"
   else
-    # Remote name only (e.g. mydrive), no trailing colon — we add colon below.
+    # Remote name only (e.g. mydrive), no trailing colon - we add colon below.
     RC="${RCLONE_REMOTE%%:}"
     RPATH="${RC}:${RCLONE_PATH:-}"
     RPATH="${RPATH%/}"

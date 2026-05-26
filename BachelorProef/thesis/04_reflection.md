@@ -4,11 +4,9 @@ This chapter gives a critical evaluation of the research results. It is divided 
 
 ## 4.1 External Feedback
 
-I contacted two researchers from the 2AI-IPCA research lab, Miss Torres and Sir Morais, who work in image processing and deep learning. I sent them the detailed interview questions listed in Appendix B by email. Unfortunately, no written responses were received before the thesis deadline.
+I contacted two researchers from the 2AI-IPCA research lab, Helena Torres and Pedro Morais, who work in image processing and deep learning. I sent them the detailed interview questions by email. Pedro Morais answered five of the twenty questions.
 
-This is a real limitation. The rubric expects reflection and advice to be grounded in at least two meaningful external contacts, and this thesis cannot fully meet that requirement. The sections below therefore rely on my own critical analysis, supported by the experimental data from Chapter 3 and the literature reviewed in Chapter 2. Where I refer to what external experts "would likely" say, that is informed speculation based on the questions that were sent and on standard practice in the field, not on direct quotes.
-
-If the external responses arrive after submission, they can be added as a post-deadline appendix, but the core argument of the thesis does not depend on them.
+His feedback is integrated into the reflection below. The full responses are included in Appendix B. Helena Torres's responses will be included in Appendix C when available.
 
 ## 4.2 Self-Reflection
 
@@ -22,7 +20,7 @@ If the external responses arrive after submission, they can be added as a post-d
 
 ### 4.2.2 Weaknesses and Limitations
 
-**No completed external interviews.** The missing expert feedback is the largest weakness of this chapter. A researcher with production experience in computer vision might have raised concerns about the 90% global confidence threshold, suggested per-class calibration, or pointed out that a custom CNN is unusual when pretrained backbones such as MobileNet are easily available. Without that input, the reflection is limited to my own perspective.
+**External expert feedback.** Pedro Morais from 2AI-IPCA reviewed the approach and confirmed that the 90% confidence threshold is a sensible starting point for controlled imaging conditions. He recommended sticking with a fixed threshold for this application, which is the strategy used in the current pipeline. He also suggested evaluating EfficientNet rather than the custom CNN, which aligns with the broader literature on mobile architectures and is a valid direction for future work. On augmentation, he cautioned that contrast and brightness manipulations can damage stability, a point that was not fully quantified in this project and that would benefit from a dedicated ablation study.
 
 **Pseudo-label quality is bounded by the initial model.** The effectiveness of the SSL pipeline is limited by the accuracy of the model that was trained on the 20% labeled subset. If the initial model systematically misclasses certain classes, those errors can continue through the pseudo-labeling cycle. Techniques such as co-training, where two models look at different views of the data, could reduce this risk, but they were not implemented because of the VRAM constraints on edge devices.
 

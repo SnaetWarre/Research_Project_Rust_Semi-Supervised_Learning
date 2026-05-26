@@ -2,8 +2,8 @@
 
 **Name:** Helena Torres  
 **Organisation:** 2AI – Applied Artificial Intelligence Laboratory (IPCA)  
-**Role:** Researcher  
-**Email:** [email]  
+**Role:** Assistant Researcher  
+**Email:** htorres@ipca.pt
 
 ---
 

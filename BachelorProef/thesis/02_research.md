@@ -6,7 +6,7 @@ This chapter explains the theoretical background that is needed to understand th
 
 ### 2.1.1 Fundamentals
 
-Semi-supervised learning (SSL) sits between supervised learning, where every data point is labeled, and unsupervised learning, where there are no labels at all. SSL combines a small set of labeled examples with a large pool of unlabeled data to train a model that performs comparably to one trained on a fully labeled dataset [1]. This is particularly valuable in domains where labeling is expensive, and agricultural image annotation by plant pathologists is a clear example of such a domain.
+Semi-supervised learning (SSL) sits between supervised learning, where every data point is labeled, and unsupervised learning, where there are no labels at all. SSL combines a small set of labeled examples with a large pool of unlabeled data to train a model that performs comparably to one trained on a fully labeled dataset [1]. That is particularly valuable in domains where labeling is expensive, and agricultural image annotation by plant pathologists is a clear example of such a domain.
 
 The core assumption behind SSL is the **cluster assumption**: data points that lie close together in feature space are likely to share the same label. When that assumption holds, the structure of the unlabeled data provides useful information about where the decision boundary should run [1].
 
@@ -137,7 +137,7 @@ Burn also supports `burn-wgpu` for cross-platform GPU (Vulkan, Metal, DX12, WebG
 
 ### 2.3.1 The Problem
 
-In a real-world deployment, the set of plant diseases that the model has to recognise will not stay the same forever. New diseases appear, new crop varieties are introduced and regional conditions change. A practical system should therefore be able to **add new classes** to an existing model without retraining from scratch on the full dataset.
+In a real-world deployment, the set of classes that the model has to recognise will not stay the same forever. New diseases appear, new crop varieties are introduced and regional conditions change. A practical system should therefore be able to **add new classes** to an existing model without retraining from scratch on the full dataset.
 
 The main obstacle is **catastrophic forgetting**. When a neural network is fine-tuned on new data, it tends to overwrite the weights that encoded knowledge about the older data, which causes performance on the previously learned classes to degrade [12].
 
@@ -216,7 +216,7 @@ The PlantVillage dataset is one of the most widely used benchmarks for plant dis
 | Pre-split | train (~70K) / valid (~17K) |
 | Crops covered | Apple, Tomato, Grape, Corn, Potato, and others |
 
-The dataset includes healthy and diseased classes across 38 categories, so the model can learn to distinguish between different disease states and healthy tissue. Note that not every crop has both a healthy and a diseased class. Classes follow the naming convention `Crop___Disease` (for example `Apple___Apple_scab`, `Tomato___healthy`).
+The dataset includes both healthy and diseased classes across 38 categories, so the model can learn to distinguish between different disease states and healthy tissue. Note that not every crop has both a healthy and a diseased class. Classes follow the naming convention `Crop___Condition` (for example `Apple___Apple_scab`, `Tomato___healthy`).
 
 For this project, the existing train and valid split is merged and then re-split according to the four-pool strategy described in Chapter 3 (20% labeled, 60% stream, 10% validation, 10% test). This makes sure that the SSL pipeline has access to a large pool of unlabeled data while also keeping a held-out test set that is never seen during training.
 

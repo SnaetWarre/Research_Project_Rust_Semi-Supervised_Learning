@@ -52,7 +52,7 @@ Based on the experimental results and the literature review, the following param
 
 ## 5.4 Plan for Incremental Class Addition
 
-If the deployment scenario involves adding new disease classes over time, which is very likely in any real-world agricultural application, the experimental results from Chapter 3 provide a few important guidelines:
+If the deployment scenario involves adding new classes over time, which is very likely in any real-world agricultural application, the experimental results from Chapter 3 provide a few important guidelines:
 
 1. **Start with a broad base model.** The class scaling experiment (Table 3.2) shows that adding a class to a larger base causes more forgetting. Starting with a larger base, however, means that the model already covers more diseases from the beginning, which reduces how often updates are needed.
 
@@ -125,8 +125,8 @@ Week 5:  Optimise deployment (binary size, startup time)
          Benchmark all targets
 
 Week 6:  Stress testing, edge-case handling
-         Documentation and user guide
-         Final evaluation on held-out test set
+          Documentation and user guide
+          Final evaluation on held-out test set
 ```
 
 This timeline assumes familiarity with Rust and that a labeled dataset is already available. Collecting and annotating the dataset may require additional time, depending on the domain.

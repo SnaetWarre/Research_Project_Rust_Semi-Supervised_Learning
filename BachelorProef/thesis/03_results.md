@@ -1,6 +1,6 @@
 # 3. Research Results
 
-This chapter describes the system that was built to answer the research question. It covers the architecture, the semi-supervised learning pipeline, three controlled experiments that are important for deployment, cross-platform benchmarks and the graphical user interface.
+This chapter describes the system that was built to answer the research question. It covers the architecture, the semi-supervised learning pipeline, three controlled experiments that matter for deployment, cross-platform benchmarks and the graphical user interface.
 
 ## 3.1 System Architecture
 
@@ -25,7 +25,7 @@ Conv2d(128, 256, 3×3) → BatchNorm → ReLU → MaxPool(2×2)
 AdaptiveAvgPool → Linear(256, 256) → ReLU → Dropout(0.3) → Linear(256, 38)
 ```
 
-Input images are resized to 128×128 (or 256×256 in some experiments) RGB. The output layer produces 38 logits, one per PlantVillage disease class. The Burn implementation uses Rust's type system to make the model generic over backends. Each convolutional block wraps a Conv2d, BatchNorm, ReLU and optional MaxPool:
+Input images are resized to 128×128 (or 256×256 in some experiments) RGB. The output layer produces 38 logits, one per PlantVillage class. The Burn implementation uses Rust's type system to make the model generic over backends. Each convolutional block wraps a Conv2d, BatchNorm, ReLU and optional MaxPool:
 
 ```rust
 /// A CNN block with Conv2d, BatchNorm, ReLU, and optional MaxPool
@@ -118,7 +118,7 @@ During development, the SSL pipeline improved validation accuracy from roughly 7
 
 ## 3.3 Incremental Learning Experiments
 
-Three controlled experiments were carried out to evaluate parts of the system that matter for real-world deployment: how much labeled data is actually needed, what happens when new disease classes have to be added to an existing model, and whether the difficulty of adding a class depends on the size of the existing taxonomy.
+Three controlled experiments were carried out to evaluate parts of the system that matter for real-world deployment: how much labeled data is actually needed, what happens when new classes have to be added to an existing model, and whether the difficulty of adding a class depends on the size of the existing taxonomy.
 
 ### 3.3.1 Experiment 1: Label Efficiency Curve
 
@@ -218,7 +218,7 @@ Both scenarios were evaluated at five labeling levels: 5, 10, 25, 50 and 100 lab
 1. Learning a new class is substantially harder as the 31st class than as the 6th class. At 50 labeled samples, the 6th class already reaches 84.27% accuracy while the 31st class only reaches 25.62%.
 2. The 6th class passes 70% accuracy with just 50 samples. The 31st class does not reach 70% accuracy at any of the tested sample counts (up to 100).
 3. Negative forgetting values in the small-base scenario (for example -2.84% at 50 samples) show that the model occasionally improves on existing classes during incremental training, probably because the additional data acts as implicit regularisation.
-4. **Practical recommendation:** when the deployment scenario assumes that new disease classes will be added over time, start with a broad base model. Adding classes to a large taxonomy requires much more labeled data than adding them to a small one. SSL pseudo-labeling can help bridge that gap by generating extra training samples for the new class.
+4. **Practical recommendation:** when the deployment scenario assumes that new classes will be added over time, start with a broad base model. Adding classes to a large taxonomy requires much more labeled data than adding them to a small one. SSL pseudo-labeling can help bridge that gap by generating extra training samples for the new class.
 
 ## 3.4 Deployment and Benchmarks
 

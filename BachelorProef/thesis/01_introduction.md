@@ -2,22 +2,22 @@
 
 ## 1.1 Context and Motivation
 
-Shipping a machine learning model outside of a cloud environment is still harder than most tutorials suggest. The standard ML stack, Python and PyTorch, is built for research flexibility and GPU throughput. It is less suited for running on a phone or on a field laptop that may not have an internet connection. A typical PyTorch deployment needs the Python interpreter, the PyTorch library and a set of supporting packages. Together, these can take several gigabytes on the target device. That is acceptable on a cloud server, but it quickly becomes a problem for practical edge scenarios.
+Shipping a machine learning model outside of a cloud environment is still harder than what most tutorials suggest. The standard ML stack of Python and PyTorch is built for research flexibility and mostly GPU throughput in mind. It is less suited for running on an iPhone or on a field laptop that may not have the most stable connection. A typical PyTorch deployment needs the Python interpreter, the PyTorch library and a set of supporting packages. Together, these can take several gigabytes on the target device. While that is acceptable on a cloud server, it can cause problems for practical edge scenarios.
 
-Rust offers a different deployment model. It compiles to a single binary with no interpreter and no garbage collector. Its type system catches many problems at compile time, which is useful for ML processes that have to run reliably. The build system also supports cross-compilation to ARM, iOS, Android and WebAssembly. In this project, that means the deployment can go from a multi-gigabyte Python environment to a 26 MB binary that can even be distributed on a USB stick.
+Rust offers a different deployment model. It compiles to a single binary, no interpreter and no garbage collector. Its type system catches many problems at compile time, which is useful for ML processes that have to run reliably. The build system also supports cross-compilation to ARM, iOS, Android and WebAssembly. In this project, that means the deployment can go from a multi-gigabyte Python environment to a small 26 MB binary that can even be distributed on an old USB stick you have laying around your desk.
 
-The difficult part is training. Rust's ML ecosystem is still young, and many frameworks focus more on inference than on the full training loop. Semi-supervised learning (SSL) combines a small set of labeled data with a large pool of unlabeled data. To do that properly, the implementation needs pseudo-labeling, confidence filtering and repeated retraining cycles. This is more demanding than simple inference, and it tests whether the training API is mature enough. The central question of this thesis is whether Rust's ML ecosystem, and specifically the Burn framework, can support this workflow while still keeping the deployment advantages.
+The hard part is training. Rust's ML ecosystem is still on the younger side. Many frameworks focus more on the inference part than on the full training loop. Semi-supervised learning (SSL) combines a small set of labeled data with a large pool of unlabeled data. To do that properly, the implementation needs pseudo-labeling, confidence filtering and repeated retraining cycles. This is more demanding than simple inference, and it tests whether the training API is mature enough. The big question of this thesis is whether Rust's ML ecosystem, and specifically the Burn framework, can support this workflow while still keeping the deployment advantages.
 
-Plant disease detection is used here as the concrete benchmark. The PlantVillage dataset (38 disease classes, roughly 87,000 images) provides a realistic and well-understood test case. Plant disease detection is also a natural fit for edge deployment: the people who need it most often work in areas with limited connectivity, and the diagnostic tools that are currently available either depend on cloud access or require expensive laboratory analysis. By building the SSL pipeline for this specific problem, the thesis tests whether Rust can handle a full ML workflow, from training to deployment, in a domain where offline operation really matters.
+Plant disease detection is used here as the benchmark. The PlantVillage dataset (38 classes, roughly 87,000 images) provides a realistic test case. Plant disease detection is also a natural fit for edge deployment: the people who need it most often work in areas with limited connectivity, and the diagnostics tools that are currently available either depend on cloud access or require expensive laboratory analysis. By building the SSL pipeline for this specific use case, the project tests whether Rust can handle a full ML workflow, from training to deployment, in a place where offline operation matters.
 
 ![Deployment footprint comparison: Python/PyTorch stack versus Rust single binary](figures/deployment_comparison.svg)
 *Figure 1.1: Conceptual comparison of the runtime footprint of a Python/PyTorch deployment versus a compiled Rust binary. The sizes are based on the measurements described in Chapter 3.*
 
 ## 1.2 The Labeling Problem
 
-Any image classification model needs labeled training data, and expert annotation is expensive. In the agricultural domain, having a plant pathologist label images requires specialized expertise and is both time-consuming and costly [1]. For a dataset of 50,000 images across 38 classes, the total annotation budget can easily reach tens of thousands of euros, which is too expensive for many projects.
+Any image classification model needs labeled training data, and expert annotation is expensive. In the agricultural domain, having a plant pathologist label images requires specialized expertise and is both time-consuming and costly [1]. For a dataset of 87,000 images across 38 classes, the total annotation budget can get over thousands of euros. That is too expensive for a lot of people and projects.
 
-Semi-supervised learning offers a way to reduce that cost. By training an initial model on a small labeled subset and then using that model to generate pseudo-labels for the remaining unlabeled data, SSL can approach the accuracy of fully supervised training at a fraction of the annotation budget. The challenge is making sure that the pseudo-labels are accurate enough to improve the model rather than degrade it, which comes down to careful confidence thresholding and retraining design.
+Semi-supervised learning offers a way to reduce that cost. By training an initial model on a small labeled subset and then using that model to generate pseudo-labels for the remaining unlabeled data, SSL can approach the accuracy of fully supervised training at a fraction of the annotation budget. The hard part is making sure that the pseudo-labels are accurate enough to improve the model rather than degrading the performance. That is why it comes down to being careful with the confidence threshold and retraining design.
 
 ## 1.3 Research Question
 
@@ -25,7 +25,7 @@ The central research question of this thesis is:
 
 > **How can a semi-supervised neural network be efficiently implemented in Rust for the automatic labeling of partially labeled datasets on an edge device?**
 
-This question is broken down into the following sub-questions:
+This question breaks down into the following sub-questions:
 
 1. Which principles underpin semi-supervised learning, and how can pseudo-labeling be applied to image classification?
 2. What is the best-practice approach for implementing neural networks with the Burn framework in Rust?
@@ -37,7 +37,7 @@ This question is broken down into the following sub-questions:
 
 ## 1.4 Scope and Approach
 
-The research focuses on implementing a complete SSL pipeline in Rust with the Burn framework, validated on the PlantVillage dataset with 38 disease classes and roughly 87,000 images. The model is a custom lightweight convolutional neural network (CNN) designed for edge deployment. It is not a pretrained model and not a Vision Transformer. The full pipeline, from training to deployment, compiles into a single binary that runs fully offline.
+This research focuses on implementing a complete SSL pipeline in Rust with the Burn framework, validated on the PlantVillage dataset with 38 classes and roughly 87,000 images. The model is a custom lightweight convolutional neural network (CNN) designed for edge deployment. It is not a pretrained model and not a Vision Transformer. The full pipeline, from training to deployment, compiles into a single binary that runs fully offline.
 
 The experimental work is organised around three axes:
 

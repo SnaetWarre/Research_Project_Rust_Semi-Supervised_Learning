@@ -103,14 +103,15 @@ pub struct AllExperimentResults {
 pub async fn load_label_efficiency_results(
     results_dir: Option<String>,
 ) -> Result<LabelEfficiencyResults, String> {
-    let base_path = results_dir.unwrap_or_else(|| "output/experiments/label_efficiency".to_string());
+    let base_path =
+        results_dir.unwrap_or_else(|| "output/experiments/label_efficiency".to_string());
     let results_path = Path::new(&base_path).join("results.json");
 
     let json = fs::read_to_string(&results_path)
         .map_err(|e| format!("Failed to read results: {:?}", e))?;
-    
-    let results: LabelEfficiencyResults = serde_json::from_str(&json)
-        .map_err(|e| format!("Failed to parse results: {:?}", e))?;
+
+    let results: LabelEfficiencyResults =
+        serde_json::from_str(&json).map_err(|e| format!("Failed to parse results: {:?}", e))?;
 
     Ok(results)
 }
@@ -125,9 +126,9 @@ pub async fn load_class_scaling_results(
 
     let json = fs::read_to_string(&results_path)
         .map_err(|e| format!("Failed to read results: {:?}", e))?;
-    
-    let results: ClassScalingResults = serde_json::from_str(&json)
-        .map_err(|e| format!("Failed to parse results: {:?}", e))?;
+
+    let results: ClassScalingResults =
+        serde_json::from_str(&json).map_err(|e| format!("Failed to parse results: {:?}", e))?;
 
     Ok(results)
 }
@@ -142,9 +143,9 @@ pub async fn load_ssl_incremental_results(
 
     let json = fs::read_to_string(&results_path)
         .map_err(|e| format!("Failed to read results: {:?}", e))?;
-    
-    let results: SSLIncrementalResults = serde_json::from_str(&json)
-        .map_err(|e| format!("Failed to parse results: {:?}", e))?;
+
+    let results: SSLIncrementalResults =
+        serde_json::from_str(&json).map_err(|e| format!("Failed to parse results: {:?}", e))?;
 
     Ok(results)
 }
@@ -154,14 +155,15 @@ pub async fn load_ssl_incremental_results(
 pub async fn load_new_class_position_results(
     results_dir: Option<String>,
 ) -> Result<NewClassPositionResults, String> {
-    let base_path = results_dir.unwrap_or_else(|| "output/experiments/new_class_position".to_string());
+    let base_path =
+        results_dir.unwrap_or_else(|| "output/experiments/new_class_position".to_string());
     let results_path = Path::new(&base_path).join("results.json");
 
     let json = fs::read_to_string(&results_path)
         .map_err(|e| format!("Failed to read results: {:?}", e))?;
-    
-    let results: NewClassPositionResults = serde_json::from_str(&json)
-        .map_err(|e| format!("Failed to parse results: {:?}", e))?;
+
+    let results: NewClassPositionResults =
+        serde_json::from_str(&json).map_err(|e| format!("Failed to parse results: {:?}", e))?;
 
     Ok(results)
 }
@@ -172,34 +174,37 @@ pub async fn load_all_experiment_results(
     base_dir: Option<String>,
 ) -> Result<AllExperimentResults, String> {
     let mut base_path = base_dir.unwrap_or_else(|| "output/experiments".to_string());
-    
+
     // Auto-discovery of experiments directory if default doesn't exist
     if !Path::new(&base_path).exists() {
         if Path::new("../output/experiments").exists() {
             base_path = "../output/experiments".to_string();
         } else if Path::new("../../output/experiments").exists() {
-             base_path = "../../output/experiments".to_string();
+            base_path = "../../output/experiments".to_string();
         }
     }
 
-    let label_efficiency = load_label_efficiency_results(
-        Some(format!("{}/label_efficiency", base_path))
-    ).await.ok();
+    let label_efficiency =
+        load_label_efficiency_results(Some(format!("{}/label_efficiency", base_path)))
+            .await
+            .ok();
 
-    let class_scaling = load_class_scaling_results(
-        Some(format!("{}/class_scaling", base_path))
-    ).await.ok();
+    let class_scaling = load_class_scaling_results(Some(format!("{}/class_scaling", base_path)))
+        .await
+        .ok();
 
-    let ssl_incremental = load_ssl_incremental_results(
-        Some(format!("{}/ssl_incremental", base_path))
-    ).await.ok();
+    let ssl_incremental =
+        load_ssl_incremental_results(Some(format!("{}/ssl_incremental", base_path)))
+            .await
+            .ok();
 
-    let new_class_position = load_new_class_position_results(
-        Some(format!("{}/new_class_position", base_path))
-    ).await.ok();
+    let new_class_position =
+        load_new_class_position_results(Some(format!("{}/new_class_position", base_path)))
+            .await
+            .ok();
 
-    let has_results = label_efficiency.is_some() 
-        || class_scaling.is_some() 
+    let has_results = label_efficiency.is_some()
+        || class_scaling.is_some()
         || ssl_incremental.is_some()
         || new_class_position.is_some();
 
@@ -229,9 +234,7 @@ pub async fn load_experiment_conclusions(
 
 /// Check which experiments have results available
 #[tauri::command]
-pub async fn get_available_experiments(
-    base_dir: Option<String>,
-) -> Result<Vec<String>, String> {
+pub async fn get_available_experiments(base_dir: Option<String>) -> Result<Vec<String>, String> {
     let base_path = base_dir.unwrap_or_else(|| "output/experiments".to_string());
     let base = Path::new(&base_path);
 

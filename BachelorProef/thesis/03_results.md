@@ -8,10 +8,10 @@ This chapter describes the system that was built to answer the research question
 
 The project is organised as two separate Rust workspaces:
 
-- **`plantvillage_ssl`**: the main SSL library and CLI, built on Burn 0.20. This workspace contains the CNN model, the training loop, the pseudo-labeling simulation pipeline, the experiment runner and the Tauri-based GUI application.
-- **`incremental_learning`**: a dedicated workspace for the incremental learning experiments, built on Burn 0.14. It is split into library crates (`plant-core`, `plant-dataset`, `plant-training`, `plant-incremental`) and CLI tools (`train`, `evaluate`, `experiment-runner`).
+- **`plantvillage_ssl`**: the main SSL library and CLI, built on Burn 0.21. This workspace contains the CNN model, the training loop, the pseudo-labeling simulation pipeline, the experiment runner and the Tauri-based GUI application.
+- **`incremental_learning`**: a dedicated workspace for the incremental learning experiments, built on Burn 0.21. It is split into library crates (`plant-core`, `plant-dataset`, `plant-training`, `plant-incremental`) and CLI tools (`train`, `evaluate`, `experiment-runner`).
 
-The split into two workspaces was a deliberate choice. Burn's API changed substantially between versions 0.14 and 0.20, and the incremental learning crate was developed earlier in the project, before the main pipeline moved to the newer version. Both workspaces share the same CNN architecture and dataset handling logic, so the experimental results remain comparable.
+The split into two workspaces was a deliberate choice. The incremental learning crate was developed earlier in the project and keeps the class-incremental experiments separate from the main SSL pipeline. Both workspaces share the same CNN architecture and dataset handling logic, so the experimental results remain comparable.
 
 ### 3.1.2 CNN Architecture
 
@@ -105,7 +105,8 @@ The labeled ratio is intentionally kept low at 20%. This simulates a realistic s
 The pipeline is exposed as a CLI command:
 
 ```bash
-cargo run --release --features cuda --bin plantvillage_ssl -- simulate \
+cargo run --release --no-default-features --features cuda \
+    --bin plantvillage_ssl -- simulate \
     --model "output/models/plant_classifier_TIMESTAMP" \
     --data-dir "data/plantvillage" \
     --cuda --days 0 --labeled-ratio 0.2 \
@@ -114,7 +115,16 @@ cargo run --release --features cuda --bin plantvillage_ssl -- simulate \
 
 ### 3.2.3 SSL Results
 
-During development, the SSL pipeline improved validation accuracy from roughly 70 to 75% (the supervised baseline on 20% labeled data) to roughly 78 to 85% after the full unlabeled stream had been processed. Pseudo-label precision appeared to stay above 90%, which suggests that the 0.9 confidence threshold is effective at filtering out incorrect predictions. These values are indicative results from local training runs, not averaged across multiple random seeds or datasets.
+The saved checkpoints were re-evaluated with Burn 0.21.0 on the held-out test split using the CUDA backend. The evaluation used the same split configuration as the training pipeline: 20% labeled data, 60% stream data, 10% validation data and 10% test data. The test split contains 8,786 images and was not used during training or pseudo-label selection.
+
+**Table 3.1:** Held-out test evaluation of saved checkpoints
+
+| Model | Checkpoint | Split | Samples | Top-1 accuracy | Macro F1 | Backend |
+|:---|:---|:---|---:|---:|---:|:---|
+| Supervised baseline | `output/models/plant_classifier_20260411_220030.mpk` | Test | 8,786 | 86.06% | 86.08% | CUDA (Burn 0.21) |
+| SSL checkpoint | `output/simulation/plant_classifier_ssl_20260412_002832.mpk` | Test | 8,786 | 94.90% | 94.74% | CUDA (Burn 0.21) |
+
+The saved SSL checkpoint improves held-out test accuracy by 8.84 percentage points and macro F1 by 8.66 percentage points compared with the saved supervised baseline. This supports the central SSL claim more strongly than the earlier validation-only wording, because the comparison is now made on the held-out test split. These values are still single-checkpoint results rather than averages over multiple random seeds.
 
 ## 3.3 Incremental Learning Experiments
 
@@ -126,7 +136,7 @@ Three controlled experiments were carried out to evaluate parts of the system th
 
 The model was trained from scratch at seven different labeled data quantities, ranging from 5 up to 500 images per class. All other variables (architecture, augmentation, training schedule) were kept constant.
 
-**Table 3.1:** Label efficiency results
+**Table 3.2:** Label efficiency results
 
 | Images per class | Accuracy (%) | Training time (s) |
 |:--:|:--:|:--:|
@@ -157,7 +167,7 @@ The model was trained from scratch at seven different labeled data quantities, r
 
 Two scenarios were compared. In Scenario A, a model was trained on 5 base classes and then a 6th class was added through incremental learning. In Scenario B, a model was trained on 30 base classes and then a 31st class was added. Both scenarios used the same incremental learning procedure and the same number of labeled samples for the new class.
 
-**Table 3.2:** Class scaling results
+**Table 3.3:** Class scaling results
 
 | Metric | 5 → 6 classes | 30 → 31 classes |
 |:--|:--:|:--:|
@@ -184,7 +194,7 @@ Two scenarios were compared. In Scenario A, a model was trained on 5 base classe
 
 Both scenarios were evaluated at five labeling levels: 5, 10, 25, 50 and 100 labeled samples for the new class.
 
-**Table 3.3:** New class accuracy by label count and base size
+**Table 3.4:** New class accuracy by label count and base size
 
 | Labeled samples | 6th class accuracy | 31st class accuracy | Difference |
 |:--:|:--:|:--:|:--:|
@@ -194,7 +204,7 @@ Both scenarios were evaluated at five labeling levels: 5, 10, 25, 50 and 100 lab
 | 50 | 84.27% | 25.62% | -58.66 pp |
 | 100 | 95.16% | 55.10% | -40.06 pp |
 
-**Table 3.4:** Forgetting by label count and base size
+**Table 3.5:** Forgetting by label count and base size
 
 | Labeled samples | 5→6 forgetting | 30→31 forgetting | Difference |
 |:--:|:--:|:--:|:--:|
@@ -226,20 +236,19 @@ Both scenarios were evaluated at five labeling levels: 5, 10, 25, 50 and 100 lab
 
 The system was benchmarked on four hardware configurations. All tests used the same conditions: 100 inference iterations, 10 warm-up iterations, batch size 1 and 128×128 input images.
 
-**Table 3.5:** Burn (Rust) CUDA backend: model version comparison
+**Table 3.6:** Burn (Rust) CUDA backend: saved checkpoint benchmark
 
 | Model Version | Mean (ms) | p50 (ms) | p99 (ms) | Throughput |
 |:--|:--:|:--:|:--:|:--:|
-| Baseline | 0.39 | 0.38 | 0.46 | 2,559 FPS |
-| SSL | 0.42 | 0.41 | 0.53 | 2,357 FPS |
-| **SSL Optimized** | **0.39** | **0.38** | **0.45** | **2,579 FPS** |
+| Supervised baseline | 0.41 | 0.31 | 0.93 | 2,428 FPS |
+| SSL checkpoint | 0.42 | 0.25 | 1.09 | 2,406 FPS |
 
-**Table 3.6:** Hardware comparison (SSL Optimized model)
+**Table 3.7:** Hardware comparison (SSL checkpoint model)
 
 | Device | Latency | Throughput | Cost |
 |:--|:--:|:--:|:--:|
-| **Laptop (RTX 3060)** | **0.39 ms** | **2,579 FPS** | €0 (BYOD) |
-| iPhone 12 (Tauri/WASM) | ~80 ms | ~12 FPS | €0 (BYOD) |
+| **Laptop (RTX 3060)** | **0.42 ms** | **2,406 FPS** | €0 (BYOD) |
+| iPhone 12 (Tauri Mobile / Rust backend) | ~80 ms | ~12 FPS | €0 (BYOD) |
 | Jetson Orin Nano | ~120 ms | ~8 FPS | €350 |
 | CPU only | ~250 ms | ~4 FPS | €0 |
 
@@ -247,7 +256,7 @@ The system was benchmarked on four hardware configurations. All tests used the s
 
 A few things stand out in the benchmark results.
 
-**Desktop GPU performance.** At 0.39 ms per inference, or 2,579 FPS, the model is well below the real-time threshold on desktop hardware. The SSL training does not make inference slower. The optimised SSL model matches the supervised baseline in latency while benefiting from higher accuracy.
+**Desktop GPU performance.** At 0.42 ms per inference, or 2,406 FPS, the SSL checkpoint is well below the real-time threshold on desktop hardware. The SSL checkpoint is only 0.01 ms slower than the supervised baseline in this benchmark, while improving held-out test accuracy by 8.84 percentage points.
 
 **Mobile performance.** The iPhone 12, running the model through Tauri's Rust backend, reached roughly 80 ms per inference (around 12 FPS) in local testing. That is within the usability threshold for a camera-based application where a farmer points a phone at a leaf and waits for a classification, though this measurement was taken on a single device and may vary across iOS versions and hardware revisions.
 
@@ -284,11 +293,11 @@ The application supports:
 
 A few technical problems showed up during development that are worth writing down for reproducibility.
 
-### 3.6.1 Burn Version Migration
+### 3.6.1 Burn API Boundaries
 
-Development started on Burn 0.14 in the `incremental_learning` workspace. Partway through the project, Burn 0.20 was released with important API changes, especially to the `Module` trait, the optimizer API and the tensor serialisation format. Instead of migrating the incremental learning code in the middle of an ongoing experiment, a second workspace (`plantvillage_ssl`) was created on Burn 0.20 for the main SSL pipeline. This kept the experimental results from the incremental learning workspace reproducible, but it also meant maintaining two parallel codebases with the same model architecture.
+Development started in the `incremental_learning` workspace, while the main SSL pipeline lives in `plantvillage_ssl`. The two workspaces depend on different Burn APIs, especially around the `Module` trait, the optimizer API and the tensor serialisation format. Instead of forcing the incremental learning experiments into the SSL workspace, the two workspaces were kept separate. This kept the experimental results from the incremental learning workspace reproducible, but it also meant maintaining two parallel codebases with the same model architecture.
 
-Model weights cannot be transferred directly between Burn versions. To share trained models across workspaces, a JSON-based weight export and import mechanism was added. It introduces an extra conversion step, but it preserves weight compatibility across versions.
+Model weights cannot be transferred directly between these two workspaces. To share trained models across them, a JSON-based weight export and import mechanism was added. It introduces an extra conversion step, but it preserves weight compatibility across the project.
 
 ### 3.6.2 CUDA Memory Management
 
@@ -304,4 +313,4 @@ Full release builds of the `plantvillage_ssl` workspace take roughly 5 to 7 minu
 
 ## 3.7 Limitations of the Experimental Results
 
-The results in this chapter should be read with the following limitations in mind. All experiments were carried out on the PlantVillage dataset, which consists of relatively uniform lab-like images. Real-world field images differ in lighting, background, camera quality and disease progression, so accuracy on field data is likely to be lower. The SSL accuracy and pseudo-label precision figures are based on single training runs with a fixed random seed, not averaged across multiple seeds or datasets. The mobile inference measurement was taken on one iPhone 12 under controlled conditions. Finally, the wgpu and WASM backends were prepared theoretically but not validated with end-to-end experiments in this project.
+The results in this chapter should be read with the following limitations in mind. All experiments were carried out on the PlantVillage dataset, which consists of relatively uniform lab-like images. Real-world field images differ in lighting, background, camera quality and disease progression, so accuracy on field data is likely to be lower. The held-out SSL comparison is based on two saved checkpoints with one fixed split and one random seed, not on averages over multiple seeds or datasets. Pseudo-label precision was not independently recomputed in the final Burn 0.21 evaluation run. The mobile inference measurement was taken on one iPhone 12 under controlled conditions. Finally, the wgpu and WASM backends were prepared theoretically but not validated with end-to-end experiments in this project.

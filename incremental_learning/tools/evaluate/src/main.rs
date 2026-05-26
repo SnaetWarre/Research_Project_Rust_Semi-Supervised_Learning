@@ -95,18 +95,19 @@ fn main() -> Result<()> {
     validate_inputs(&args)?;
 
     // Create output directory
-    std::fs::create_dir_all(&args.output)
-        .context("Failed to create output directory")?;
+    std::fs::create_dir_all(&args.output).context("Failed to create output directory")?;
 
     // Load checkpoint
     info!("Loading checkpoint: {}", args.checkpoint.display());
-    let checkpoint = Checkpoint::load(&args.checkpoint)
-        .context("Failed to load checkpoint")?;
+    let checkpoint = Checkpoint::load(&args.checkpoint).context("Failed to load checkpoint")?;
 
     info!("Model: {}", checkpoint.metadata.model_architecture);
     info!("Classes: {}", checkpoint.metadata.num_classes);
     info!("Parameters: {}", checkpoint.metadata.num_parameters);
-    info!("Training accuracy: {:.4}", checkpoint.metadata.validation_accuracy);
+    info!(
+        "Training accuracy: {:.4}",
+        checkpoint.metadata.validation_accuracy
+    );
 
     // Load test dataset (simplified - would use actual loader in production)
     info!("Loading test dataset: {}", args.test_dir.display());
@@ -135,7 +136,10 @@ fn main() -> Result<()> {
 
 fn validate_inputs(args: &Args) -> Result<()> {
     if !args.checkpoint.exists() {
-        anyhow::bail!("Checkpoint file does not exist: {}", args.checkpoint.display());
+        anyhow::bail!(
+            "Checkpoint file does not exist: {}",
+            args.checkpoint.display()
+        );
     }
     if !args.test_dir.exists() {
         anyhow::bail!("Test directory does not exist: {}", args.test_dir.display());
@@ -161,12 +165,14 @@ fn load_test_samples(test_dir: &PathBuf) -> Result<Vec<(PathBuf, usize)>> {
 
         if path.is_dir() {
             // Class directory
-            let class_name = path.file_name()
+            let class_name = path
+                .file_name()
                 .and_then(|n| n.to_str())
                 .unwrap_or("unknown");
 
             // Simple class index from directory name
-            let class_idx = class_name.chars()
+            let class_idx = class_name
+                .chars()
                 .filter(|c| c.is_numeric())
                 .collect::<String>()
                 .parse::<usize>()
@@ -177,9 +183,11 @@ fn load_test_samples(test_dir: &PathBuf) -> Result<Vec<(PathBuf, usize)>> {
                 let img_entry = img_entry?;
                 let img_path = img_entry.path();
 
-                if img_path.extension().and_then(|e| e.to_str()).map_or(false, |e| {
-                    matches!(e, "jpg" | "jpeg" | "png")
-                }) {
+                if img_path
+                    .extension()
+                    .and_then(|e| e.to_str())
+                    .map_or(false, |e| matches!(e, "jpg" | "jpeg" | "png"))
+                {
                     samples.push((img_path, class_idx));
                 }
             }
@@ -322,7 +330,8 @@ fn simulate_prediction(true_label: usize, num_classes: usize) -> usize {
 fn print_results(result: &EvaluationResult, detailed: bool) {
     info!("");
     info!("=== Evaluation Results ===");
-    info!("Overall Accuracy: {:.4} ({}/{})",
+    info!(
+        "Overall Accuracy: {:.4} ({}/{})",
         result.accuracy,
         (result.accuracy * result.total_samples as f32) as usize,
         result.total_samples
@@ -431,10 +440,15 @@ fn save_predictions(
     path: &PathBuf,
     class_names: &[String],
 ) -> Result<()> {
-    let mut csv = String::from("image_path,true_label,predicted_label,true_class,predicted_class,correct\n");
+    let mut csv =
+        String::from("image_path,true_label,predicted_label,true_class,predicted_class,correct\n");
 
     for (img_path, true_label, pred_label) in predictions {
-        let correct = if true_label == pred_label { "yes" } else { "no" };
+        let correct = if true_label == pred_label {
+            "yes"
+        } else {
+            "no"
+        };
         csv.push_str(&format!(
             "{},{},{},{},{},{}\n",
             img_path.display(),

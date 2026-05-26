@@ -9,11 +9,10 @@ default-run = "plantvillage_ssl"
 
 [dependencies]
 # ML Framework - Burn with multiple backends
-# Note: 0.20-pre has latest cubecl with CUDA 13 support
-burn = { version = "0.20.0-pre", features = ["train", "metrics"] }
-burn-cuda = { version = "0.20.0-pre", optional = true }       # CUDA backend for GPU training
-burn-ndarray = { version = "0.20.0-pre", optional = true }    # CPU backend fallback
-burn-tch = { version = "0.20.0-pre", optional = true }        # LibTorch backend (optional, for comparison)
+burn = { version = "0.21.0", features = ["train", "metrics"] }
+burn-cuda = { version = "0.21.0", optional = true }           # CUDA backend for GPU training
+burn-ndarray = { version = "0.21.0", optional = true }        # CPU backend fallback
+burn-tch = { version = "0.21.0", optional = true }            # LibTorch backend (optional, for comparison)
 
 # Data handling
 image = "0.25"
@@ -23,7 +22,7 @@ walkdir = "2.5"                                          # Directory traversal f
 # Serialization
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
-bincode = "2.0"                                          # Burn 0.18 uses bincode 2.0.1+
+bincode = "2.0"                                          # Serialization for recorder-compatible artifacts
 
 # Logging & Monitoring
 tracing = "0.1"

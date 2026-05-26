@@ -2,13 +2,15 @@
 //!
 //! Commands for running inference on images.
 
-use std::path::Path;
-use std::time::Instant;
-use std::sync::Arc;
 use serde::{Deserialize, Serialize};
+use std::path::Path;
+use std::sync::Arc;
+use std::time::Instant;
 use tauri::State;
 
-use crate::commands::shared::{get_class_name, load_inference_model, preprocess_image_for_inference};
+use crate::commands::shared::{
+    get_class_name, load_inference_model, preprocess_image_for_inference,
+};
 use crate::state::AppState;
 
 /// Prediction result for a single image
@@ -50,8 +52,7 @@ pub async fn run_inference(
     // Load model on-demand (required due to CUDA threading)
     let model = load_inference_model(&model_path)?;
     let input_size = 128usize;
-    let img = image::open(path)
-        .map_err(|e| format!("Failed to load image: {:?}", e))?;
+    let img = image::open(path).map_err(|e| format!("Failed to load image: {:?}", e))?;
     let tensor = preprocess_image_for_inference(&img, input_size);
 
     // Run inference
@@ -61,7 +62,8 @@ pub async fn run_inference(
 
     // Extract probabilities
     let output_data = output.into_data();
-    let probs = output_data.to_vec::<f32>()
+    let probs = output_data
+        .to_vec::<f32>()
         .map_err(|e| format!("Failed to extract probabilities: {:?}", e))?;
 
     // Find top prediction
@@ -122,7 +124,8 @@ pub async fn run_inference_bytes(
 
     // Extract probabilities
     let output_data = output.into_data();
-    let probs = output_data.to_vec::<f32>()
+    let probs = output_data
+        .to_vec::<f32>()
         .map_err(|e| format!("Failed to extract probabilities: {:?}", e))?;
 
     let (predicted_class, confidence) = probs

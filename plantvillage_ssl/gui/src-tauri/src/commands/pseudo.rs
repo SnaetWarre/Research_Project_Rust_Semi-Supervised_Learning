@@ -2,11 +2,13 @@
 //!
 //! Commands for demonstrating pseudo-labeling with interactive confidence thresholds.
 
-use std::sync::Arc;
 use serde::{Deserialize, Serialize};
+use std::sync::Arc;
 use tauri::State;
 
-use crate::commands::shared::{get_class_name, load_app_model, preprocess_image_for_app, CLASS_NAMES};
+use crate::commands::shared::{
+    get_class_name, load_app_model, preprocess_image_for_app, CLASS_NAMES,
+};
 use crate::state::AppState;
 
 /// Single sample for pseudo-labeling demo
@@ -75,9 +77,7 @@ pub async fn run_pseudo_label_demo(
             .parent()
             .and_then(|p| p.file_name())
             .and_then(|n| n.to_str())
-            .and_then(|class_name| {
-                CLASS_NAMES.iter().position(|&n| n == class_name)
-            });
+            .and_then(|class_name| CLASS_NAMES.iter().position(|&n| n == class_name));
 
         // Load and preprocess image
         let img = match image::open(path) {
@@ -129,7 +129,8 @@ pub async fn run_pseudo_label_demo(
     let total_rejected = total_processed - accepted_count;
 
     // Calculate precision (only on accepted samples with known ground truth)
-    let accepted_with_gt: Vec<_> = samples.iter()
+    let accepted_with_gt: Vec<_> = samples
+        .iter()
         .filter(|s| s.accepted && s.is_correct.is_some())
         .collect();
     let precision = if !accepted_with_gt.is_empty() {
@@ -168,10 +169,7 @@ pub async fn run_pseudo_label_demo(
 
 /// Get sample images from dataset for demo
 #[tauri::command]
-pub async fn get_sample_images(
-    data_dir: String,
-    count: usize,
-) -> Result<Vec<String>, String> {
+pub async fn get_sample_images(data_dir: String, count: usize) -> Result<Vec<String>, String> {
     use rand::seq::SliceRandom;
     use rand::SeedableRng;
     use rand_chacha::ChaCha8Rng;

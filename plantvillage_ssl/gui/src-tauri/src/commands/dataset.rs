@@ -2,11 +2,11 @@
 //!
 //! Commands for loading datasets and getting statistics.
 
-use std::path::PathBuf;
-use std::fs;
 use serde::{Deserialize, Serialize};
-use tauri::State;
+use std::fs;
+use std::path::PathBuf;
 use std::sync::Arc;
+use tauri::State;
 
 use plantvillage_ssl::PlantVillageDataset;
 
@@ -96,7 +96,13 @@ pub async fn get_dataset_stats(
     let stats = dataset.get_stats();
 
     let class_names: Vec<String> = (0..stats.num_classes)
-        .map(|i| stats.class_names.get(&i).cloned().unwrap_or_else(|| format!("Class {}", i)))
+        .map(|i| {
+            stats
+                .class_names
+                .get(&i)
+                .cloned()
+                .unwrap_or_else(|| format!("Class {}", i))
+        })
         .collect();
 
     let class_counts: Vec<usize> = (0..stats.num_classes)
@@ -134,7 +140,7 @@ pub async fn load_model(
         }
         // Fallback: Check if best_model.mpk actually exists as a file/symlink
         else if !path.exists() {
-             // Fallback search logic for specific paths if find_newest didn't work
+            // Fallback search logic for specific paths if find_newest didn't work
             let candidates = vec![
                 PathBuf::from("best_model.mpk"),
                 PathBuf::from("../best_model.mpk"),
@@ -144,8 +150,7 @@ pub async fn load_model(
                 path = found;
             }
         }
-    }
-    else if !path.exists() {
+    } else if !path.exists() {
         // Standard relative path search
         let candidates = vec![
             PathBuf::from(&model_path),
@@ -184,9 +189,7 @@ pub async fn load_model(
 
 /// Check if model is loaded
 #[tauri::command]
-pub async fn get_model_status(
-    state: State<'_, Arc<AppState>>,
-) -> Result<ModelInfo, String> {
+pub async fn get_model_status(state: State<'_, Arc<AppState>>) -> Result<ModelInfo, String> {
     let model_path = state.model_path.read().await;
 
     match &*model_path {

@@ -208,7 +208,7 @@ where
 
     // Create batcher for inference
     let batcher = PlantVillageBatcher::<B::InnerBackend>::with_image_size(
-        <B::InnerBackend as burn::tensor::backend::Backend>::Device::default(),
+        burn::tensor::Device::<B::InnerBackend>::default(),
         128,
     );
 
@@ -387,7 +387,7 @@ fn run_inference_batch<B: AutodiffBackend>(
 ) -> Vec<Prediction> {
     const INFERENCE_BATCH_SIZE: usize = 32;
     let inner_model = model.clone().valid();
-    let inner_device = <B::InnerBackend as burn::tensor::backend::Backend>::Device::default();
+    let inner_device = burn::tensor::Device::<B::InnerBackend>::default();
     let mut predictions = Vec::new();
     let num_classes = 38;
 
@@ -464,7 +464,7 @@ fn evaluate_model<B: AutodiffBackend>(
     use burn::data::dataset::Dataset;
 
     let inner_model = model.clone().valid();
-    let inner_device = <B::InnerBackend as burn::tensor::backend::Backend>::Device::default();
+    let inner_device = burn::tensor::Device::<B::InnerBackend>::default();
     let len = dataset.len();
     let mut correct = 0usize;
     let mut total = 0usize;

@@ -95,8 +95,9 @@ impl Checkpoint {
         let json = fs::read_to_string(path)?;
 
         // Deserialize
-        let checkpoint: Checkpoint = serde_json::from_str(&json)
-            .map_err(|e| Error::Serialization(format!("Failed to deserialize checkpoint: {}", e)))?;
+        let checkpoint: Checkpoint = serde_json::from_str(&json).map_err(|e| {
+            Error::Serialization(format!("Failed to deserialize checkpoint: {}", e))
+        })?;
 
         info!("Checkpoint loaded from {:?}", path);
         Ok(checkpoint)
@@ -138,7 +139,9 @@ impl CheckpointManager {
         fs::create_dir_all(&self.checkpoint_dir)?;
 
         // Save regular checkpoint
-        let checkpoint_path = self.checkpoint_dir.join(format!("checkpoint_epoch_{}.json", checkpoint.epoch));
+        let checkpoint_path = self
+            .checkpoint_dir
+            .join(format!("checkpoint_epoch_{}.json", checkpoint.epoch));
         checkpoint.save(&checkpoint_path)?;
 
         // Save best checkpoint if applicable
@@ -174,7 +177,9 @@ impl CheckpointManager {
 
     /// Load a specific checkpoint by epoch
     pub fn load_epoch(&self, epoch: usize) -> Result<Checkpoint> {
-        let checkpoint_path = self.checkpoint_dir.join(format!("checkpoint_epoch_{}.json", epoch));
+        let checkpoint_path = self
+            .checkpoint_dir
+            .join(format!("checkpoint_epoch_{}.json", epoch));
         Checkpoint::load(&checkpoint_path)
     }
 
@@ -192,9 +197,14 @@ impl CheckpointManager {
             let entry = entry?;
             let path = entry.path();
 
-            if path.is_file() && path.extension().and_then(|s: &std::ffi::OsStr| s.to_str()) == Some("json") {
+            if path.is_file()
+                && path.extension().and_then(|s: &std::ffi::OsStr| s.to_str()) == Some("json")
+            {
                 // Skip special files
-                let filename = path.file_name().and_then(|s: &std::ffi::OsStr| s.to_str()).unwrap_or("");
+                let filename = path
+                    .file_name()
+                    .and_then(|s: &std::ffi::OsStr| s.to_str())
+                    .unwrap_or("");
                 if filename != "best_model.json" && filename != "latest.json" {
                     checkpoints.push(path);
                 }
@@ -222,7 +232,10 @@ impl CheckpointManager {
         let to_remove = checkpoints.len() - keep_n;
         for checkpoint_path in checkpoints.iter().take(to_remove) {
             if let Err(e) = fs::remove_file(checkpoint_path) {
-                warn!("Failed to remove old checkpoint {:?}: {}", checkpoint_path, e);
+                warn!(
+                    "Failed to remove old checkpoint {:?}: {}",
+                    checkpoint_path, e
+                );
             } else {
                 info!("Removed old checkpoint: {:?}", checkpoint_path);
             }
@@ -341,8 +354,14 @@ mod tests {
 
     #[test]
     fn test_extract_epoch_from_filename() {
-        assert_eq!(extract_epoch_from_filename("checkpoint_epoch_5.json"), Some(5));
-        assert_eq!(extract_epoch_from_filename("checkpoint_epoch_123.json"), Some(123));
+        assert_eq!(
+            extract_epoch_from_filename("checkpoint_epoch_5.json"),
+            Some(5)
+        );
+        assert_eq!(
+            extract_epoch_from_filename("checkpoint_epoch_123.json"),
+            Some(123)
+        );
         assert_eq!(extract_epoch_from_filename("best_model.json"), None);
         assert_eq!(extract_epoch_from_filename("latest.json"), None);
         assert_eq!(extract_epoch_from_filename("invalid.json"), None);
@@ -353,8 +372,7 @@ mod tests {
         let temp_dir = TempDir::new().unwrap();
         let checkpoint_dir = temp_dir.path().to_path_buf();
 
-        let manager = CheckpointManager::new(checkpoint_dir.clone())
-            .keep_last_n(None); // Keep all checkpoints
+        let manager = CheckpointManager::new(checkpoint_dir.clone()).keep_last_n(None); // Keep all checkpoints
 
         // Create and save multiple checkpoints
         for epoch in 0..5 {

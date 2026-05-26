@@ -9,7 +9,7 @@
 
 use burn::{
     module::Module,
-    tensor::{backend::Backend, Int, Tensor},
+    tensor::{backend::Backend, Device, Int, Tensor},
 };
 use plant_core::{Error, EvaluationMetrics, Result};
 use serde::{Deserialize, Serialize};
@@ -39,7 +39,7 @@ pub struct ClassMetrics {
 /// Batch of evaluation data
 #[derive(Debug, Clone)]
 pub struct EvalBatch<B: Backend> {
-    pub images: Tensor<B, 4>,    // [batch, channels, height, width]
+    pub images: Tensor<B, 4>,      // [batch, channels, height, width]
     pub labels: Tensor<B, 1, Int>, // [batch]
 }
 
@@ -47,12 +47,12 @@ pub struct EvalBatch<B: Backend> {
 pub struct Evaluator<B: Backend, M: Module<B>> {
     model: M,
     num_classes: usize,
-    device: B::Device,
+    device: Device<B>,
 }
 
 impl<B: Backend, M: Module<B>> Evaluator<B, M> {
     /// Create a new evaluator
-    pub fn new(model: M, num_classes: usize, device: B::Device) -> Self {
+    pub fn new(model: M, num_classes: usize, device: Device<B>) -> Self {
         Self {
             model,
             num_classes,
@@ -61,11 +61,7 @@ impl<B: Backend, M: Module<B>> Evaluator<B, M> {
     }
 
     /// Evaluate model on a dataset
-    pub fn evaluate<F>(
-        &self,
-        batches: &[EvalBatch<B>],
-        forward_fn: F,
-    ) -> Result<EvaluationResult>
+    pub fn evaluate<F>(&self, batches: &[EvalBatch<B>], forward_fn: F) -> Result<EvaluationResult>
     where
         F: Fn(&M, Tensor<B, 4>) -> Tensor<B, 2>,
     {
@@ -152,11 +148,7 @@ impl<B: Backend, M: Module<B>> Evaluator<B, M> {
     }
 
     /// Compute confusion matrix
-    fn compute_confusion_matrix(
-        &self,
-        predictions: &[usize],
-        labels: &[usize],
-    ) -> Vec<Vec<usize>> {
+    fn compute_confusion_matrix(&self, predictions: &[usize], labels: &[usize]) -> Vec<Vec<usize>> {
         let mut matrix = vec![vec![0; self.num_classes]; self.num_classes];
 
         for (pred, label) in predictions.iter().zip(labels.iter()) {
@@ -206,17 +198,9 @@ impl<B: Backend, M: Module<B>> Evaluator<B, M> {
             let support: usize = confusion_matrix[class_id].iter().sum();
 
             // Compute metrics
-            let precision = if tp + fp > 0.0 {
-                tp / (tp + fp)
-            } else {
-                0.0
-            };
+            let precision = if tp + fp > 0.0 { tp / (tp + fp) } else { 0.0 };
 
-            let recall = if tp + fn_ > 0.0 {
-                tp / (tp + fn_)
-            } else {
-                0.0
-            };
+            let recall = if tp + fn_ > 0.0 { tp / (tp + fn_) } else { 0.0 };
 
             let f1_score = if precision + recall > 0.0 {
                 2.0 * (precision * recall) / (precision + recall)
@@ -259,12 +243,18 @@ impl<B: Backend, M: Module<B>> Evaluator<B, M> {
         println!("EVALUATION RESULTS");
         println!("{}", "=".repeat(80));
         println!("Total samples: {}", result.total_samples);
-        println!("Average inference time: {:.2}ms per batch", result.avg_inference_time_ms);
+        println!(
+            "Average inference time: {:.2}ms per batch",
+            result.avg_inference_time_ms
+        );
         println!("\nOverall Metrics:");
         println!("  Accuracy:  {:.4}", result.metrics.accuracy);
         println!("  Top-5 Acc: {:.4}", result.metrics.top5_accuracy);
         println!("\nPer-Class Metrics:");
-        println!("{:<10} {:>10} {:>10} {:>10} {:>10}", "Class", "Precision", "Recall", "F1-Score", "Support");
+        println!(
+            "{:<10} {:>10} {:>10} {:>10} {:>10}",
+            "Class", "Precision", "Recall", "F1-Score", "Support"
+        );
         println!("{}", "-".repeat(60));
 
         let mut class_ids: Vec<_> = result.per_class_metrics.keys().collect();
@@ -339,13 +329,13 @@ mod tests {
             fn load_record(self, _record: Self::Record) -> Self {
                 self
             }
-            fn collect_devices(&self, devices: Vec<B::Device>) -> Vec<B::Device> {
+            fn collect_devices(&self, devices: Vec<Device<B>>) -> Vec<Device<B>> {
                 devices
             }
-            fn fork(self, _device: &B::Device) -> Self {
+            fn fork(self, _device: &Device<B>) -> Self {
                 self
             }
-            fn to_device(self, _device: &B::Device) -> Self {
+            fn to_device(self, _device: &Device<B>) -> Self {
                 self
             }
         }
@@ -380,13 +370,13 @@ mod tests {
             fn load_record(self, _record: Self::Record) -> Self {
                 self
             }
-            fn collect_devices(&self, devices: Vec<B::Device>) -> Vec<B::Device> {
+            fn collect_devices(&self, devices: Vec<Device<B>>) -> Vec<Device<B>> {
                 devices
             }
-            fn fork(self, _device: &B::Device) -> Self {
+            fn fork(self, _device: &Device<B>) -> Self {
                 self
             }
-            fn to_device(self, _device: &B::Device) -> Self {
+            fn to_device(self, _device: &Device<B>) -> Self {
                 self
             }
         }

@@ -127,7 +127,26 @@ impl<B: Backend> PlantClassifier<B> {
 }
 ```
 
-At compile time, the concrete backend is selected through feature flags. This project was built and tested with:
+At compile time, the concrete backend is selected through feature flags. The backend module keeps this choice local to one place and uses Burn's `Device<B>` alias when constructing the default device:
+
+```rust
+use burn::backend::Autodiff;
+use burn::tensor::Device;
+
+#[cfg(any(feature = "cpu", feature = "ndarray"))]
+pub type DefaultBackend = burn_ndarray::NdArray;
+
+#[cfg(all(not(feature = "cpu"), not(feature = "ndarray"), feature = "cuda"))]
+pub type DefaultBackend = burn_cuda::Cuda;
+
+pub type TrainingBackend = Autodiff<DefaultBackend>;
+
+pub fn default_device() -> Device<DefaultBackend> {
+    Device::<DefaultBackend>::default()
+}
+```
+
+This project was built and tested with:
 - `burn-cuda` for NVIDIA GPU training and inference
 - `burn-ndarray` for CPU-only environments
 
@@ -222,7 +241,7 @@ For this project, the existing train and valid split is merged and then re-split
 
 Because the dataset is pre-balanced, with roughly 2,000 images per class, the experimental setup is simpler. Class imbalance should not distort the results of the label efficiency and class scaling experiments.
 
-### 2.5.2 Limitations of the Dataset
+### 2.5.1 Limitations of the Dataset
 
 PlantVillage is widely used as a benchmark, but it has known limitations that are relevant here:
 

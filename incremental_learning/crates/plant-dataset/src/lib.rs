@@ -10,7 +10,7 @@ pub mod preprocess;
 pub mod statistics;
 
 pub use augmentation::AugmentationPipeline;
-pub use dataset::{PlantDataset, PlantItem, PlantBatch};
+pub use dataset::{PlantBatch, PlantDataset, PlantItem};
 pub use loader::ImageLoader;
 pub use preprocess::{ImagePreprocessor, PreprocessConfig};
 pub use statistics::DatasetStatistics;

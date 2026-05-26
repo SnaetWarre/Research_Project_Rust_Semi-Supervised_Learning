@@ -71,7 +71,7 @@
 
 ## Edge Deployment and Real-World Viability
 
-**Question 14:** The benchmarks show inference times of about 0.39 ms on a desktop GPU and about 80 ms on an iPhone 12. The project therefore focuses on consumer devices instead of dedicated edge hardware. From a technical perspective, is this a reasonable deployment strategy for interactive image classification?
+**Question 14:** The benchmarks show inference times of about 0.42 ms on a desktop GPU and about 80 ms on an iPhone 12. The project therefore focuses on consumer devices instead of dedicated edge hardware. From a technical perspective, is this a reasonable deployment strategy for interactive image classification?
 
 > 
 

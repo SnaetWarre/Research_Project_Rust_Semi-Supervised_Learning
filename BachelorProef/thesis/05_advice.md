@@ -20,7 +20,7 @@ If the use case involves any form of SSL or an iterative training loop, Burn is 
 
 ## 5.2 Start with Enough Labeled Data
 
-The label efficiency experiment (Table 3.1) provides a clear empirical baseline:
+The label efficiency experiment (Table 3.2) provides a clear empirical baseline:
 
 - **Below 25 images per class:** accuracy is too low, under 60%. Training a model with this little data is risky, because the pseudo-labeling cycle will mostly propagate errors.
 - **50 to 100 images per class:** the minimum viable range. At 100 images per class, accuracy reaches 85.53%, which is sufficient for the initial model in an SSL pipeline.
@@ -54,9 +54,9 @@ Based on the experimental results and the literature review, the following param
 
 If the deployment scenario involves adding new classes over time, which is very likely in any real-world agricultural application, the experimental results from Chapter 3 provide a few important guidelines:
 
-1. **Start with a broad base model.** The class scaling experiment (Table 3.2) shows that adding a class to a larger base causes more forgetting. Starting with a larger base, however, means that the model already covers more diseases from the beginning, which reduces how often updates are needed.
+1. **Start with a broad base model.** The class scaling experiment (Table 3.3) shows that adding a class to a larger base causes more forgetting. Starting with a larger base, however, means that the model already covers more diseases from the beginning, which reduces how often updates are needed.
 
-2. **Collect enough labeled data for new classes.** The new class position experiment (Table 3.3) shows that adding a 31st class to a 30-class model requires substantially more labeled samples than adding a 6th class to a 5-class model. At 50 labeled samples, the 6th class reaches 84% accuracy while the 31st class only reaches 26%.
+2. **Collect enough labeled data for new classes.** The new class position experiment (Table 3.4) shows that adding a 31st class to a 30-class model requires substantially more labeled samples than adding a 6th class to a 5-class model. At 50 labeled samples, the 6th class reaches 84% accuracy while the 31st class only reaches 26%.
 
 3. **Use rehearsal methods when adding classes to large models.** Plain fine-tuning causes measurable forgetting on large models. Keeping a small buffer of examples per existing class and including them in the fine-tuning batches (experience replay) is the most practical mitigation.
 
@@ -64,7 +64,7 @@ If the deployment scenario involves adding new classes over time, which is very 
 
 ## 5.5 Target BYOD Over Dedicated Edge Hardware
 
-The benchmark results (Table 3.6) lead to a recommendation that may seem counterintuitive: **for interactive plant disease detection on consumer devices, dedicated edge hardware is usually not the best investment.**
+The benchmark results (Table 3.7) lead to a recommendation that may seem counterintuitive: **for interactive plant disease detection on consumer devices, dedicated edge hardware is usually not the best investment.**
 
 The reasoning is:
 
@@ -97,7 +97,7 @@ Testing on the actual device early reveals:
 | iOS sideloading | Cannot install without App Store | Use TestFlight for beta distribution, or Xcode direct install for development |
 | Pseudo-label drift | Accuracy degrades over retraining cycles | Cap the ratio of pseudo-labels to real labels at 3:1, and raise the confidence threshold if precision drops below 90% |
 | GPU memory on mobile | Model fails to load | Switch to the ndarray (CPU) backend on devices with less than 4 GB of RAM, and drop batch size to 1 |
-| Model format compatibility | Weights trained on Burn 0.20 do not load on 0.14 | Keep version-locked workspaces, and use weight export/import via JSON for cross-version compatibility |
+| Model format compatibility | Weights from the main SSL workspace do not load directly in the incremental-learning workspace | Keep workspaces version-locked, and use weight export/import via JSON for cross-workspace compatibility |
 
 ## 5.8 Summary: The Recommended Workflow
 

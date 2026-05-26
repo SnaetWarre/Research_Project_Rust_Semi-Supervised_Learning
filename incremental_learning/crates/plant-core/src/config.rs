@@ -250,10 +250,7 @@ impl SplitRatios {
     pub fn validate(&self) -> Result<(), String> {
         let sum = self.train + self.validation + self.test;
         if (sum - 1.0).abs() > 1e-5 {
-            return Err(format!(
-                "Split ratios must sum to 1.0, got {}",
-                sum
-            ));
+            return Err(format!("Split ratios must sum to 1.0, got {}", sum));
         }
         Ok(())
     }

@@ -1004,7 +1004,7 @@ fn evaluate_with_metrics<B: Backend>(
     image_size: usize,
     num_classes: usize,
 ) -> (f64, f64) {
-    let device = <B as Backend>::Device::default();
+    let device = burn::tensor::Device::<B>::default();
     let batcher = PlantVillageBatcher::<B>::with_image_size(device.clone(), image_size);
     let len = dataset.len();
 

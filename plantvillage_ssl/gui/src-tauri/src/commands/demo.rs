@@ -17,7 +17,7 @@ use burn::{
     nn::loss::CrossEntropyLossConfig,
     optim::{AdamConfig, GradientsParams, Optimizer},
     record::CompactRecorder,
-    tensor::{backend::AutodiffBackend, ElementConversion},
+    tensor::{backend::AutodiffBackend, Device, ElementConversion},
 };
 use image::ImageFormat;
 use rand::seq::SliceRandom;
@@ -147,12 +147,11 @@ pub struct DemoSession<B: AutodiffBackend> {
     val_dataset: PlantVillageBurnDataset,
     batcher: PlantVillageBatcher<B::InnerBackend>,
     state: DemoSessionState,
-    device: B::Device,
+    device: Device<B>,
 }
 
 /// Global demo session state
-pub type DemoSessionGlobal =
-    Arc<Mutex<Option<DemoSession<crate::backend::AdaptiveBackend>>>>;
+pub type DemoSessionGlobal = Arc<Mutex<Option<DemoSession<crate::backend::AdaptiveBackend>>>>;
 
 /// Initialize a new demo session
 #[tauri::command]
@@ -164,9 +163,10 @@ pub async fn init_demo_session(
     use crate::backend::AdaptiveBackend;
 
     // Run initialization in blocking task
-    let session = tokio::task::spawn_blocking(move || init_session_inner::<AdaptiveBackend>(config))
-        .await
-        .map_err(|e| format!("Failed to spawn task: {:?}", e))??;
+    let session =
+        tokio::task::spawn_blocking(move || init_session_inner::<AdaptiveBackend>(config))
+            .await
+            .map_err(|e| format!("Failed to spawn task: {:?}", e))??;
 
     let state = session.state.clone();
 
@@ -188,9 +188,12 @@ pub async fn advance_demo_day(
 
     let total_start = Instant::now();
     tracing::info!("=== advance_demo_day called ===");
-    
+
     // Emit progress event
-    let _ = app.emit("demo:progress", serde_json::json!({"step": "starting", "message": "Starting day processing..."}));
+    let _ = app.emit(
+        "demo:progress",
+        serde_json::json!({"step": "starting", "message": "Starting day processing..."}),
+    );
 
     // Take ownership of session temporarily for processing
     tracing::info!("Step 1: Acquiring session lock...");
@@ -202,15 +205,21 @@ pub async fn advance_demo_day(
     tracing::info!("Step 1: Lock acquired in {:?}", lock_start.elapsed());
 
     let session = session_opt.as_mut().ok_or("No demo session initialized")?;
-    tracing::info!("Step 2: Session retrieved, current day: {}", session.state.current_day);
+    tracing::info!(
+        "Step 2: Session retrieved, current day: {}",
+        session.state.current_day
+    );
 
     // Check if retraining will happen and emit event
     let will_retrain = session.pseudo_labeler.should_retrain();
     tracing::info!("Step 3: Will retrain? {}", will_retrain);
-    
+
     if will_retrain {
         tracing::info!("Step 3: Emitting retraining_started event");
-        let _ = app.emit("demo:progress", serde_json::json!({"step": "retraining", "message": "Retraining model..."}));
+        let _ = app.emit(
+            "demo:progress",
+            serde_json::json!({"step": "retraining", "message": "Retraining model..."}),
+        );
         let _ = app.emit(
             "demo:retraining_started",
             serde_json::json!({
@@ -222,16 +231,21 @@ pub async fn advance_demo_day(
 
     // Process day
     tracing::info!("Step 4: Calling process_demo_day...");
-    let _ = app.emit("demo:progress", serde_json::json!({"step": "processing", "message": "Processing images..."}));
+    let _ = app.emit(
+        "demo:progress",
+        serde_json::json!({"step": "processing", "message": "Processing images..."}),
+    );
     let process_start = Instant::now();
-    
-    let result = process_demo_day::<AdaptiveBackend>(session)
-        .map_err(|e| {
-            tracing::error!("process_demo_day FAILED: {}", e);
-            format!("Failed to process day: {}", e)
-        })?;
-    
-    tracing::info!("Step 4: process_demo_day completed in {:?}", process_start.elapsed());
+
+    let result = process_demo_day::<AdaptiveBackend>(session).map_err(|e| {
+        tracing::error!("process_demo_day FAILED: {}", e);
+        format!("Failed to process day: {}", e)
+    })?;
+
+    tracing::info!(
+        "Step 4: process_demo_day completed in {:?}",
+        process_start.elapsed()
+    );
 
     // Restore session
     tracing::info!("Step 5: Restoring session...");
@@ -245,7 +259,10 @@ pub async fn advance_demo_day(
     tracing::info!("Step 6: Emitting day_complete event for day {}", result.day);
     let _ = app.emit("demo:day_complete", &result);
 
-    tracing::info!("=== advance_demo_day COMPLETED in {:?} ===", total_start.elapsed());
+    tracing::info!(
+        "=== advance_demo_day COMPLETED in {:?} ===",
+        total_start.elapsed()
+    );
     Ok(result)
 }
 
@@ -296,8 +313,9 @@ fn load_farmer_demo_images(data_dir: &str) -> Result<Vec<HiddenLabelImage>, Stri
     // Get the class name to label mapping by reading the plantvillage dataset classes
     let plantvillage_dir = PathBuf::from(data_dir);
     let train_dir = plantvillage_dir.join("train");
-    
-    let mut class_to_label: std::collections::HashMap<String, usize> = std::collections::HashMap::new();
+
+    let mut class_to_label: std::collections::HashMap<String, usize> =
+        std::collections::HashMap::new();
     if train_dir.exists() {
         let mut classes: Vec<String> = std::fs::read_dir(&train_dir)
             .map_err(|e| format!("Failed to read train dir: {:?}", e))?
@@ -324,10 +342,7 @@ fn load_farmer_demo_images(data_dir: &str) -> Result<Vec<HiddenLabelImage>, Stri
         }
 
         let class_name = class_entry.file_name().to_string_lossy().to_string();
-        let label = class_to_label
-            .get(&class_name)
-            .copied()
-            .unwrap_or(0); // Default to 0 if class not found
+        let label = class_to_label.get(&class_name).copied().unwrap_or(0); // Default to 0 if class not found
 
         let image_files = std::fs::read_dir(class_entry.path())
             .map_err(|e| format!("Failed to read class dir: {:?}", e))?;
@@ -390,10 +405,7 @@ pub async fn process_farmer_images(
         return Err("No farmer demo images found".to_string());
     }
 
-    tracing::info!(
-        "Processing {} farmer images...",
-        farmer_images.len()
-    );
+    tracing::info!("Processing {} farmer images...", farmer_images.len());
 
     // Run inference on farmer images
     let inference_start = Instant::now();
@@ -519,16 +531,14 @@ pub async fn manual_retrain_demo(
         let num_labels = session.pseudo_labeler.num_pseudo_labels();
         let threshold = session.pseudo_labeler.retrain_threshold();
         let needed = threshold - num_labels;
-        
+
         // Restore session before returning error
         let mut global = demo_session.lock().await;
         *global = session_opt;
-        
+
         return Err(format!(
             "Not enough pseudo-labels for retraining. Need {} more (current: {}, threshold: {})",
-            needed,
-            num_labels,
-            threshold
+            needed, num_labels, threshold
         ));
     }
 
@@ -546,7 +556,7 @@ pub async fn manual_retrain_demo(
     // Get pseudo-labels and convert to training data
     let pseudo_labels = session.pseudo_labeler.get_and_clear_pseudo_labels();
     let pseudo_labels_used = pseudo_labels.len();
-    
+
     tracing::info!(
         "Collected {} pseudo-labels for manual retraining",
         pseudo_labels_used
@@ -589,19 +599,25 @@ pub async fn manual_retrain_demo(
         &mut session.model,
         &mut session.optimizer,
         &combined_dataset,
-        5,      // retrain_epochs (5 for stable improvement)
-        32,     // batch_size
-        0.0001, // learning_rate
+        5,                                // retrain_epochs (5 for stable improvement)
+        32,                               // batch_size
+        0.0001,                           // learning_rate
         session.state.config.seed + 9999, // Different seed for manual retrain
     );
-    tracing::info!("Manual retraining completed in {:?}", retrain_start.elapsed());
+    tracing::info!(
+        "Manual retraining completed in {:?}",
+        retrain_start.elapsed()
+    );
 
     // Evaluate after retraining
     let new_acc = evaluate_model(&session.model, &session.val_dataset, &session.batcher, 32);
-    
+
     session.state.current_accuracy = new_acc;
     session.state.retraining_count += 1;
-    session.state.accuracy_history.push((session.state.current_day, new_acc));
+    session
+        .state
+        .accuracy_history
+        .push((session.state.current_day, new_acc));
     session.state.pseudo_labels_accumulated = 0; // Reset counter after retraining
 
     let result = RetrainResult {
@@ -632,7 +648,7 @@ fn init_session_inner<B>(config: DemoConfig) -> Result<DemoSession<B>, String>
 where
     B: AutodiffBackend,
 {
-    let device = B::Device::default();
+    let device = Device::<B>::default();
 
     // Load dataset
     let dataset = PlantVillageDataset::new(&config.data_dir)
@@ -708,15 +724,25 @@ where
     // Load farmer demo images if available
     let farmer_simulator = match load_farmer_demo_images(&config.data_dir) {
         Ok(farmer_images) if !farmer_images.is_empty() => {
-            tracing::info!("Loaded {} farmer demo images for day-by-day processing", farmer_images.len());
-            Some(StreamSimulator::new(farmer_images, config.seed + 1000, config.images_per_day))
+            tracing::info!(
+                "Loaded {} farmer demo images for day-by-day processing",
+                farmer_images.len()
+            );
+            Some(StreamSimulator::new(
+                farmer_images,
+                config.seed + 1000,
+                config.images_per_day,
+            ))
         }
         Ok(_) => {
             tracing::warn!("No farmer demo images found");
             None
         }
         Err(e) => {
-            tracing::warn!("Failed to load farmer images: {}. Continuing without farmer images.", e);
+            tracing::warn!(
+                "Failed to load farmer images: {}. Continuing without farmer images.",
+                e
+            );
             None
         }
     };
@@ -733,7 +759,7 @@ where
 
     // Create batcher
     let batcher = PlantVillageBatcher::<B::InnerBackend>::with_image_size(
-        <B::InnerBackend as burn::tensor::backend::Backend>::Device::default(),
+        Device::<B::InnerBackend>::default(),
         128,
     );
 
@@ -780,14 +806,18 @@ where
 /// Process a single day in the simulation
 fn process_demo_day<B: AutodiffBackend>(session: &mut DemoSession<B>) -> Result<DayResult, String> {
     use std::time::Instant;
-    
+
     let day_start = Instant::now();
     tracing::info!("  [process_demo_day] START");
-    
+
     // Try farmer images first, then fall back to stream
-    let (daily_images, is_farmer_batch) = if let Some(ref mut farmer_sim) = session.farmer_simulator {
+    let (daily_images, is_farmer_batch) = if let Some(ref mut farmer_sim) = session.farmer_simulator
+    {
         if let Some(images) = farmer_sim.next_day() {
-            tracing::info!("  [process_demo_day] Processing {} FARMER images", images.len());
+            tracing::info!(
+                "  [process_demo_day] Processing {} FARMER images",
+                images.len()
+            );
             (images, true)
         } else {
             // No more farmer images, use regular stream
@@ -796,7 +826,10 @@ fn process_demo_day<B: AutodiffBackend>(session: &mut DemoSession<B>) -> Result<
                 .stream_simulator
                 .next_day()
                 .ok_or("No more images available in stream")?;
-            tracing::info!("  [process_demo_day] Got {} stream images", stream_images.len());
+            tracing::info!(
+                "  [process_demo_day] Got {} stream images",
+                stream_images.len()
+            );
             (stream_images, false)
         }
     } else {
@@ -805,18 +838,28 @@ fn process_demo_day<B: AutodiffBackend>(session: &mut DemoSession<B>) -> Result<
             .stream_simulator
             .next_day()
             .ok_or("No more images available in stream")?;
-        tracing::info!("  [process_demo_day] Got {} stream images", stream_images.len());
+        tracing::info!(
+            "  [process_demo_day] Got {} stream images",
+            stream_images.len()
+        );
         (stream_images, false)
     };
 
     session.state.current_day += 1;
     let day = session.state.current_day;
-    tracing::info!("  [process_demo_day] Day {} starting ({})", day, if is_farmer_batch { "FARMER" } else { "STREAM" });
+    tracing::info!(
+        "  [process_demo_day] Day {} starting ({})",
+        day,
+        if is_farmer_batch { "FARMER" } else { "STREAM" }
+    );
 
     session.pseudo_labeler.set_day(day);
 
     // Run inference on daily images
-    tracing::info!("  [process_demo_day] Running inference on {} images...", daily_images.len());
+    tracing::info!(
+        "  [process_demo_day] Running inference on {} images...",
+        daily_images.len()
+    );
     let inference_start = Instant::now();
     let predictions = run_inference_on_images(
         &session.model,
@@ -824,14 +867,21 @@ fn process_demo_day<B: AutodiffBackend>(session: &mut DemoSession<B>) -> Result<
         &session.batcher,
         &session.device,
     );
-    tracing::info!("  [process_demo_day] Inference completed in {:?}, got {} predictions", inference_start.elapsed(), predictions.len());
+    tracing::info!(
+        "  [process_demo_day] Inference completed in {:?}, got {} predictions",
+        inference_start.elapsed(),
+        predictions.len()
+    );
 
     // Process predictions for pseudo-labeling
     tracing::info!("  [process_demo_day] Processing predictions for pseudo-labeling...");
     let new_pseudo_labels = session
         .pseudo_labeler
         .process_predictions(&predictions, &daily_images);
-    tracing::info!("  [process_demo_day] {} new pseudo-labels accepted", new_pseudo_labels.len());
+    tracing::info!(
+        "  [process_demo_day] {} new pseudo-labels accepted",
+        new_pseudo_labels.len()
+    );
 
     let images_processed_today = daily_images.len();
     let pseudo_labels_accepted_today = new_pseudo_labels.len();
@@ -843,7 +893,10 @@ fn process_demo_day<B: AutodiffBackend>(session: &mut DemoSession<B>) -> Result<
     // Update precision stats
     let stats = session.pseudo_labeler.stats();
     session.state.pseudo_label_precision = stats.accuracy();
-    tracing::info!("  [process_demo_day] Accumulated pseudo-labels: {}", session.state.pseudo_labels_accumulated);
+    tracing::info!(
+        "  [process_demo_day] Accumulated pseudo-labels: {}",
+        session.state.pseudo_labels_accumulated
+    );
 
     // Sample images for display (show first 20)
     tracing::info!("  [process_demo_day] Creating thumbnails for display...");
@@ -869,12 +922,18 @@ fn process_demo_day<B: AutodiffBackend>(session: &mut DemoSession<B>) -> Result<
             }
         })
         .collect();
-    tracing::info!("  [process_demo_day] Thumbnails created in {:?}", thumbnail_start.elapsed());
+    tracing::info!(
+        "  [process_demo_day] Thumbnails created in {:?}",
+        thumbnail_start.elapsed()
+    );
 
     // Check if we should retrain
     let should_retrain = session.pseudo_labeler.should_retrain();
-    tracing::info!("  [process_demo_day] Should retrain? {} (threshold check)", should_retrain);
-    
+    tracing::info!(
+        "  [process_demo_day] Should retrain? {} (threshold check)",
+        should_retrain
+    );
+
     let mut did_retrain = false;
     let mut accuracy_before_retrain = None;
     let mut accuracy_after_retrain = None;
@@ -883,7 +942,10 @@ fn process_demo_day<B: AutodiffBackend>(session: &mut DemoSession<B>) -> Result<
         did_retrain = true;
         accuracy_before_retrain = Some(session.state.current_accuracy);
 
-        tracing::info!("  [process_demo_day] >>> RETRAINING STARTING at day {}", day);
+        tracing::info!(
+            "  [process_demo_day] >>> RETRAINING STARTING at day {}",
+            day
+        );
 
         // Get pseudo-labels and convert to training data
         let pseudo_labels = session.pseudo_labeler.get_and_clear_pseudo_labels();
@@ -934,15 +996,21 @@ fn process_demo_day<B: AutodiffBackend>(session: &mut DemoSession<B>) -> Result<
             0.0001, // learning_rate
             session.state.config.seed + day as u64,
         );
-        tracing::info!("  [process_demo_day] Retraining completed in {:?}", retrain_start.elapsed());
+        tracing::info!(
+            "  [process_demo_day] Retraining completed in {:?}",
+            retrain_start.elapsed()
+        );
 
         tracing::info!("  [process_demo_day] Evaluating model...");
         let eval_start = Instant::now();
 
         // Evaluate after retraining
         let new_acc = evaluate_model(&session.model, &session.val_dataset, &session.batcher, 32);
-        tracing::info!("  [process_demo_day] Evaluation completed in {:?}", eval_start.elapsed());
-        
+        tracing::info!(
+            "  [process_demo_day] Evaluation completed in {:?}",
+            eval_start.elapsed()
+        );
+
         session.state.current_accuracy = new_acc;
         session.state.retraining_count += 1;
         session.state.accuracy_history.push((day, new_acc));
@@ -950,16 +1018,26 @@ fn process_demo_day<B: AutodiffBackend>(session: &mut DemoSession<B>) -> Result<
 
         accuracy_after_retrain = Some(new_acc);
 
-        tracing::info!("  [process_demo_day] >>> RETRAINING COMPLETE! New accuracy: {:.2}%", new_acc);
+        tracing::info!(
+            "  [process_demo_day] >>> RETRAINING COMPLETE! New accuracy: {:.2}%",
+            new_acc
+        );
     }
 
-    tracing::info!("  [process_demo_day] END - total time: {:?}", day_start.elapsed());
-    
+    tracing::info!(
+        "  [process_demo_day] END - total time: {:?}",
+        day_start.elapsed()
+    );
+
     // Calculate total remaining images (farmer + stream)
-    let farmer_remaining = session.farmer_simulator.as_ref().map(|s| s.remaining()).unwrap_or(0);
+    let farmer_remaining = session
+        .farmer_simulator
+        .as_ref()
+        .map(|s| s.remaining())
+        .unwrap_or(0);
     let stream_remaining = session.stream_simulator.remaining();
     let total_remaining = farmer_remaining + stream_remaining;
-    
+
     Ok(DayResult {
         day,
         images_processed_today,
@@ -980,11 +1058,11 @@ fn run_inference_on_images<B: AutodiffBackend>(
     model: &PlantClassifier<B>,
     images: &[HiddenLabelImage],
     batcher: &PlantVillageBatcher<B::InnerBackend>,
-    _device: &B::Device,
+    _device: &Device<B>,
 ) -> Vec<Prediction> {
     const INFERENCE_BATCH_SIZE: usize = 32;
     let inner_model = model.clone().valid();
-    let inner_device = <B::InnerBackend as burn::tensor::backend::Backend>::Device::default();
+    let inner_device = Device::<B::InnerBackend>::default();
     let mut predictions = Vec::new();
     let num_classes = 38;
 
@@ -1058,7 +1136,7 @@ fn retrain_model_with_augmentation<B: AutodiffBackend>(
     learning_rate: f64,
     seed: u64,
 ) {
-    let device = B::Device::default();
+    let device = Device::<B>::default();
     let aug_batcher = AugmentingBatcher::<B>::new(device.clone(), 128, seed);
     let mut rng = ChaCha8Rng::seed_from_u64(seed);
 
@@ -1099,23 +1177,25 @@ fn retrain_model_with_augmentation<B: AutodiffBackend>(
                 .forward(output, batch.targets);
 
             let loss_value: f64 = loss.clone().into_scalar().elem();
-            
+
             // CRITICAL: Detect NaN/Inf immediately
             if loss_value.is_nan() {
                 tracing::error!(
                     "Loss became NaN at epoch {} batch {}. Aborting retrain.",
-                    epoch + 1, batch_count + 1
+                    epoch + 1,
+                    batch_count + 1
                 );
                 return; // Abort this retraining cycle
             }
             if loss_value.is_infinite() {
                 tracing::error!(
                     "Loss became infinite at epoch {} batch {}. Aborting retrain.",
-                    epoch + 1, batch_count + 1
+                    epoch + 1,
+                    batch_count + 1
                 );
                 return; // Abort this retraining cycle
             }
-            
+
             epoch_loss += loss_value;
             batch_count += 1;
 
@@ -1147,7 +1227,7 @@ fn evaluate_model<B: AutodiffBackend>(
     batch_size: usize,
 ) -> f64 {
     let inner_model = model.clone().valid();
-    let inner_device = <B::InnerBackend as burn::tensor::backend::Backend>::Device::default();
+    let inner_device = Device::<B::InnerBackend>::default();
     let len = dataset.len();
     let mut correct = 0usize;
     let mut total = 0usize;

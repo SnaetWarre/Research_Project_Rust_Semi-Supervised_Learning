@@ -72,7 +72,8 @@ impl<B: Backend> FineTuningLearner<B> {
 
     /// Unfreeze specified layers
     pub fn unfreeze_layers(&mut self, layer_indices: &[usize]) {
-        self.frozen_layers.retain(|idx| !layer_indices.contains(idx));
+        self.frozen_layers
+            .retain(|idx| !layer_indices.contains(idx));
     }
 
     /// Unfreeze all layers
@@ -274,7 +275,9 @@ mod tests {
             seed: 42,
         };
 
-        let metrics = learner.train_incremental(&train_data, &val_data, &inc_config).unwrap();
+        let metrics = learner
+            .train_incremental(&train_data, &val_data, &inc_config)
+            .unwrap();
 
         assert!(metrics.train_loss.len() > 0);
         assert!(metrics.val_accuracy.len() > 0);

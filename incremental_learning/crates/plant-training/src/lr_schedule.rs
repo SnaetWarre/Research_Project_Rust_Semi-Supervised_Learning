@@ -17,21 +17,13 @@ pub enum SchedulerType {
     Constant,
 
     /// Step decay: multiply LR by gamma every step_size epochs
-    StepLR {
-        step_size: usize,
-        gamma: f64,
-    },
+    StepLR { step_size: usize, gamma: f64 },
 
     /// Exponential decay: multiply LR by gamma every epoch
-    ExponentialLR {
-        gamma: f64,
-    },
+    ExponentialLR { gamma: f64 },
 
     /// Cosine annealing: cosine decay from initial to min LR
-    CosineAnnealingLR {
-        t_max: usize,
-        eta_min: f64,
-    },
+    CosineAnnealingLR { t_max: usize, eta_min: f64 },
 
     /// Reduce on plateau: reduce LR when metric stops improving
     ReduceLROnPlateau {
@@ -107,8 +99,8 @@ impl LearningRateScheduler {
             SchedulerType::CosineAnnealingLR { t_max, eta_min } => {
                 let progress = (self.current_epoch as f64) / (*t_max as f64);
                 let progress = progress.min(1.0);
-                self.current_lr = eta_min + (self.base_lr - eta_min)
-                    * (1.0 + (progress * PI).cos()) / 2.0;
+                self.current_lr =
+                    eta_min + (self.base_lr - eta_min) * (1.0 + (progress * PI).cos()) / 2.0;
             }
 
             SchedulerType::WarmupCosine {
@@ -123,11 +115,11 @@ impl LearningRateScheduler {
                 } else {
                     // Cosine decay
                     let decay_epochs = total_epochs - warmup_epochs;
-                    let progress = ((self.current_epoch - warmup_epochs) as f64)
-                        / (decay_epochs as f64);
+                    let progress =
+                        ((self.current_epoch - warmup_epochs) as f64) / (decay_epochs as f64);
                     let progress = progress.min(1.0);
-                    self.current_lr = eta_min + (self.base_lr - eta_min)
-                        * (1.0 + (progress * PI).cos()) / 2.0;
+                    self.current_lr =
+                        eta_min + (self.base_lr - eta_min) * (1.0 + (progress * PI).cos()) / 2.0;
                 }
             }
 
@@ -231,10 +223,8 @@ mod tests {
 
     #[test]
     fn test_exponential_lr() {
-        let mut scheduler = LearningRateScheduler::new(
-            SchedulerType::ExponentialLR { gamma: 0.9 },
-            0.001,
-        );
+        let mut scheduler =
+            LearningRateScheduler::new(SchedulerType::ExponentialLR { gamma: 0.9 }, 0.001);
 
         assert_eq!(scheduler.get_lr(), 0.001);
 
@@ -340,10 +330,8 @@ mod tests {
 
     #[test]
     fn test_reset() {
-        let mut scheduler = LearningRateScheduler::new(
-            SchedulerType::ExponentialLR { gamma: 0.9 },
-            0.001,
-        );
+        let mut scheduler =
+            LearningRateScheduler::new(SchedulerType::ExponentialLR { gamma: 0.9 }, 0.001);
 
         scheduler.step();
         scheduler.step();

@@ -83,9 +83,7 @@ impl EvaluationMetrics {
         }
 
         // Calculate overall accuracy
-        let correct: usize = (0..num_classes)
-            .map(|i| self.confusion_matrix[i][i])
-            .sum();
+        let correct: usize = (0..num_classes).map(|i| self.confusion_matrix[i][i]).sum();
         self.accuracy = correct as f64 / self.num_samples as f64;
 
         // Calculate per-class metrics
@@ -237,7 +235,10 @@ impl TrainingMetrics {
 
     /// Gets the best validation accuracy
     pub fn best_val_accuracy(&self) -> Option<f64> {
-        self.val_accuracy.iter().copied().max_by(|a, b| a.partial_cmp(b).unwrap())
+        self.val_accuracy
+            .iter()
+            .copied()
+            .max_by(|a, b| a.partial_cmp(b).unwrap())
     }
 
     /// Gets the epoch with best validation accuracy
@@ -256,7 +257,10 @@ impl TrainingMetrics {
         }
 
         let recent = &self.val_loss[self.val_loss.len() - patience..];
-        let min_recent = recent.iter().copied().min_by(|a, b| a.partial_cmp(b).unwrap());
+        let min_recent = recent
+            .iter()
+            .copied()
+            .min_by(|a, b| a.partial_cmp(b).unwrap());
 
         if let Some(min_val) = min_recent {
             // Check if minimum is at the beginning of the window (no improvement)
@@ -380,8 +384,8 @@ mod tests {
         let mut metrics = EvaluationMetrics::new(2);
         // Perfect predictions for class 0, 2/3 correct for class 1
         metrics.confusion_matrix = vec![
-            vec![2, 0],  // Class 0: 2 correct, 0 wrong
-            vec![1, 2],  // Class 1: 1 wrong as class 0, 2 correct
+            vec![2, 0], // Class 0: 2 correct, 0 wrong
+            vec![1, 2], // Class 1: 1 wrong as class 0, 2 correct
         ];
 
         metrics.compute_from_confusion_matrix();

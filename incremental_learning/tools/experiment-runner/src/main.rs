@@ -9,13 +9,13 @@ use indicatif::{MultiProgress, ProgressBar, ProgressStyle};
 use plant_core::load_toml_config;
 use plant_dataset::loader::ImageLoader;
 use plant_incremental::{
+    ewc::{EWCConfig, EWCLearner},
     finetuning::{FineTuningConfig, FineTuningLearner},
     lwf::{LwFConfig, LwFLearner},
-    ewc::{EWCConfig, EWCLearner},
-    rehearsal::{RehearsalConfig, RehearsalLearner},
     metrics::{IncrementalAnalysis, MethodComparison},
-    ExemplarSelection, IncrementalConfig, IncrementalLearner, IncrementalMethod,
-    IncrementalResult, StepMetrics, ExperimentMetadata, TrainingMetrics,
+    rehearsal::{RehearsalConfig, RehearsalLearner},
+    ExemplarSelection, ExperimentMetadata, IncrementalConfig, IncrementalLearner,
+    IncrementalMethod, IncrementalResult, StepMetrics, TrainingMetrics,
 };
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -137,8 +137,8 @@ fn main() -> Result<()> {
     let args = Args::parse();
 
     // Load configuration first (needed for logging setup)
-    let mut config: ExperimentConfig = load_toml_config(&args.config)
-        .context("Failed to load experiment configuration")?;
+    let mut config: ExperimentConfig =
+        load_toml_config(&args.config).context("Failed to load experiment configuration")?;
 
     // Apply output directory override early
     if let Some(ref output) = args.output {
@@ -146,7 +146,11 @@ fn main() -> Result<()> {
     }
 
     // Initialize logging with experiment name for log file
-    setup_logging(args.verbose, &config.experiment.name, &config.output.output_dir)?;
+    setup_logging(
+        args.verbose,
+        &config.experiment.name,
+        &config.output.output_dir,
+    )?;
 
     info!("Incremental Learning Experiment Runner");
     info!("======================================");
@@ -176,12 +180,16 @@ fn main() -> Result<()> {
     // Filter methods if specified
     let methods_to_run: Vec<MethodConfig> = if let Some(ref method_names) = args.methods {
         let names: Vec<&str> = method_names.split(',').map(|s| s.trim()).collect();
-        config.methods.iter()
+        config
+            .methods
+            .iter()
             .filter(|m| m.enabled && names.contains(&m.name.as_str()))
             .cloned()
             .collect()
     } else {
-        config.methods.iter()
+        config
+            .methods
+            .iter()
             .filter(|m| m.enabled)
             .cloned()
             .collect()
@@ -208,11 +216,17 @@ fn main() -> Result<()> {
 
     if let Some(best) = comparison.best_by_accuracy() {
         info!("");
-        info!("Best method by accuracy: {} ({:.4})", best.0, best.1.average_accuracy);
+        info!(
+            "Best method by accuracy: {} ({:.4})",
+            best.0, best.1.average_accuracy
+        );
     }
 
     if let Some(best) = comparison.best_by_backward_transfer() {
-        info!("Best method by backward transfer: {} ({:.4})", best.0, best.1.backward_transfer);
+        info!(
+            "Best method by backward transfer: {} ({:.4})",
+            best.0, best.1.backward_transfer
+        );
     }
 
     info!("");
@@ -237,13 +251,18 @@ fn setup_logging(verbose: bool, experiment_name: &str, output_base: &PathBuf) ->
         .parent()
         .map(|p| p.join("latest"))
         .unwrap_or_else(|| PathBuf::from("./output/latest"));
-    std::fs::create_dir_all(&latest_dir)
-        .context("Failed to create output/latest directory")?;
+    std::fs::create_dir_all(&latest_dir).context("Failed to create output/latest directory")?;
 
     // Sanitize experiment name for filename (replace spaces and special chars)
     let safe_name: String = experiment_name
         .chars()
-        .map(|c| if c.is_alphanumeric() || c == '_' || c == '-' { c } else { '_' })
+        .map(|c| {
+            if c.is_alphanumeric() || c == '_' || c == '-' {
+                c
+            } else {
+                '_'
+            }
+        })
         .collect();
     let log_filename = format!("{}.log", safe_name);
 
@@ -263,7 +282,10 @@ fn setup_logging(verbose: bool, experiment_name: &str, output_base: &PathBuf) ->
 fn validate_config(config: &ExperimentConfig) -> Result<()> {
     // Validate dataset paths
     if !config.dataset.root_dir.exists() {
-        anyhow::bail!("Dataset root directory does not exist: {}", config.dataset.root_dir.display());
+        anyhow::bail!(
+            "Dataset root directory does not exist: {}",
+            config.dataset.root_dir.display()
+        );
     }
 
     // Validate incremental setup
@@ -309,7 +331,10 @@ fn print_experiment_summary(config: &ExperimentConfig) {
     info!("Dataset:");
     info!("  Root: {}", config.dataset.root_dir.display());
     info!("  Initial classes: {}", config.incremental.initial_classes);
-    info!("  Classes per step: {}", config.incremental.classes_per_step);
+    info!(
+        "  Classes per step: {}",
+        config.incremental.classes_per_step
+    );
     info!("  Number of steps: {}", config.incremental.num_steps);
     info!("");
     info!("Training:");
@@ -342,7 +367,10 @@ fn run_experiments(
         let progress = multi_progress.add(ProgressBar::new(config.incremental.num_steps as u64));
         progress.set_style(
             ProgressStyle::default_bar()
-                .template(&format!("[{}] {{bar:40.cyan/blue}} {{pos}}/{{len}} steps", method_config.name))
+                .template(&format!(
+                    "[{}] {{bar:40.cyan/blue}} {{pos}}/{{len}} steps",
+                    method_config.name
+                ))
                 .unwrap()
                 .progress_chars("=>-"),
         );
@@ -383,11 +411,8 @@ fn run_single_experiment(
         };
 
         // Simulate training
-        let training_metrics = simulate_training(
-            step,
-            current_classes,
-            config.training.epochs_per_task,
-        );
+        let training_metrics =
+            simulate_training(step, current_classes, config.training.epochs_per_task);
 
         // Simulate evaluation on all tasks
         let task_accuracies = simulate_task_evaluation(step, current_classes);
@@ -421,12 +446,16 @@ fn run_single_experiment(
     let total_time = start_time.elapsed().as_secs_f64();
 
     let final_accuracy = step_metrics.last().unwrap().average_accuracy;
-    let avg_backward_transfer = step_metrics.iter()
+    let avg_backward_transfer = step_metrics
+        .iter()
         .filter_map(|s| s.backward_transfer)
-        .sum::<f32>() / (num_steps - 1).max(1) as f32;
-    let avg_forward_transfer = step_metrics.iter()
+        .sum::<f32>()
+        / (num_steps - 1).max(1) as f32;
+    let avg_forward_transfer = step_metrics
+        .iter()
         .filter_map(|s| s.forward_transfer)
-        .sum::<f32>() / (num_steps - 1).max(1) as f32;
+        .sum::<f32>()
+        / (num_steps - 1).max(1) as f32;
 
     Ok(IncrementalResult {
         step_metrics,
@@ -534,7 +563,11 @@ fn export_results(
         let csv = plant_incremental::metrics::export_to_csv(result);
         std::fs::write(&csv_path, csv)?;
 
-        info!("Exported {} results to: {}", method_name, method_dir.display());
+        info!(
+            "Exported {} results to: {}",
+            method_name,
+            method_dir.display()
+        );
     }
 
     // Export comparison summary
@@ -552,10 +585,16 @@ fn export_results(
 }
 
 fn export_comparison_table(comparison: &MethodComparison, path: &PathBuf) -> Result<()> {
-    let mut csv = String::from("method,avg_accuracy,backward_transfer,forward_transfer,forgetting,intransigence\n");
+    let mut csv = String::from(
+        "method,avg_accuracy,backward_transfer,forward_transfer,forgetting,intransigence\n",
+    );
 
     let mut methods: Vec<_> = comparison.results.iter().collect();
-    methods.sort_by(|a, b| b.1.average_accuracy.partial_cmp(&a.1.average_accuracy).unwrap());
+    methods.sort_by(|a, b| {
+        b.1.average_accuracy
+            .partial_cmp(&a.1.average_accuracy)
+            .unwrap()
+    });
 
     for (method_name, analysis) in methods {
         csv.push_str(&format!(
@@ -594,16 +633,14 @@ mod tests {
 
     #[test]
     fn test_backward_transfer_computation() {
-        let prev_metrics = vec![
-            StepMetrics {
-                step: 0,
-                training: TrainingMetrics::new(),
-                task_accuracies: vec![0.85],
-                average_accuracy: 0.85,
-                backward_transfer: None,
-                forward_transfer: None,
-            },
-        ];
+        let prev_metrics = vec![StepMetrics {
+            step: 0,
+            training: TrainingMetrics::new(),
+            task_accuracies: vec![0.85],
+            average_accuracy: 0.85,
+            backward_transfer: None,
+            forward_transfer: None,
+        }];
 
         let current_accs = vec![0.80, 0.88];
         let bwt = compute_backward_transfer(&prev_metrics, &current_accs);

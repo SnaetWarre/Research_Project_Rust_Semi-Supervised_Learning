@@ -25,7 +25,11 @@ impl PlantClass {
     }
 
     /// Creates a new plant class with description
-    pub fn with_description(id: usize, name: impl Into<String>, description: impl Into<String>) -> Self {
+    pub fn with_description(
+        id: usize,
+        name: impl Into<String>,
+        description: impl Into<String>,
+    ) -> Self {
         Self {
             id,
             name: name.into(),
@@ -231,7 +235,7 @@ mod tests {
         let class = PlantClass::with_description(
             1,
             "Tomato___Late_blight",
-            "Late blight disease in tomato plants"
+            "Late blight disease in tomato plants",
         );
         assert_eq!(class.id, 1);
         assert!(class.description.is_some());
@@ -253,7 +257,10 @@ mod tests {
 
     #[test]
     fn test_model_architecture_display() {
-        assert_eq!(ModelArchitecture::EfficientNetB0.to_string(), "efficientnet_b0");
+        assert_eq!(
+            ModelArchitecture::EfficientNetB0.to_string(),
+            "efficientnet_b0"
+        );
         assert_eq!(ModelArchitecture::ResNet18.to_string(), "resnet18");
     }
 

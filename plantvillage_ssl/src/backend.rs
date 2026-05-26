@@ -3,6 +3,7 @@
 //! The CLI chooses between the compiled backends at runtime.
 
 use burn::backend::Autodiff;
+use burn::tensor::Device;
 
 #[cfg(any(feature = "cpu", feature = "ndarray"))]
 pub type CpuBackend = burn_ndarray::NdArray;
@@ -23,8 +24,8 @@ compile_error!("At least one backend (cuda, ndarray, or cpu) must be enabled!");
 pub type TrainingBackend = Autodiff<DefaultBackend>;
 
 /// Get the default device
-pub fn default_device() -> <DefaultBackend as burn::tensor::backend::Backend>::Device {
-    <DefaultBackend as burn::tensor::backend::Backend>::Device::default()
+pub fn default_device() -> Device<DefaultBackend> {
+    Device::<DefaultBackend>::default()
 }
 
 /// Get a human-readable name for the current backend

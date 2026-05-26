@@ -1,6 +1,6 @@
 //! Dataset implementation for plant images.
 
-use plant_core::{Result, ImageSample};
+use plant_core::{ImageSample, Result};
 
 /// A single item from the plant dataset
 pub struct PlantItem {
@@ -23,11 +23,11 @@ impl PlantDataset {
     pub fn new(samples: Vec<ImageSample>) -> Self {
         Self { samples }
     }
-    
+
     pub fn len(&self) -> usize {
         self.samples.len()
     }
-    
+
     pub fn is_empty(&self) -> bool {
         self.samples.is_empty()
     }

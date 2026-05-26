@@ -7,10 +7,10 @@ with incremental learning, targeting edge devices.
 
 ```
 Source/
-├── plantvillage_ssl/          # Main SSL library and CLI (Burn 0.20)
+├── plantvillage_ssl/          # Main SSL library and CLI (Burn 0.21)
 │   ├── src/                   # Core Rust library
 │   └── gui/                   # Tauri desktop app (Svelte 5 + TailwindCSS)
-├── incremental_learning/      # Incremental learning workspace (Burn 0.14)
+├── incremental_learning/      # Incremental learning workspace (Burn 0.21)
 │   ├── crates/                # Library crates (plant-core, plant-dataset, etc.)
 │   └── tools/                 # CLI tools (train, evaluate, experiment-runner)
 └── pytorch_reference/         # Python/PyTorch baseline for comparison
@@ -168,7 +168,7 @@ mod tests {
 
 | Crate | Version | Purpose |
 |-------|---------|---------|
-| burn | 0.14/0.20 | ML framework (different versions in workspaces) |
+| burn | 0.21 | ML framework |
 | burn-cuda | matching | CUDA backend for GPU |
 | burn-ndarray | matching | CPU backend fallback |
 | image | 0.25 | Image loading/processing |
@@ -232,7 +232,7 @@ cargo test -p plant-incremental
 
 ## Notes for AI Agents
 
-1. **Two Burn versions**: `plantvillage_ssl` uses Burn 0.20-pre, `incremental_learning` uses 0.14
+1. **Burn version**: keep Burn examples and dependency notes aligned with Burn 0.21
 2. **CUDA default**: This project targets GPU. Use `--features cpu` for CPU-only builds
 3. **Image size**: Default is 128x128 or 256x256 depending on context
 4. **38 classes**: PlantVillage dataset has 38 disease classes

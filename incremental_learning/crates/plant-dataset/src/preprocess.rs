@@ -75,7 +75,10 @@ impl ImagePreprocessor {
     }
 
     /// Resizes an image to target dimensions
-    fn resize_image(&self, image: &ImageBuffer<Rgb<u8>, Vec<u8>>) -> Result<ImageBuffer<Rgb<u8>, Vec<u8>>> {
+    fn resize_image(
+        &self,
+        image: &ImageBuffer<Rgb<u8>, Vec<u8>>,
+    ) -> Result<ImageBuffer<Rgb<u8>, Vec<u8>>> {
         let (width, height) = image.dimensions();
         let target_w = self.config.target_size.width;
         let target_h = self.config.target_size.height;
@@ -86,18 +89,13 @@ impl ImagePreprocessor {
 
         let resized = if self.config.maintain_aspect_ratio {
             // Calculate scale to fit within target size
-            let scale = (target_w as f32 / width as f32)
-                .min(target_h as f32 / height as f32);
+            let scale = (target_w as f32 / width as f32).min(target_h as f32 / height as f32);
 
             let new_w = (width as f32 * scale) as u32;
             let new_h = (height as f32 * scale) as u32;
 
-            let temp = image::imageops::resize(
-                image,
-                new_w,
-                new_h,
-                image::imageops::FilterType::Lanczos3,
-            );
+            let temp =
+                image::imageops::resize(image, new_w, new_h, image::imageops::FilterType::Lanczos3);
 
             // Center crop or pad to exact size
             self.center_crop_or_pad(&temp, target_w, target_h)
@@ -145,8 +143,16 @@ impl ImagePreprocessor {
         // Copy image to center of result
         for y in 0..height.min(target_h) {
             for x in 0..width.min(target_w) {
-                let src_x = if width > target_w { (width - target_w) / 2 + x } else { x };
-                let src_y = if height > target_h { (height - target_h) / 2 + y } else { y };
+                let src_x = if width > target_w {
+                    (width - target_w) / 2 + x
+                } else {
+                    x
+                };
+                let src_y = if height > target_h {
+                    (height - target_h) / 2 + y
+                } else {
+                    y
+                };
 
                 if src_x < width && src_y < height {
                     let pixel = image.get_pixel(src_x, src_y);
@@ -172,7 +178,8 @@ impl ImagePreprocessor {
                 for x in 0..width {
                     let pixel = image.get_pixel(x, y);
                     let value = pixel[channel] as f32 / 255.0;
-                    let normalized_value = (value - self.config.mean[channel]) / self.config.std[channel];
+                    let normalized_value =
+                        (value - self.config.mean[channel]) / self.config.std[channel];
                     normalized.push(normalized_value);
                 }
             }
@@ -183,8 +190,8 @@ impl ImagePreprocessor {
 
     /// Preprocesses an image from a file path
     pub fn preprocess_from_path(&self, path: &std::path::Path) -> Result<Vec<f32>> {
-        let image = image::open(path)
-            .map_err(|e| Error::Image(format!("Failed to load image: {}", e)))?;
+        let image =
+            image::open(path).map_err(|e| Error::Image(format!("Failed to load image: {}", e)))?;
 
         self.preprocess(&image)
     }

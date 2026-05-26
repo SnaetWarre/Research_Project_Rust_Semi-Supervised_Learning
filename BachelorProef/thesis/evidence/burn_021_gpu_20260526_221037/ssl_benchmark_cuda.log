@@ -1,0 +1,45 @@
+    Finished `release` profile [optimized] target(s) in 0.27s
+     Running `target/release/plantvillage_ssl benchmark --model output/simulation/plant_classifier_ssl_20260412_002832.mpk --iterations 100 --warmup 10 --batch-size 1 --image-size 128 --output /home/warre/Documents/howest/Semester_5/Research_Project/Fast_Research_Project/BachelorProef/thesis/evidence/burn_021_gpu_20260526_221037/ssl_benchmark_cuda.json --cuda`
+
+ ╔══════════════════════════════════════════════════════════════════╗
+ ║   🌱 PlantVillage Semi-Supervised Learning                           ║
+ ║   Plant Disease Classification with Burn + Rust                      ║
+ ║   Designed for GPU Training with CUDA                               ║
+ ╚════════════════════════════════════════════════════════════════╝
+  
+[2m2026-05-26T21:20:04.645412Z[0m [32m INFO[0m Running benchmark
+[2m2026-05-26T21:20:04.645422Z[0m [32m INFO[0m   Model: output/simulation/plant_classifier_ssl_20260412_002832.mpk
+[2m2026-05-26T21:20:04.645424Z[0m [32m INFO[0m   Iterations: 100
+[2m2026-05-26T21:20:04.645429Z[0m [32m INFO[0m   Warmup: 10
+[2m2026-05-26T21:20:04.645430Z[0m [32m INFO[0m   Batch size: 1
+[2m2026-05-26T21:20:04.645432Z[0m [32m INFO[0m   Image size: 128
+Initializing Benchmark...
+  Device: Cuda(0)
+  Batch size: 1
+  Image size: 128x128
+  Warmup iterations: 10
+  Benchmark iterations: 100
+
+Loading model from "output/simulation/plant_classifier_ssl_20260412_002832.mpk"...
+
+Running warmup...
+
+Running benchmark...
+
+Benchmark Results:
+  Device: CUDA
+  Batch size: 1
+  Image size: 128x128
+
+  Mean latency: 0.42 ± 0.27 ms
+  P50/P95/P99: 0.25/1.04/1.09 ms
+  Min/Max: 0.19/1.09 ms
+
+  Throughput: 2406.2 FPS
+  Model size: 0.89 MB
+
+✓ Meets target latency of 200 ms!
+
+  Saved results to: "/home/warre/Documents/howest/Semester_5/Research_Project/Fast_Research_Project/BachelorProef/thesis/evidence/burn_021_gpu_20260526_221037/ssl_benchmark_cuda.json"
+
+Benchmark complete!

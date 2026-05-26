@@ -1489,10 +1489,9 @@ fn evaluate<B: AutodiffBackend>(
     batch_size: usize,
     image_size: usize,
 ) -> f64 {
-    use burn::tensor::backend::Backend;
     use burn::tensor::Tensor;
 
-    let device = <B::InnerBackend as Backend>::Device::default();
+    let device = burn::tensor::Device::<B::InnerBackend>::default();
     let inner_batcher =
         PlantVillageBatcher::<B::InnerBackend>::with_image_size(device.clone(), image_size);
 

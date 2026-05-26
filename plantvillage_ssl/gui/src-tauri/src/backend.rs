@@ -6,7 +6,7 @@
 //! - NdArray backend on mobile or CPU-only systems
 
 use burn::backend::Autodiff;
-use burn::tensor::backend::Backend;
+use burn::tensor::Device;
 
 #[cfg(feature = "cuda")]
 use burn_cuda::Cuda;
@@ -42,8 +42,8 @@ pub fn backend_name() -> &'static str {
 }
 
 /// Get the default device for the current backend
-pub fn default_device() -> <AdaptiveBackend as Backend>::Device {
-    <AdaptiveBackend as Backend>::Device::default()
+pub fn default_device() -> Device<AdaptiveBackend> {
+    Device::<AdaptiveBackend>::default()
 }
 
 /// Check if GPU acceleration is available

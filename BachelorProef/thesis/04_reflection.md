@@ -14,7 +14,7 @@ His feedback is integrated into the reflection below. The full responses are inc
 
 **Deployment size and portability.** The binary of roughly 26 MB is a real improvement compared with a Python/PyTorch deployment. Both stacks need gigabytes of tooling during development. Rust's `target/` directory is around 2.1 GB, which is comparable to a PyTorch virtual environment. The difference is that Rust's compilation reduces everything to a single portable binary. A Python deployment still has to bring its interpreter and library tree to the target device. That changes which distribution channels are realistic for edge deployment. A file that fits on a Bluetooth transfer or a USB stick is very different from a system that first needs a multi-gigabyte environment.
 
-**The BYOD pivot.** The benchmark results (Table 3.6) provided a clear, data-driven reason to move away from dedicated edge hardware. The Jetson Orin Nano, at €350, turned out to be slower than a phone that many people already own. That pivot removed the single largest cost barrier to deployment.
+**The BYOD pivot.** The benchmark results (Table 3.7) provided a clear, data-driven reason to move away from dedicated edge hardware. The Jetson Orin Nano, at €350, turned out to be slower than a phone that many people already own. That pivot removed the single largest cost barrier to deployment.
 
 **Experimental rigour.** The three controlled experiments give quantitative answers to questions that are often only discussed qualitatively in the literature: how much labeled data is actually enough, how forgetting scales with model size, and how the position of a new class affects the difficulty of learning it.
 
@@ -38,7 +38,7 @@ Building the system is one thing. Getting it into the hands of someone who would
 
 The biggest issue is trust. If the model confidently says "bacterial spot" and the farmer treats for that, but it turns out to be something else, the tool has done more harm than good. That is why the GUI shows a confidence bar instead of only a single answer. Even then, a non-technical user might not know how to interpret a 72% confidence score. The interface has to be honest about uncertainty without becoming confusing, and that is a UX problem as much as an ML problem.
 
-Device diversity is another concern. The BYOD strategy means the system has to work on whatever phone or laptop someone happens to own. The cross-platform benchmarks (Table 3.6) show that it can work across hardware, but the preprocessing bug on iOS (Section 3.6.3), where BGRA versus RGB channel ordering silently produced wrong classifications, is exactly the kind of problem that only appears on real devices. There will probably be more bugs like that on devices I have not tested.
+Device diversity is another concern. The BYOD strategy means the system has to work on whatever phone or laptop someone happens to own. The cross-platform benchmarks (Table 3.7) show that it can work across hardware, but the preprocessing bug on iOS (Section 3.6.3), where BGRA versus RGB channel ordering silently produced wrong classifications, is exactly the kind of problem that only appears on real devices. There will probably be more bugs like that on devices I have not tested.
 
 Finally, there is the update problem. The initial installation is small enough (26 MB) to distribute offline, but what happens when the model improves or a new class is added? Agricultural extension workers or local community centres could serve as distribution points, but that requires coordination that goes beyond software engineering.
 
@@ -47,10 +47,10 @@ Finally, there is the update problem. The initial installation is small enough (
 The numbers from this project make a straightforward economic argument:
 
 - The SSL pipeline reduces the labeling requirement from 100% of the dataset down to roughly 20%, which translates directly into annotation budget savings. For an 87,000-image dataset, that is the difference between a full expert-annotation budget and a much smaller one, which matters for research groups and agricultural extensions with limited funding.
-- The BYOD pivot eliminates hardware costs entirely. The Jetson Orin Nano benchmark (Table 3.6) showed that a €350 dedicated device was actually slower than a phone, so there is no reason to buy one.
+- The BYOD pivot eliminates hardware costs entirely. The Jetson Orin Nano benchmark (Table 3.7) showed that a €350 dedicated device was actually slower than a phone, so there is no reason to buy one.
 - Once installed, the marginal cost of each classification is zero: no cloud API calls, no per-prediction charges, no bandwidth costs.
 
-These savings are real, but they only matter if the model is accurate enough to be useful. The experimental results suggest it is (85%+ with SSL), but that has only been validated on PlantVillage imagery, not on field photos.
+These savings are real, but they only matter if the model is accurate enough to be useful. The held-out test evaluation suggests it is for the PlantVillage benchmark (94.90% top-1 accuracy with the saved SSL checkpoint), but that has only been validated on PlantVillage imagery, not on field photos.
 
 ### 4.3.3 Privacy and Local Operation
 

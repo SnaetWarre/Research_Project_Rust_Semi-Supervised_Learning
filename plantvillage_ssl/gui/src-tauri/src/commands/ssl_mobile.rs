@@ -15,7 +15,7 @@ use burn::module::{AutodiffModule, Module};
 use burn::nn::loss::CrossEntropyLossConfig;
 use burn::optim::{AdamConfig, GradientsParams, Optimizer};
 use burn::record::CompactRecorder;
-use burn::tensor::ElementConversion;
+use burn::tensor::{Device, ElementConversion};
 use rand::seq::SliceRandom;
 use rand::SeedableRng;
 use rand_chacha::ChaCha8Rng;
@@ -137,7 +137,7 @@ fn run_ssl_retraining_inner(
     config: AdaptiveTrainingConfig,
     app: &AppHandle,
 ) -> Result<RetrainingResult, String> {
-    let device = <AdaptiveBackend as burn::tensor::backend::Backend>::Device::default();
+    let device = Device::<AdaptiveBackend>::default();
 
     tracing::info!(
         "Running on device: {:?} with backend: {}",
@@ -154,8 +154,7 @@ fn run_ssl_retraining_inner(
         base_filters: 32,
     };
 
-    let mut model: PlantClassifier<AdaptiveBackend> =
-        PlantClassifier::new(&model_config, &device);
+    let mut model: PlantClassifier<AdaptiveBackend> = PlantClassifier::new(&model_config, &device);
 
     // Load checkpoint
     let model_path = PathBuf::from(&params.model_path);
@@ -202,8 +201,7 @@ fn run_ssl_retraining_inner(
     let aug_batcher = AugmentingBatcher::<AdaptiveBackend>::new(device.clone(), 128, 42);
     let mut rng = ChaCha8Rng::seed_from_u64(42);
 
-    let num_batches =
-        (combined_dataset.len() + config.batch_size - 1) / config.batch_size;
+    let num_batches = (combined_dataset.len() + config.batch_size - 1) / config.batch_size;
 
     tracing::info!(
         "Training for {} epochs with batch_size={}, {} batches per epoch",

@@ -40,8 +40,13 @@ impl ImageLoader {
             )));
         }
 
-        image::open(&full_path)
-            .map_err(|e| Error::Image(format!("Failed to load image {}: {}", full_path.display(), e)))
+        image::open(&full_path).map_err(|e| {
+            Error::Image(format!(
+                "Failed to load image {}: {}",
+                full_path.display(),
+                e
+            ))
+        })
     }
 
     /// Checks if an image file exists
@@ -88,9 +93,7 @@ impl ImageLoader {
 
         let mut images = Vec::new();
 
-        for entry in std::fs::read_dir(&full_dir)
-            .map_err(|e| Error::Io(e))?
-        {
+        for entry in std::fs::read_dir(&full_dir).map_err(|e| Error::Io(e))? {
             let entry = entry.map_err(|e| Error::Io(e))?;
             let path = entry.path();
 
@@ -130,9 +133,7 @@ impl ImageLoader {
 
     /// Helper function for recursive directory scanning
     fn scan_recursive_helper(&self, dir: &Path, images: &mut Vec<PathBuf>) -> Result<()> {
-        for entry in std::fs::read_dir(dir)
-            .map_err(|e| Error::Io(e))?
-        {
+        for entry in std::fs::read_dir(dir).map_err(|e| Error::Io(e))? {
             let entry = entry.map_err(|e| Error::Io(e))?;
             let path = entry.path();
 

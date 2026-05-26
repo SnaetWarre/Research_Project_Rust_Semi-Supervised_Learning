@@ -97,9 +97,10 @@ pandoc \
   "${SCRIPT_DIR}/06_conclusion.md" \
   "${SCRIPT_DIR}/07_references.md" \
   "${SCRIPT_DIR}/appendices/A_installation_guide.md" \
-  "${SCRIPT_DIR}/appendices/B_interview_template.md" \
-  "${SCRIPT_DIR}/appendices/C_guest_session_nviso.md" \
-  "${SCRIPT_DIR}/appendices/D_guest_session_2.md" \
+  "${SCRIPT_DIR}/appendices/B_pedro_morais.md" \
+  "${SCRIPT_DIR}/appendices/C_helena_torres.md" \
+  "${SCRIPT_DIR}/appendices/D_guest_session_nviso.md" \
+  "${SCRIPT_DIR}/appendices/E_guest_session_2.md" \
   --output="${OUT_FILE}" \
   --from=markdown+pipe_tables+table_captions \
   --to=docx \

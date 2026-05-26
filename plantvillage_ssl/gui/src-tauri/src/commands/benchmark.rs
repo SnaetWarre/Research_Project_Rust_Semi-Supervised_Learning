@@ -46,12 +46,11 @@ pub struct BenchmarkResults {
 
 /// Run benchmark
 #[tauri::command]
-pub async fn run_benchmark(
-    params: BenchmarkParams,
-) -> Result<BenchmarkResults, String> {
+pub async fn run_benchmark(params: BenchmarkParams) -> Result<BenchmarkResults, String> {
     use crate::backend::AdaptiveBackend;
-    use plantvillage_ssl::inference::{BenchmarkConfig, run_benchmark as run_bench};
-    
+    use burn::tensor::Device;
+    use plantvillage_ssl::inference::{run_benchmark as run_bench, BenchmarkConfig};
+
     // Determine model path
     let model_path = params.model_path.as_ref().map(|p| std::path::Path::new(p));
 
@@ -64,8 +63,8 @@ pub async fn run_benchmark(
         output_path: None,
     };
 
-    let device = <AdaptiveBackend as burn::tensor::backend::Backend>::Device::default();
-    
+    let device = Device::<AdaptiveBackend>::default();
+
     let result = run_bench::<AdaptiveBackend>(config, model_path, params.image_size, &device)
         .map_err(|e| format!("Benchmark failed: {:?}", e))?;
 
@@ -88,13 +87,11 @@ pub async fn run_benchmark(
 
 /// Load benchmark from file
 #[tauri::command]
-pub async fn load_benchmark_results(
-    path: String,
-) -> Result<BenchmarkResults, String> {
+pub async fn load_benchmark_results(path: String) -> Result<BenchmarkResults, String> {
     use plantvillage_ssl::inference::runner::BenchmarkOutput;
-    
-    let json = std::fs::read_to_string(&path)
-        .map_err(|e| format!("Failed to read file: {:?}", e))?;
+
+    let json =
+        std::fs::read_to_string(&path).map_err(|e| format!("Failed to read file: {:?}", e))?;
     let result: BenchmarkOutput = serde_json::from_str(&json)
         .map_err(|e| format!("Failed to parse benchmark results: {:?}", e))?;
 

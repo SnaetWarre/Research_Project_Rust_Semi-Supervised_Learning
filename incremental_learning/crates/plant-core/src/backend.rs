@@ -106,13 +106,13 @@ pub fn is_gpu_available() -> bool {
 fn has_nvidia_gpu() -> bool {
     #[cfg(target_os = "linux")]
     {
-        std::path::Path::new("/proc/driver/nvidia/version").exists() ||
-        std::path::Path::new("/dev/nvidia0").exists() ||
-        std::env::var("CUDA_VISIBLE_DEVICES").is_ok() ||
-        std::process::Command::new("nvidia-smi")
-            .output()
-            .map(|o| o.status.success())
-            .unwrap_or(false)
+        std::path::Path::new("/proc/driver/nvidia/version").exists()
+            || std::path::Path::new("/dev/nvidia0").exists()
+            || std::env::var("CUDA_VISIBLE_DEVICES").is_ok()
+            || std::process::Command::new("nvidia-smi")
+                .output()
+                .map(|o| o.status.success())
+                .unwrap_or(false)
     }
 
     #[cfg(target_os = "windows")]
@@ -138,12 +138,12 @@ fn has_nvidia_gpu() -> bool {
 fn has_amd_gpu() -> bool {
     #[cfg(target_os = "linux")]
     {
-        std::path::Path::new("/sys/module/amdgpu").exists() ||
-        std::env::var("HIP_VISIBLE_DEVICES").is_ok() ||
-        std::process::Command::new("rocm-smi")
-            .output()
-            .map(|o| o.status.success())
-            .unwrap_or(false)
+        std::path::Path::new("/sys/module/amdgpu").exists()
+            || std::env::var("HIP_VISIBLE_DEVICES").is_ok()
+            || std::process::Command::new("rocm-smi")
+                .output()
+                .map(|o| o.status.success())
+                .unwrap_or(false)
     }
 
     #[cfg(target_os = "windows")]
@@ -164,7 +164,8 @@ fn has_amd_gpu() -> bool {
 
 /// Get information about the current backend
 pub fn backend_info() -> String {
-    BACKEND_INFO.get()
+    BACKEND_INFO
+        .get()
         .cloned()
         .unwrap_or_else(|| "Backend not initialized".to_string())
 }
@@ -177,8 +178,22 @@ pub fn get_recommended_device() -> Device {
 /// Print system GPU information
 pub fn print_gpu_info() {
     println!("🔍 System GPU Detection:");
-    println!("  NVIDIA GPU: {}", if has_nvidia_gpu() { "✓ Detected" } else { "✗ Not found" });
-    println!("  AMD GPU:    {}", if has_amd_gpu() { "✓ Detected" } else { "✗ Not found" });
+    println!(
+        "  NVIDIA GPU: {}",
+        if has_nvidia_gpu() {
+            "✓ Detected"
+        } else {
+            "✗ Not found"
+        }
+    );
+    println!(
+        "  AMD GPU:    {}",
+        if has_amd_gpu() {
+            "✓ Detected"
+        } else {
+            "✗ Not found"
+        }
+    );
     println!("  Recommended device: {}", get_recommended_device());
     println!();
 

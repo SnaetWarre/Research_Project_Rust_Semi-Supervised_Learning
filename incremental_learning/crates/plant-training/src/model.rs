@@ -13,7 +13,7 @@ use burn::{
         BatchNorm, BatchNormConfig, Dropout, DropoutConfig, Linear, LinearConfig, PaddingConfig2d,
         Relu,
     },
-    tensor::{backend::Backend, Tensor},
+    tensor::{backend::Backend, Device, Tensor},
 };
 use plant_core::{Error, ModelArchitecture as ArchType, Result};
 
@@ -26,14 +26,12 @@ pub struct PlantClassifier<B: Backend> {
 
 impl<B: Backend> PlantClassifier<B> {
     /// Create a new plant classifier with specified architecture
-    pub fn new(arch_type: ArchType, num_classes: usize, device: &B::Device) -> Self {
+    pub fn new(arch_type: ArchType, num_classes: usize, device: &Device<B>) -> Self {
         let arch = match arch_type {
             ArchType::EfficientNetB0 => {
                 ModelArchitecture::EfficientNet(EfficientNetB0::new(num_classes, device))
             }
-            ArchType::ResNet18 => {
-                ModelArchitecture::ResNet(ResNet18::new(num_classes, device))
-            }
+            ArchType::ResNet18 => ModelArchitecture::ResNet(ResNet18::new(num_classes, device)),
             _ => {
                 // Default to ResNet18 for unsupported architectures
                 ModelArchitecture::ResNet(ResNet18::new(num_classes, device))
@@ -82,27 +80,27 @@ pub enum ModelArchitecture<B: Backend> {
 #[derive(Module, Debug)]
 pub struct EfficientNetB0<B: Backend> {
     stem: Conv2d<B>,
-    stem_bn: BatchNorm<B, 2>,
+    stem_bn: BatchNorm<B>,
 
     // Stage 1: MBConv1, k3x3
     stage1_conv1: Conv2d<B>,
-    stage1_bn1: BatchNorm<B, 2>,
+    stage1_bn1: BatchNorm<B>,
 
     // Stage 2: MBConv6, k3x3
     stage2_conv1: Conv2d<B>,
-    stage2_bn1: BatchNorm<B, 2>,
+    stage2_bn1: BatchNorm<B>,
     stage2_conv2: Conv2d<B>,
-    stage2_bn2: BatchNorm<B, 2>,
+    stage2_bn2: BatchNorm<B>,
 
     // Stage 3: MBConv6, k5x5
     stage3_conv1: Conv2d<B>,
-    stage3_bn1: BatchNorm<B, 2>,
+    stage3_bn1: BatchNorm<B>,
     stage3_conv2: Conv2d<B>,
-    stage3_bn2: BatchNorm<B, 2>,
+    stage3_bn2: BatchNorm<B>,
 
     // Head
     head_conv: Conv2d<B>,
-    head_bn: BatchNorm<B, 2>,
+    head_bn: BatchNorm<B>,
     pool: AdaptiveAvgPool2d,
     dropout: Dropout,
     fc: Linear<B>,
@@ -112,44 +110,41 @@ pub struct EfficientNetB0<B: Backend> {
 
 impl<B: Backend> EfficientNetB0<B> {
     /// Create a new EfficientNet-B0 model
-    pub fn new(num_classes: usize, device: &B::Device) -> Self {
+    pub fn new(num_classes: usize, device: &Device<B>) -> Self {
         // Stem: 3 -> 32
         let stem = Conv2dConfig::new([3, 32], [3, 3])
             .with_stride([2, 2])
-            .with_padding(PaddingConfig2d::Explicit(1, 1))
+            .with_padding(PaddingConfig2d::Explicit(1, 1, 1, 1))
             .init(device);
         let stem_bn = BatchNormConfig::new(32).init(device);
 
         // Stage 1: 32 -> 16 (MBConv1)
         let stage1_conv1 = Conv2dConfig::new([32, 16], [3, 3])
             .with_stride([1, 1])
-            .with_padding(PaddingConfig2d::Explicit(1, 1))
+            .with_padding(PaddingConfig2d::Explicit(1, 1, 1, 1))
             .init(device);
         let stage1_bn1 = BatchNormConfig::new(16).init(device);
 
         // Stage 2: 16 -> 24 (MBConv6)
-        let stage2_conv1 = Conv2dConfig::new([16, 96], [1, 1])
-            .init(device);
+        let stage2_conv1 = Conv2dConfig::new([16, 96], [1, 1]).init(device);
         let stage2_bn1 = BatchNormConfig::new(96).init(device);
         let stage2_conv2 = Conv2dConfig::new([96, 24], [3, 3])
             .with_stride([2, 2])
-            .with_padding(PaddingConfig2d::Explicit(1, 1))
+            .with_padding(PaddingConfig2d::Explicit(1, 1, 1, 1))
             .init(device);
         let stage2_bn2 = BatchNormConfig::new(24).init(device);
 
         // Stage 3: 24 -> 40 (MBConv6, k5x5)
-        let stage3_conv1 = Conv2dConfig::new([24, 144], [1, 1])
-            .init(device);
+        let stage3_conv1 = Conv2dConfig::new([24, 144], [1, 1]).init(device);
         let stage3_bn1 = BatchNormConfig::new(144).init(device);
         let stage3_conv2 = Conv2dConfig::new([144, 40], [5, 5])
             .with_stride([2, 2])
-            .with_padding(PaddingConfig2d::Explicit(2, 2))
+            .with_padding(PaddingConfig2d::Explicit(2, 2, 2, 2))
             .init(device);
         let stage3_bn2 = BatchNormConfig::new(40).init(device);
 
         // Head: 40 -> 1280 -> num_classes
-        let head_conv = Conv2dConfig::new([40, 1280], [1, 1])
-            .init(device);
+        let head_conv = Conv2dConfig::new([40, 1280], [1, 1]).init(device);
         let head_bn = BatchNormConfig::new(1280).init(device);
 
         let pool = AdaptiveAvgPool2dConfig::new([1, 1]).init();
@@ -240,38 +235,38 @@ impl<B: Backend> EfficientNetB0<B> {
 pub struct ResNet18<B: Backend> {
     // Initial layers
     conv1: Conv2d<B>,
-    bn1: BatchNorm<B, 2>,
+    bn1: BatchNorm<B>,
     maxpool: MaxPool2d,
 
     // Stage 1: 64 channels
     stage1_conv1: Conv2d<B>,
-    stage1_bn1: BatchNorm<B, 2>,
+    stage1_bn1: BatchNorm<B>,
     stage1_conv2: Conv2d<B>,
-    stage1_bn2: BatchNorm<B, 2>,
+    stage1_bn2: BatchNorm<B>,
 
     // Stage 2: 128 channels
     stage2_conv1: Conv2d<B>,
-    stage2_bn1: BatchNorm<B, 2>,
+    stage2_bn1: BatchNorm<B>,
     stage2_conv2: Conv2d<B>,
-    stage2_bn2: BatchNorm<B, 2>,
+    stage2_bn2: BatchNorm<B>,
     stage2_downsample: Conv2d<B>,
-    stage2_downsample_bn: BatchNorm<B, 2>,
+    stage2_downsample_bn: BatchNorm<B>,
 
     // Stage 3: 256 channels
     stage3_conv1: Conv2d<B>,
-    stage3_bn1: BatchNorm<B, 2>,
+    stage3_bn1: BatchNorm<B>,
     stage3_conv2: Conv2d<B>,
-    stage3_bn2: BatchNorm<B, 2>,
+    stage3_bn2: BatchNorm<B>,
     stage3_downsample: Conv2d<B>,
-    stage3_downsample_bn: BatchNorm<B, 2>,
+    stage3_downsample_bn: BatchNorm<B>,
 
     // Stage 4: 512 channels
     stage4_conv1: Conv2d<B>,
-    stage4_bn1: BatchNorm<B, 2>,
+    stage4_bn1: BatchNorm<B>,
     stage4_conv2: Conv2d<B>,
-    stage4_bn2: BatchNorm<B, 2>,
+    stage4_bn2: BatchNorm<B>,
     stage4_downsample: Conv2d<B>,
-    stage4_downsample_bn: BatchNorm<B, 2>,
+    stage4_downsample_bn: BatchNorm<B>,
 
     // Classification head
     avgpool: AdaptiveAvgPool2d,
@@ -282,36 +277,36 @@ pub struct ResNet18<B: Backend> {
 
 impl<B: Backend> ResNet18<B> {
     /// Create a new ResNet-18 model
-    pub fn new(num_classes: usize, device: &B::Device) -> Self {
+    pub fn new(num_classes: usize, device: &Device<B>) -> Self {
         // Initial conv: 3 -> 64
         let conv1 = Conv2dConfig::new([3, 64], [7, 7])
             .with_stride([2, 2])
-            .with_padding(PaddingConfig2d::Explicit(3, 3))
+            .with_padding(PaddingConfig2d::Explicit(3, 3, 3, 3))
             .init(device);
         let bn1 = BatchNormConfig::new(64).init(device);
         let maxpool = MaxPool2dConfig::new([3, 3])
             .with_strides([2, 2])
-            .with_padding(PaddingConfig2d::Explicit(1, 1))
+            .with_padding(PaddingConfig2d::Explicit(1, 1, 1, 1))
             .init();
 
         // Stage 1: 64 -> 64
         let stage1_conv1 = Conv2dConfig::new([64, 64], [3, 3])
-            .with_padding(PaddingConfig2d::Explicit(1, 1))
+            .with_padding(PaddingConfig2d::Explicit(1, 1, 1, 1))
             .init(device);
         let stage1_bn1 = BatchNormConfig::new(64).init(device);
         let stage1_conv2 = Conv2dConfig::new([64, 64], [3, 3])
-            .with_padding(PaddingConfig2d::Explicit(1, 1))
+            .with_padding(PaddingConfig2d::Explicit(1, 1, 1, 1))
             .init(device);
         let stage1_bn2 = BatchNormConfig::new(64).init(device);
 
         // Stage 2: 64 -> 128
         let stage2_conv1 = Conv2dConfig::new([64, 128], [3, 3])
             .with_stride([2, 2])
-            .with_padding(PaddingConfig2d::Explicit(1, 1))
+            .with_padding(PaddingConfig2d::Explicit(1, 1, 1, 1))
             .init(device);
         let stage2_bn1 = BatchNormConfig::new(128).init(device);
         let stage2_conv2 = Conv2dConfig::new([128, 128], [3, 3])
-            .with_padding(PaddingConfig2d::Explicit(1, 1))
+            .with_padding(PaddingConfig2d::Explicit(1, 1, 1, 1))
             .init(device);
         let stage2_bn2 = BatchNormConfig::new(128).init(device);
         let stage2_downsample = Conv2dConfig::new([64, 128], [1, 1])
@@ -322,11 +317,11 @@ impl<B: Backend> ResNet18<B> {
         // Stage 3: 128 -> 256
         let stage3_conv1 = Conv2dConfig::new([128, 256], [3, 3])
             .with_stride([2, 2])
-            .with_padding(PaddingConfig2d::Explicit(1, 1))
+            .with_padding(PaddingConfig2d::Explicit(1, 1, 1, 1))
             .init(device);
         let stage3_bn1 = BatchNormConfig::new(256).init(device);
         let stage3_conv2 = Conv2dConfig::new([256, 256], [3, 3])
-            .with_padding(PaddingConfig2d::Explicit(1, 1))
+            .with_padding(PaddingConfig2d::Explicit(1, 1, 1, 1))
             .init(device);
         let stage3_bn2 = BatchNormConfig::new(256).init(device);
         let stage3_downsample = Conv2dConfig::new([128, 256], [1, 1])
@@ -337,11 +332,11 @@ impl<B: Backend> ResNet18<B> {
         // Stage 4: 256 -> 512
         let stage4_conv1 = Conv2dConfig::new([256, 512], [3, 3])
             .with_stride([2, 2])
-            .with_padding(PaddingConfig2d::Explicit(1, 1))
+            .with_padding(PaddingConfig2d::Explicit(1, 1, 1, 1))
             .init(device);
         let stage4_bn1 = BatchNormConfig::new(512).init(device);
         let stage4_conv2 = Conv2dConfig::new([512, 512], [3, 3])
-            .with_padding(PaddingConfig2d::Explicit(1, 1))
+            .with_padding(PaddingConfig2d::Explicit(1, 1, 1, 1))
             .init(device);
         let stage4_bn2 = BatchNormConfig::new(512).init(device);
         let stage4_downsample = Conv2dConfig::new([256, 512], [1, 1])
@@ -474,22 +469,14 @@ mod tests {
     #[test]
     fn test_plant_classifier_efficientnet() {
         let device = Default::default();
-        let classifier = PlantClassifier::<TestBackend>::new(
-            ArchType::EfficientNetB0,
-            10,
-            &device,
-        );
+        let classifier = PlantClassifier::<TestBackend>::new(ArchType::EfficientNetB0, 10, &device);
         assert_eq!(classifier.num_classes(), 10);
     }
 
     #[test]
     fn test_plant_classifier_resnet() {
         let device = Default::default();
-        let classifier = PlantClassifier::<TestBackend>::new(
-            ArchType::ResNet18,
-            10,
-            &device,
-        );
+        let classifier = PlantClassifier::<TestBackend>::new(ArchType::ResNet18, 10, &device);
         assert_eq!(classifier.num_classes(), 10);
     }
 }

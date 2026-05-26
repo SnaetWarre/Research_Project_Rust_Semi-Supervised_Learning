@@ -5,7 +5,7 @@
 | Requirement | Version | Purpose |
 |:---|:---|:---|
 | Rust toolchain | 1.78+ | Compiler and package manager |
-| NVIDIA CUDA Toolkit | 12.x | GPU-accelerated training and inference |
+| NVIDIA CUDA Toolkit | 12.x or 13.x | GPU-accelerated training and inference |
 | Git | 2.x | Source code retrieval |
 | Bun | 1.x | Frontend dependency management (GUI only) |
 
@@ -34,6 +34,8 @@ unzip new-plant-diseases-dataset.zip -d plantvillage_ssl/data/plantvillage/
 # Extract to plantvillage_ssl/data/plantvillage/
 ```
 
+The paths above are shown from the repository root. The CLI commands below are executed from inside `plantvillage_ssl`, so the same dataset is referenced there as `data/plantvillage`.
+
 The expected directory structure after extraction is:
 
 ```
@@ -52,13 +54,13 @@ plantvillage_ssl/data/plantvillage/
 **With GPU (CUDA):**
 ```bash
 cd plantvillage_ssl
-cargo build --release --features cuda
+cargo build --release --no-default-features --features cuda
 ```
 
 **CPU only:**
 ```bash
 cd plantvillage_ssl
-cargo build --release --features cpu
+cargo build --release --no-default-features --features cpu
 ```
 
 ## A.3 Training the Model
@@ -67,7 +69,8 @@ cargo build --release --features cpu
 
 ```bash
 cd plantvillage_ssl
-cargo run --release --features cuda --bin plantvillage_ssl -- train \
+cargo run --release --no-default-features --features cuda \
+    --bin plantvillage_ssl -- train \
     --epochs 30 \
     --cuda \
     --labeled-ratio 0.2
@@ -84,7 +87,8 @@ The trained model is saved to `output/models/plant_classifier_TIMESTAMP`.
 ### A.3.2 Step 2: SSL Simulation (Pseudo-Labeling)
 
 ```bash
-cargo run --release --features cuda --bin plantvillage_ssl -- simulate \
+cargo run --release --no-default-features --features cuda \
+    --bin plantvillage_ssl -- simulate \
     --model "output/models/plant_classifier_TIMESTAMP" \
     --data-dir "data/plantvillage" \
     --cuda \
@@ -106,8 +110,7 @@ cargo run --release --features cuda --bin plantvillage_ssl -- simulate \
 ### A.3.3 Step 3: Copy the Best Model
 
 ```bash
-cp plantvillage_ssl/output/simulation/plant_classifier_ssl_TIMESTAMP.mpk \
-   plantvillage_ssl/best_model.mpk
+cp output/simulation/plant_classifier_ssl_TIMESTAMP.mpk best_model.mpk
 ```
 
 ## A.4 Running Experiments
@@ -116,13 +119,16 @@ Experiments are run through a separate `experiments` binary:
 
 ```bash
 # Label efficiency experiment
-cargo run --release --features cuda --bin experiments -- label-efficiency
+cargo run --release --no-default-features --features cuda \
+    --bin experiments -- label-efficiency
 
 # Class scaling experiment
-cargo run --release --features cuda --bin experiments -- class-scaling
+cargo run --release --no-default-features --features cuda \
+    --bin experiments -- class-scaling
 
 # New class position experiment
-cargo run --release --features cuda --bin experiments -- new-class-position
+cargo run --release --no-default-features --features cuda \
+    --bin experiments -- new-class-position
 ```
 
 Results are written to `output/experiments/<experiment-name>/results.json` and `conclusions.txt`. SVG plots are generated automatically.
@@ -157,16 +163,20 @@ cargo tauri ios build
 
 ```bash
 # View all available commands
-cargo run --release --features cuda --bin plantvillage_ssl -- --help
+cargo run --release --no-default-features --features cuda \
+    --bin plantvillage_ssl -- --help
 
 # View training options
-cargo run --release --features cuda --bin plantvillage_ssl -- train --help
+cargo run --release --no-default-features --features cuda \
+    --bin plantvillage_ssl -- train --help
 
 # View simulation options
-cargo run --release --features cuda --bin plantvillage_ssl -- simulate --help
+cargo run --release --no-default-features --features cuda \
+    --bin plantvillage_ssl -- simulate --help
 
 # View experiment options
-cargo run --release --features cuda --bin experiments -- --help
+cargo run --release --no-default-features --features cuda \
+    --bin experiments -- --help
 ```
 
 ## A.7 Troubleshooting
@@ -174,7 +184,7 @@ cargo run --release --features cuda --bin experiments -- --help
 | Issue | Solution |
 |:---|:---|
 | CUDA not found | Make sure the CUDA Toolkit is installed and that `nvcc` is on the `PATH` |
-| Out of GPU memory | Reduce the batch size or use `--features cpu` |
+| Out of GPU memory | Reduce the batch size or rebuild with `--no-default-features --features cpu` |
 | Dataset not found | Verify that the dataset is extracted to `data/plantvillage/` with `train/` and `valid/` subdirectories |
 | Slow compilation | Use `cargo check` during development, and keep `--release` for benchmarks |
 | Model file not found | Check the exact timestamp in the model filename |

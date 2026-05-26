@@ -2,12 +2,13 @@
 //!
 //! Commands for training models with real-time progress events.
 
-use std::sync::Arc;
 use serde::{Deserialize, Serialize};
+use std::sync::Arc;
 use tauri::{AppHandle, Emitter, State};
 
 use burn::data::dataloader::batcher::Batcher;
 use burn::module::AutodiffModule;
+use burn::tensor::Device;
 
 use crate::state::{AppState, TrainingStatus};
 
@@ -105,11 +106,10 @@ pub async fn start_training(
     let _ = app.emit("training:started", &params);
 
     // Run training in a blocking task since it's CPU/GPU intensive
-    let result = tokio::task::spawn_blocking(move || {
-        run_training_inner::<AdaptiveBackend>(&params, &app)
-    })
-    .await
-    .map_err(|e| format!("Training task failed: {:?}", e))?;
+    let result =
+        tokio::task::spawn_blocking(move || run_training_inner::<AdaptiveBackend>(&params, &app))
+            .await
+            .map_err(|e| format!("Training task failed: {:?}", e))?;
 
     // Update state based on result
     {
@@ -131,14 +131,10 @@ pub async fn start_training(
 }
 
 /// Inner training function
-fn run_training_inner<B>(
-    params: &TrainingParams,
-    app: &AppHandle,
-) -> Result<TrainingResult, String>
+fn run_training_inner<B>(params: &TrainingParams, app: &AppHandle) -> Result<TrainingResult, String>
 where
     B: burn::tensor::backend::AutodiffBackend,
 {
-    use std::path::PathBuf;
     use burn::data::dataset::Dataset;
     use burn::module::Module;
     use burn::nn::loss::CrossEntropyLossConfig;
@@ -147,12 +143,13 @@ where
     use rand::seq::SliceRandom;
     use rand::SeedableRng;
     use rand_chacha::ChaCha8Rng;
+    use std::path::PathBuf;
 
     use plantvillage_ssl::dataset::burn_dataset::PlantVillageBurnDataset;
     use plantvillage_ssl::model::cnn::{PlantClassifier, PlantClassifierConfig};
     use plantvillage_ssl::{PlantVillageBatcher, PlantVillageDataset};
 
-    let device = B::Device::default();
+    let device = Device::<B>::default();
 
     // Load dataset
     let dataset = PlantVillageDataset::new(&params.data_dir)
@@ -177,14 +174,10 @@ where
     let labeled_size = (train_indices.len() as f64 * params.labeled_ratio) as usize;
     let train_indices = &train_indices[..labeled_size];
 
-    let train_samples: Vec<(PathBuf, usize)> = train_indices
-        .iter()
-        .map(|&i| samples[i].clone())
-        .collect();
-    let val_samples: Vec<(PathBuf, usize)> = val_indices
-        .iter()
-        .map(|&i| samples[i].clone())
-        .collect();
+    let train_samples: Vec<(PathBuf, usize)> =
+        train_indices.iter().map(|&i| samples[i].clone()).collect();
+    let val_samples: Vec<(PathBuf, usize)> =
+        val_indices.iter().map(|&i| samples[i].clone()).collect();
 
     // Compute class weights if enabled
     let class_weights: Option<Vec<f32>> = if params.class_weighted {
@@ -247,7 +240,10 @@ where
         let mut batch_count = 0;
 
         // Training
-        for (batch_idx, start) in (0..train_dataset.len()).step_by(params.batch_size).enumerate() {
+        for (batch_idx, start) in (0..train_dataset.len())
+            .step_by(params.batch_size)
+            .enumerate()
+        {
             let end = (start + params.batch_size).min(train_dataset.len());
             let batch_indices = &indices[start..end];
             let items: Vec<_> = batch_indices
@@ -273,23 +269,25 @@ where
 
             use burn::tensor::ElementConversion;
             let loss_value: f64 = loss.clone().into_scalar().elem();
-            
+
             // CRITICAL: Detect NaN/Inf immediately to avoid wasting training time
             if loss_value.is_nan() {
                 return Err(format!(
                     "Loss became NaN at epoch {} batch {}. Training aborted. \
                     This usually indicates learning rate too high or gradient explosion.",
-                    epoch + 1, batch_idx + 1
+                    epoch + 1,
+                    batch_idx + 1
                 ));
             }
             if loss_value.is_infinite() {
                 return Err(format!(
                     "Loss became infinite at epoch {} batch {}. Training aborted. \
                     Try reducing learning rate.",
-                    epoch + 1, batch_idx + 1
+                    epoch + 1,
+                    batch_idx + 1
                 ));
             }
-            
+
             epoch_loss += loss_value;
             batch_count += 1;
 
@@ -298,23 +296,30 @@ where
             model = optimizer.step(params.learning_rate, model, grads);
 
             // Emit batch update
-            let _ = app.emit("training:batch", BatchUpdate {
-                epoch: epoch + 1,
-                batch: batch_idx + 1,
-                total_batches: num_batches,
-                loss: loss_value,
-            });
+            let _ = app.emit(
+                "training:batch",
+                BatchUpdate {
+                    epoch: epoch + 1,
+                    batch: batch_idx + 1,
+                    total_batches: num_batches,
+                    loss: loss_value,
+                },
+            );
         }
 
-        let avg_loss = if batch_count > 0 { epoch_loss / batch_count as f64 } else { 0.0 };
+        let avg_loss = if batch_count > 0 {
+            epoch_loss / batch_count as f64
+        } else {
+            0.0
+        };
         loss_history.push(avg_loss);
 
         // Validation
         let val_batcher = PlantVillageBatcher::<B::InnerBackend>::with_image_size(
-            <B::InnerBackend as burn::tensor::backend::Backend>::Device::default(),
+            Device::<B::InnerBackend>::default(),
             128,
         );
-        let inner_device = <B::InnerBackend as burn::tensor::backend::Backend>::Device::default();
+        let inner_device = Device::<B::InnerBackend>::default();
         let model_valid = model.clone().valid();
 
         let mut correct = 0usize;
@@ -322,9 +327,7 @@ where
 
         for start in (0..val_dataset.len()).step_by(params.batch_size) {
             let end = (start + params.batch_size).min(val_dataset.len());
-            let items: Vec<_> = (start..end)
-                .filter_map(|i| val_dataset.get(i))
-                .collect();
+            let items: Vec<_> = (start..end).filter_map(|i| val_dataset.get(i)).collect();
 
             if items.is_empty() {
                 continue;
@@ -346,7 +349,11 @@ where
             total += end - start;
         }
 
-        let val_accuracy = if total > 0 { correct as f64 / total as f64 } else { 0.0 };
+        let val_accuracy = if total > 0 {
+            correct as f64 / total as f64
+        } else {
+            0.0
+        };
         accuracy_history.push(val_accuracy);
 
         // Calculate learning rate (cosine annealing)
@@ -354,16 +361,20 @@ where
         let t_max = params.epochs as f64;
         let lr_min = params.learning_rate * 0.01;
         let lr_max = params.learning_rate;
-        let current_lr = lr_min + 0.5 * (lr_max - lr_min) * (1.0 + (std::f64::consts::PI * t / t_max).cos());
+        let current_lr =
+            lr_min + 0.5 * (lr_max - lr_min) * (1.0 + (std::f64::consts::PI * t / t_max).cos());
 
         // Emit epoch update
-        let _ = app.emit("training:epoch", EpochUpdate {
-            epoch: epoch + 1,
-            total_epochs: params.epochs,
-            train_loss: avg_loss,
-            val_accuracy: val_accuracy * 100.0,
-            learning_rate: current_lr,
-        });
+        let _ = app.emit(
+            "training:epoch",
+            EpochUpdate {
+                epoch: epoch + 1,
+                total_epochs: params.epochs,
+                train_loss: avg_loss,
+                val_accuracy: val_accuracy * 100.0,
+                learning_rate: current_lr,
+            },
+        );
     }
 
     // Save model
@@ -395,9 +406,7 @@ where
 
 /// Stop training
 #[tauri::command]
-pub async fn stop_training(
-    state: State<'_, Arc<AppState>>,
-) -> Result<(), String> {
+pub async fn stop_training(state: State<'_, Arc<AppState>>) -> Result<(), String> {
     let mut status = state.training_state.write().await;
     if matches!(*status, TrainingStatus::Running { .. }) {
         *status = TrainingStatus::Idle;
@@ -407,16 +416,16 @@ pub async fn stop_training(
 
 /// Compute weighted cross entropy loss
 ///
-/// Manually implements class-weighted cross entropy since Burn 0.20
+/// Manually implements class-weighted cross entropy since Burn 0.21
 /// doesn't provide built-in support for it.
 fn weighted_cross_entropy<B: burn::tensor::backend::AutodiffBackend>(
     output: &burn::tensor::Tensor<B, 2>,
     targets: &burn::tensor::Tensor<B, 1, burn::tensor::Int>,
     weights: &[f32],
-    device: &B::Device,
+    device: &Device<B>,
 ) -> burn::tensor::Tensor<B, 1> {
-    use burn::tensor::Tensor;
     use burn::tensor::activation::softmax;
+    use burn::tensor::Tensor;
 
     // Compute softmax probabilities
     let probs = softmax(output.clone(), 1);

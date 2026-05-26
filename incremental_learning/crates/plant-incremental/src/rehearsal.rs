@@ -96,10 +96,7 @@ impl MemoryBuffer {
 
     /// Add exemplars for a class
     pub fn add_exemplars(&mut self, class: usize, exemplars: Vec<Exemplar>) {
-        let limited = exemplars
-            .into_iter()
-            .take(self.max_per_class)
-            .collect();
+        let limited = exemplars.into_iter().take(self.max_per_class).collect();
         self.exemplars.insert(class, limited);
     }
 
@@ -190,10 +187,7 @@ impl<B: Backend> RehearsalLearner<B> {
         count: usize,
     ) -> Vec<Exemplar> {
         // Get all samples for this class
-        let class_samples: Vec<_> = data
-            .iter()
-            .filter(|(_, label)| *label == class)
-            .collect();
+        let class_samples: Vec<_> = data.iter().filter(|(_, label)| *label == class).collect();
 
         if class_samples.is_empty() {
             return Vec::new();
@@ -224,7 +218,10 @@ impl<B: Backend> RehearsalLearner<B> {
             for (idx, (features, _)) in class_samples.iter().enumerate() {
                 // Check if already selected
                 if exemplars.iter().any(|e: &Exemplar| {
-                    e.features.iter().zip(features.iter()).all(|(a, b)| (a - b).abs() < 1e-6)
+                    e.features
+                        .iter()
+                        .zip(features.iter())
+                        .all(|(a, b)| (a - b).abs() < 1e-6)
                 }) {
                     continue;
                 }
@@ -258,8 +255,8 @@ impl<B: Backend> RehearsalLearner<B> {
 
             // Update running mean
             for (i, &val) in features.iter().enumerate() {
-                running_mean[i] = (running_mean[i] * (exemplars.len() - 1) as f32 + val)
-                    / exemplars.len() as f32;
+                running_mean[i] =
+                    (running_mean[i] * (exemplars.len() - 1) as f32 + val) / exemplars.len() as f32;
             }
         }
 
@@ -274,10 +271,7 @@ impl<B: Backend> RehearsalLearner<B> {
         count: usize,
     ) -> Vec<Exemplar> {
         // Get all samples for this class
-        let class_samples: Vec<_> = data
-            .iter()
-            .filter(|(_, label)| *label == class)
-            .collect();
+        let class_samples: Vec<_> = data.iter().filter(|(_, label)| *label == class).collect();
 
         if class_samples.is_empty() {
             return Vec::new();
@@ -299,7 +293,10 @@ impl<B: Backend> RehearsalLearner<B> {
             for (idx, (features, _)) in class_samples.iter().enumerate() {
                 // Skip if already selected
                 if exemplars.iter().any(|e: &Exemplar| {
-                    e.features.iter().zip(features.iter()).all(|(a, b)| (a - b).abs() < 1e-6)
+                    e.features
+                        .iter()
+                        .zip(features.iter())
+                        .all(|(a, b)| (a - b).abs() < 1e-6)
                 }) {
                     continue;
                 }
@@ -444,7 +441,8 @@ impl<B: Backend> IncrementalLearner<B> for RehearsalLearner<B> {
                 }
             }
 
-            let total_samples = train_data.len() + if use_memory { memory_samples.len() } else { 0 };
+            let total_samples =
+                train_data.len() + if use_memory { memory_samples.len() } else { 0 };
             let train_loss = epoch_loss / total_samples as f32;
             let train_accuracy = correct as f32 / total_samples as f32;
 
@@ -474,7 +472,10 @@ impl<B: Backend> IncrementalLearner<B> for RehearsalLearner<B> {
 
         metrics.set_training_time(start_time.elapsed().as_secs_f64());
         metrics.add_extra("memory_size", self.memory.total_count() as f32);
-        metrics.add_extra("exemplars_per_class", self.config.exemplars_per_class as f32);
+        metrics.add_extra(
+            "exemplars_per_class",
+            self.config.exemplars_per_class as f32,
+        );
 
         Ok(metrics)
     }
@@ -530,10 +531,7 @@ mod tests {
     fn test_memory_buffer() {
         let mut buffer = MemoryBuffer::new(5);
 
-        let exemplars = vec![
-            Exemplar::new(vec![1.0], 0),
-            Exemplar::new(vec![2.0], 0),
-        ];
+        let exemplars = vec![Exemplar::new(vec![1.0], 0), Exemplar::new(vec![2.0], 0)];
         buffer.add_exemplars(0, exemplars);
 
         assert_eq!(buffer.num_classes(), 1);
@@ -664,7 +662,9 @@ mod tests {
             seed: 42,
         };
 
-        let metrics = learner.train_incremental(&train_data, &val_data, &inc_config).unwrap();
+        let metrics = learner
+            .train_incremental(&train_data, &val_data, &inc_config)
+            .unwrap();
 
         assert!(metrics.train_loss.len() > 0);
         assert!(metrics.val_accuracy.len() > 0);

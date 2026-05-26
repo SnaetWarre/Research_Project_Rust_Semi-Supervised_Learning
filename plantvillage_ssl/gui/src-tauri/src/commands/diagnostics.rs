@@ -14,7 +14,9 @@ use rand::seq::SliceRandom;
 
 use plantvillage_ssl::dataset::loader::PlantVillageDataset;
 
-use crate::commands::shared::{get_class_name, load_inference_model, preprocess_image_for_inference};
+use crate::commands::shared::{
+    get_class_name, load_inference_model, preprocess_image_for_inference,
+};
 use crate::state::AppState;
 
 /// Diagnostic results for model analysis
@@ -39,7 +41,6 @@ pub struct DiagnosticResult {
     /// Distribution of input classes used for diagnostics (class_name -> count)
     pub input_distribution: HashMap<String, usize>,
 }
-
 
 /// Run comprehensive model diagnostics
 #[tauri::command]
@@ -75,12 +76,12 @@ pub async fn run_model_diagnostics(
 
     // Sample a subset for diagnostics
     let samples_to_test = num_samples.min(dataset.samples.len());
-    
+
     // Create random indices to ensure balanced sampling across classes
     let mut indices: Vec<usize> = (0..dataset.samples.len()).collect();
     let mut rng = rand::thread_rng();
     indices.shuffle(&mut rng);
-    
+
     // Take the first N random indices
     let selected_indices = &indices[0..samples_to_test];
 
@@ -150,7 +151,10 @@ pub async fn run_model_diagnostics(
     }
 
     // Log input distribution for debugging bias
-    info!("Diagnostics input distribution ({} samples):", total_predictions);
+    info!(
+        "Diagnostics input distribution ({} samples):",
+        total_predictions
+    );
     let mut sorted_inputs: Vec<_> = input_class_counts.iter().collect();
     sorted_inputs.sort_by(|a, b| b.1.cmp(a.1));
     for (class_name, count) in sorted_inputs {

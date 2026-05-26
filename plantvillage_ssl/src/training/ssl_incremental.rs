@@ -455,10 +455,9 @@ fn evaluate_model<B: AutodiffBackend>(
     batch_size: usize,
     image_size: usize,
 ) -> f64 {
-    use burn::tensor::backend::Backend;
     use burn::tensor::Tensor;
 
-    let device = <B::InnerBackend as Backend>::Device::default();
+    let device = burn::tensor::Device::<B::InnerBackend>::default();
     let batcher =
         PlantVillageBatcher::<B::InnerBackend>::with_image_size(device.clone(), image_size);
 
@@ -529,14 +528,12 @@ fn generate_pseudo_labels<B: AutodiffBackend>(
     _device: &B::Device,
 ) -> Result<(Vec<(PathBuf, usize)>, f64)> {
     use burn::tensor::activation::softmax;
-    use burn::tensor::backend::Backend;
-
     // Note: We're using the base model to find samples that look "novel"
     // In practice, for new classes, we'd use a different approach
     // Here we simulate by accepting samples with low confidence on existing classes
     // (indicating they might be a new class)
 
-    let inner_device = <B::InnerBackend as Backend>::Device::default();
+    let inner_device = burn::tensor::Device::<B::InnerBackend>::default();
     let batcher =
         PlantVillageBatcher::<B::InnerBackend>::with_image_size(inner_device.clone(), image_size);
     let inner_model = model.clone().valid();

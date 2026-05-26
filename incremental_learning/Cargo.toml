@@ -21,12 +21,12 @@ repository = "https://github.com/yourusername/plant-incremental-learning"
 
 [workspace.dependencies]
 # Burn framework - core
-burn = { version = "0.14", features = ["train", "std"] }
-burn-import = { version = "0.14" }
+burn = { version = "0.21.0", features = ["train", "std"] }
+burn-import = { version = "0.21.0" }
 
 # Burn backends (CPU default, CUDA optional)
-burn-ndarray = { version = "0.14" }
-burn-wgpu = { version = "0.14" }
+burn-ndarray = { version = "0.21.0" }
+burn-wgpu = { version = "0.21.0" }
 
 # Image processing
 image = { version = "0.25", features = ["jpeg", "png"] }

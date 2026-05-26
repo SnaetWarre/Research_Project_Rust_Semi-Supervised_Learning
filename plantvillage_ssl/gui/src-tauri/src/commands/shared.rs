@@ -4,7 +4,7 @@ use std::path::Path;
 
 use burn::module::Module;
 use burn::record::CompactRecorder;
-use burn::tensor::{Tensor, TensorData};
+use burn::tensor::{Device, Tensor, TensorData};
 use image::{DynamicImage, Rgb, RgbImage};
 
 use plantvillage_ssl::model::cnn::{PlantClassifier, PlantClassifierConfig};
@@ -61,8 +61,10 @@ pub fn get_class_name(class_id: usize) -> String {
     }
 }
 
-pub fn load_inference_model(model_path: &Path) -> Result<PlantClassifier<InferenceBackend>, String> {
-    let device = <InferenceBackend as burn::tensor::backend::Backend>::Device::default();
+pub fn load_inference_model(
+    model_path: &Path,
+) -> Result<PlantClassifier<InferenceBackend>, String> {
+    let device = Device::<InferenceBackend>::default();
     let model: PlantClassifier<InferenceBackend> = PlantClassifier::new(&model_config(), &device);
     let recorder = CompactRecorder::new();
 
@@ -72,7 +74,7 @@ pub fn load_inference_model(model_path: &Path) -> Result<PlantClassifier<Inferen
 }
 
 pub fn load_app_model(model_path: &Path) -> Result<PlantClassifier<AppBackend>, String> {
-    let device = <AppBackend as burn::tensor::backend::Backend>::Device::default();
+    let device = Device::<AppBackend>::default();
     let model: PlantClassifier<AppBackend> = PlantClassifier::new(&model_config(), &device);
     let recorder = CompactRecorder::new();
 
@@ -81,13 +83,16 @@ pub fn load_app_model(model_path: &Path) -> Result<PlantClassifier<AppBackend>, 
         .map_err(|e| format!("Failed to load model: {:?}", e))
 }
 
-pub fn preprocess_image_for_inference(img: &DynamicImage, input_size: usize) -> Tensor<InferenceBackend, 4> {
-    let device = <InferenceBackend as burn::tensor::backend::Backend>::Device::default();
+pub fn preprocess_image_for_inference(
+    img: &DynamicImage,
+    input_size: usize,
+) -> Tensor<InferenceBackend, 4> {
+    let device = Device::<InferenceBackend>::default();
     preprocess_image(img, input_size, &device)
 }
 
 pub fn preprocess_image_for_app(img: &DynamicImage, input_size: usize) -> Tensor<AppBackend, 4> {
-    let device = <AppBackend as burn::tensor::backend::Backend>::Device::default();
+    let device = Device::<AppBackend>::default();
     preprocess_image(img, input_size, &device)
 }
 
@@ -104,7 +109,7 @@ fn model_config() -> PlantClassifierConfig {
 fn preprocess_image<B: burn::tensor::backend::Backend>(
     img: &DynamicImage,
     input_size: usize,
-    device: &B::Device,
+    device: &Device<B>,
 ) -> Tensor<B, 4> {
     let img = pil_bilinear_resize(img, input_size as u32, input_size as u32);
     let mut pixels: Vec<f32> = Vec::with_capacity(3 * input_size * input_size);

@@ -551,10 +551,9 @@ fn evaluate<B: AutodiffBackend>(
     image_size: usize,
 ) -> f64 {
     use burn::data::dataset::Dataset;
-    use burn::tensor::backend::Backend;
 
     // Get the inner backend's device
-    let device = <B::InnerBackend as Backend>::Device::default();
+    let device = burn::tensor::Device::<B::InnerBackend>::default();
 
     // Create a batcher for the inner backend with correct image size
     let inner_batcher =

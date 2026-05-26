@@ -3,17 +3,17 @@
 //! This is the Tauri backend for the PlantVillage SSL Dashboard,
 //! providing commands and state management for the GUI.
 
-mod commands;
-mod state;
-mod device;
 mod backend;
+mod commands;
+mod device;
+mod state;
 
-use std::sync::Arc;
-use tokio::sync::Mutex;
-use tauri::Manager;
-use state::AppState;
-use commands::incremental::IncrementalProgress;
 use commands::demo::DemoSessionGlobal;
+use commands::incremental::IncrementalProgress;
+use state::AppState;
+use std::sync::Arc;
+use tauri::Manager;
+use tokio::sync::Mutex;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -22,14 +22,15 @@ pub fn run() {
         .with_env_filter("plantvillage_gui=info,demo=info")
         .with_target(false)
         .init();
-    
+
     tracing::info!("=== PlantVillage SSL Dashboard Starting ===");
 
     // Initialize application state
     let app_state = Arc::new(AppState::new());
 
     // Initialize incremental learning progress state
-    let incremental_progress_state: Arc<Mutex<Option<IncrementalProgress>>> = Arc::new(Mutex::new(None));
+    let incremental_progress_state: Arc<Mutex<Option<IncrementalProgress>>> =
+        Arc::new(Mutex::new(None));
 
     // Initialize demo session state
     let demo_session_state: DemoSessionGlobal = Arc::new(Mutex::new(None));

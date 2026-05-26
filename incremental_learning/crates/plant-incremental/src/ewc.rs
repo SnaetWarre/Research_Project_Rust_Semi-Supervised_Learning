@@ -85,9 +85,7 @@ impl ParameterImportance {
             .iter()
             .zip(self.fisher.iter())
             .zip(current_values.iter())
-            .map(|((old_val, fisher), new_val)| {
-                fisher * (new_val - old_val).powi(2)
-            })
+            .map(|((old_val, fisher), new_val)| fisher * (new_val - old_val).powi(2))
             .sum()
     }
 }
@@ -130,7 +128,10 @@ impl<B: Backend> EWCLearner<B> {
             return Err(anyhow!("No samples available for Fisher estimation"));
         }
 
-        println!("Estimating Fisher Information using {} samples...", num_samples);
+        println!(
+            "Estimating Fisher Information using {} samples...",
+            num_samples
+        );
 
         let mut fisher = vec![0.0; self.num_parameters];
 
@@ -432,7 +433,9 @@ mod tests {
             seed: 42,
         };
 
-        let metrics = learner.train_incremental(&train_data, &val_data, &inc_config).unwrap();
+        let metrics = learner
+            .train_incremental(&train_data, &val_data, &inc_config)
+            .unwrap();
 
         assert!(metrics.train_loss.len() > 0);
         assert!(metrics.val_accuracy.len() > 0);

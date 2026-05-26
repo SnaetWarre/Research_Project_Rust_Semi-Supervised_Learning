@@ -3,11 +3,11 @@
 //! This module provides Tauri commands for incremental/continual learning,
 //! including training with different methods and running experiments.
 
+use anyhow::Result;
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
-use tokio::sync::Mutex;
 use tauri::State;
-use anyhow::Result;
+use tokio::sync::Mutex;
 
 /// Parameters for incremental training
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -162,7 +162,10 @@ pub async fn train_incremental(
     params: IncrementalTrainingParams,
     progress_state: State<'_, Arc<Mutex<Option<IncrementalProgress>>>>,
 ) -> Result<IncrementalTrainingResult, String> {
-    tracing::info!("Starting incremental training with method: {}", params.method);
+    tracing::info!(
+        "Starting incremental training with method: {}",
+        params.method
+    );
 
     // For now, return a simulated result
     // TODO: Wire up actual incremental learning training
@@ -186,9 +189,13 @@ pub async fn train_incremental(
                 fwt: 0.03,
                 forgetting: 0.08,
                 loss: 0.5 - (epoch as f64 * 0.02),
-                status: format!("Training task {}/{}, epoch {}/{}",
-                               task + 1, params.num_tasks,
-                               epoch + 1, params.epochs_per_task),
+                status: format!(
+                    "Training task {}/{}, epoch {}/{}",
+                    task + 1,
+                    params.num_tasks,
+                    epoch + 1,
+                    params.epochs_per_task
+                ),
             };
 
             *progress_state.lock().await = Some(progress);
@@ -229,9 +236,7 @@ pub async fn stop_incremental_training(
 
 /// Run experiment comparing multiple methods
 #[tauri::command]
-pub async fn run_experiment(
-    params: ExperimentParams,
-) -> Result<Vec<ExperimentResult>, String> {
+pub async fn run_experiment(params: ExperimentParams) -> Result<Vec<ExperimentResult>, String> {
     tracing::info!("Running experiment with {} methods", params.methods.len());
 
     let mut results = Vec::new();

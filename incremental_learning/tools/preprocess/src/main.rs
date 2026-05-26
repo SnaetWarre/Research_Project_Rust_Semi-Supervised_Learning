@@ -149,10 +149,7 @@ fn main() -> Result<()> {
             preset,
         } => augment_dataset(&input_dir, &output_dir, multiplier, &preset)?,
 
-        Commands::Analyze {
-            data_dir,
-            output,
-        } => analyze_dataset(&data_dir, output.as_deref())?,
+        Commands::Analyze { data_dir, output } => analyze_dataset(&data_dir, output.as_deref())?,
 
         Commands::Select {
             input_dir,
@@ -214,8 +211,7 @@ fn process_images(
         info!("Processing class: {}", class_name);
 
         let output_class_dir = output_dir.join(&class_name);
-        fs::create_dir_all(&output_class_dir)
-            .context("Failed to create output directory")?;
+        fs::create_dir_all(&output_class_dir).context("Failed to create output directory")?;
 
         // Load all images in this class
         let loader = ImageLoader::new(&class_path);
@@ -320,7 +316,11 @@ fn split_dataset(
 
     for class_entry in class_dirs {
         let class_path = class_entry.path();
-        let class_name = class_path.file_name().unwrap().to_string_lossy().to_string();
+        let class_name = class_path
+            .file_name()
+            .unwrap()
+            .to_string_lossy()
+            .to_string();
 
         // Get all images
         let loader = ImageLoader::new(&class_path);
@@ -366,7 +366,10 @@ fn split_dataset(
     }
 
     info!("\n✓ Split complete!");
-    info!("  Total - Train: {}, Val: {}, Test: {}", total_train, total_val, total_test);
+    info!(
+        "  Total - Train: {}, Val: {}, Test: {}",
+        total_train, total_val, total_test
+    );
 
     // Save split metadata
     let metadata = serde_json::json!({
@@ -419,7 +422,10 @@ fn augment_dataset(
             random_crop: true,
             zoom_range: (0.85, 1.15),
         },
-        _ => anyhow::bail!("Unknown preset: {}. Use 'light', 'medium', or 'heavy'", preset),
+        _ => anyhow::bail!(
+            "Unknown preset: {}. Use 'light', 'medium', or 'heavy'",
+            preset
+        ),
     };
 
     let mut pipeline = AugmentationPipeline::new(aug_config);
@@ -432,7 +438,11 @@ fn augment_dataset(
 
     for class_entry in class_dirs {
         let class_path = class_entry.path();
-        let class_name = class_path.file_name().unwrap().to_string_lossy().to_string();
+        let class_name = class_path
+            .file_name()
+            .unwrap()
+            .to_string_lossy()
+            .to_string();
 
         info!("Augmenting class: {}", class_name);
 
@@ -494,7 +504,11 @@ fn analyze_dataset(data_dir: &Path, output: Option<&Path>) -> Result<()> {
 
     for class_entry in class_dirs {
         let class_path = class_entry.path();
-        let class_name = class_path.file_name().unwrap().to_string_lossy().to_string();
+        let class_name = class_path
+            .file_name()
+            .unwrap()
+            .to_string_lossy()
+            .to_string();
 
         let loader = ImageLoader::new(&class_path);
         let images = loader.scan_directory(Path::new(""))?;
@@ -553,7 +567,10 @@ fn analyze_dataset(data_dir: &Path, output: Option<&Path>) -> Result<()> {
     println!("  Total classes:       {}", num_classes);
     println!("  Total images:        {}", total_images);
     println!("  Avg images/class:    {}", avg_per_class);
-    println!("  Total size:          {:.2} MB", total_size as f64 / (1024.0 * 1024.0));
+    println!(
+        "  Total size:          {:.2} MB",
+        total_size as f64 / (1024.0 * 1024.0)
+    );
 
     // Save to file if requested
     if let Some(output_path) = output {

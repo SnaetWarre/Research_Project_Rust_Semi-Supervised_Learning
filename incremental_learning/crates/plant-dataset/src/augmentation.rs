@@ -15,9 +15,7 @@ pub struct AugmentationPipeline {
 impl AugmentationPipeline {
     /// Creates a new augmentation pipeline with the given configuration
     pub fn new(config: AugmentationConfig) -> Self {
-        Self {
-            config,
-        }
+        Self { config }
     }
 
     /// Creates a pipeline with default configuration
@@ -51,7 +49,8 @@ impl AugmentationPipeline {
 
         // Random brightness adjustment
         if self.config.brightness_range != (1.0, 1.0) {
-            let factor = rng.gen_range(self.config.brightness_range.0..=self.config.brightness_range.1);
+            let factor =
+                rng.gen_range(self.config.brightness_range.0..=self.config.brightness_range.1);
             augmented = self.adjust_brightness(&augmented, factor);
         }
 
@@ -63,7 +62,8 @@ impl AugmentationPipeline {
 
         // Random saturation adjustment
         if self.config.saturation_range != (1.0, 1.0) {
-            let factor = rng.gen_range(self.config.saturation_range.0..=self.config.saturation_range.1);
+            let factor =
+                rng.gen_range(self.config.saturation_range.0..=self.config.saturation_range.1);
             augmented = self.adjust_saturation(&augmented, factor);
         }
 
@@ -157,7 +157,8 @@ impl AugmentationPipeline {
             let pixel = rgb.get_pixel(x, y);
 
             // Convert to grayscale (luminance)
-            let gray = (0.299 * pixel[0] as f32 + 0.587 * pixel[1] as f32 + 0.114 * pixel[2] as f32) as u8;
+            let gray =
+                (0.299 * pixel[0] as f32 + 0.587 * pixel[1] as f32 + 0.114 * pixel[2] as f32) as u8;
 
             // Interpolate between grayscale and original based on factor
             Rgb([
@@ -171,7 +172,11 @@ impl AugmentationPipeline {
     }
 
     /// Performs random crop
-    fn random_crop(&self, image: &DynamicImage, rng: &mut rand::rngs::ThreadRng) -> Result<DynamicImage> {
+    fn random_crop(
+        &self,
+        image: &DynamicImage,
+        rng: &mut rand::rngs::ThreadRng,
+    ) -> Result<DynamicImage> {
         let (width, height) = image.dimensions();
 
         // Zoom factor between range
@@ -196,7 +201,11 @@ impl AugmentationPipeline {
     }
 
     /// Applies augmentation multiple times to create variations
-    pub fn augment_multiple(&mut self, image: &DynamicImage, count: usize) -> Result<Vec<DynamicImage>> {
+    pub fn augment_multiple(
+        &mut self,
+        image: &DynamicImage,
+        count: usize,
+    ) -> Result<Vec<DynamicImage>> {
         let mut augmented_images = Vec::with_capacity(count);
 
         for _ in 0..count {
@@ -275,13 +284,13 @@ mod tests {
     fn create_test_image() -> DynamicImage {
         let img = ImageBuffer::from_fn(100, 100, |x, y| {
             if x < 50 && y < 50 {
-                Rgb([255u8, 0u8, 0u8])  // Red
+                Rgb([255u8, 0u8, 0u8]) // Red
             } else if x >= 50 && y < 50 {
-                Rgb([0u8, 255u8, 0u8])  // Green
+                Rgb([0u8, 255u8, 0u8]) // Green
             } else if x < 50 && y >= 50 {
-                Rgb([0u8, 0u8, 255u8])  // Blue
+                Rgb([0u8, 0u8, 255u8]) // Blue
             } else {
-                Rgb([255u8, 255u8, 0u8])  // Yellow
+                Rgb([255u8, 255u8, 0u8]) // Yellow
             }
         });
         DynamicImage::ImageRgb8(img)

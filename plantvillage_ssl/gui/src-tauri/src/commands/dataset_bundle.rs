@@ -53,15 +53,14 @@ pub struct BundleMetadata {
 /// suitable for embedding in a mobile app.
 pub fn create_mobile_bundle(config: BundleConfig) -> Result<BundleMetadata> {
     let mut rng = ChaCha8Rng::seed_from_u64(config.seed);
-    
+
     println!("Creating mobile dataset bundle...");
     println!("  Source: {:?}", config.source_dir);
     println!("  Output: {:?}", config.output_dir);
     println!("  Images per class: {}", config.images_per_class);
 
     // Create output directory
-    fs::create_dir_all(&config.output_dir)
-        .context("Failed to create output directory")?;
+    fs::create_dir_all(&config.output_dir).context("Failed to create output directory")?;
 
     let mut metadata = BundleMetadata {
         total_images: 0,
@@ -71,8 +70,7 @@ pub fn create_mobile_bundle(config: BundleConfig) -> Result<BundleMetadata> {
     };
 
     // Find all class directories
-    let entries = fs::read_dir(&config.source_dir)
-        .context("Failed to read source directory")?;
+    let entries = fs::read_dir(&config.source_dir).context("Failed to read source directory")?;
 
     for entry in entries {
         let entry = entry?;
@@ -98,7 +96,7 @@ pub fn create_mobile_bundle(config: BundleConfig) -> Result<BundleMetadata> {
         for img_entry in fs::read_dir(&path)? {
             let img_entry = img_entry?;
             let img_path = img_entry.path();
-            
+
             if img_path.is_file() {
                 if let Some(ext) = img_path.extension() {
                     let ext_str = ext.to_string_lossy().to_lowercase();
@@ -131,7 +129,9 @@ pub fn create_mobile_bundle(config: BundleConfig) -> Result<BundleMetadata> {
             }
         }
 
-        metadata.images_per_class.insert(class_name.clone(), sample_size);
+        metadata
+            .images_per_class
+            .insert(class_name.clone(), sample_size);
         metadata.total_images += sample_size;
         metadata.num_classes += 1;
 
@@ -176,10 +176,9 @@ pub async fn create_dataset_bundle(
 #[tauri::command]
 pub async fn load_bundle_metadata(bundle_dir: String) -> Result<BundleMetadata, String> {
     let metadata_path = PathBuf::from(bundle_dir).join("bundle_metadata.json");
-    
+
     let content = fs::read_to_string(&metadata_path)
         .map_err(|e| format!("Failed to read metadata: {}", e))?;
-    
-    serde_json::from_str(&content)
-        .map_err(|e| format!("Failed to parse metadata: {}", e))
+
+    serde_json::from_str(&content).map_err(|e| format!("Failed to parse metadata: {}", e))
 }

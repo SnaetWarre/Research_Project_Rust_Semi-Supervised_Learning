@@ -2,8 +2,8 @@
 //!
 //! Commands for running the stream simulation with progress events.
 
-use std::sync::Arc;
 use serde::{Deserialize, Serialize};
+use std::sync::Arc;
 use tauri::{AppHandle, Emitter, State};
 
 use crate::state::{AppState, SimulationStatus};
@@ -85,7 +85,7 @@ pub async fn start_simulation(
     state: State<'_, Arc<AppState>>,
 ) -> Result<SimulationResult, String> {
     use crate::backend::AdaptiveBackend;
-    
+
     // Update state to running
     {
         let mut status = state.simulation_state.write().await;
@@ -101,11 +101,10 @@ pub async fn start_simulation(
     let _ = app.emit("simulation:started", &params);
 
     // Run simulation in blocking task
-    let result = tokio::task::spawn_blocking(move || {
-        run_simulation_inner::<AdaptiveBackend>(&params, &app)
-    })
-    .await
-    .map_err(|e| format!("Simulation task failed: {:?}", e))?;
+    let result =
+        tokio::task::spawn_blocking(move || run_simulation_inner::<AdaptiveBackend>(&params, &app))
+            .await
+            .map_err(|e| format!("Simulation task failed: {:?}", e))?;
 
     // Update state based on result
     {
@@ -136,7 +135,7 @@ where
     B: burn::tensor::backend::AutodiffBackend,
 {
     use plantvillage_ssl::training::{run_simulation, SimulationConfig};
-    
+
     let config = SimulationConfig {
         data_dir: params.data_dir.clone(),
         model_path: params.model_path.clone(),
@@ -144,7 +143,7 @@ where
         images_per_day: params.images_per_day,
         confidence_threshold: params.confidence_threshold,
         retrain_threshold: params.retrain_threshold,
-        labeled_ratio: 0.2,   // 20% labeled, 60% for SSL stream (plus 10% val/test)
+        labeled_ratio: 0.2, // 20% labeled, 60% for SSL stream (plus 10% val/test)
         output_dir: params.output_dir.clone(),
         seed: 42,
         batch_size: 32,
@@ -153,8 +152,7 @@ where
     };
 
     // Run the actual simulation from plantvillage_ssl
-    let results = run_simulation::<B>(config)
-        .map_err(|e| format!("Simulation failed: {:?}", e))?;
+    let results = run_simulation::<B>(config).map_err(|e| format!("Simulation failed: {:?}", e))?;
 
     let result = SimulationResult {
         initial_accuracy: results.initial_accuracy,
@@ -175,9 +173,7 @@ where
 
 /// Stop simulation
 #[tauri::command]
-pub async fn stop_simulation(
-    state: State<'_, Arc<AppState>>,
-) -> Result<(), String> {
+pub async fn stop_simulation(state: State<'_, Arc<AppState>>) -> Result<(), String> {
     let mut status = state.simulation_state.write().await;
     if matches!(*status, SimulationStatus::Running { .. }) {
         *status = SimulationStatus::Idle;

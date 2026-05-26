@@ -132,7 +132,10 @@ impl Trainer {
 
         // Update history
         self.state.training_history.train_loss.push(train_loss);
-        self.state.training_history.train_accuracy.push(train_accuracy);
+        self.state
+            .training_history
+            .train_accuracy
+            .push(train_accuracy);
         self.state.training_history.val_loss.push(val_loss);
         self.state.training_history.val_accuracy.push(val_accuracy);
 

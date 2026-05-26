@@ -154,8 +154,8 @@ fn main() -> Result<()> {
     info!("============================================");
 
     // Load configuration
-    let mut config: TrainConfig = load_toml_config(&args.config)
-        .context("Failed to load configuration file")?;
+    let mut config: TrainConfig =
+        load_toml_config(&args.config).context("Failed to load configuration file")?;
 
     // Apply command-line overrides
     apply_overrides(&mut config, &args);
@@ -176,8 +176,7 @@ fn main() -> Result<()> {
     // Save configuration to output directory
     let config_path = config.output.output_dir.join("config.toml");
     let config_str = toml::to_string_pretty(&config)?;
-    std::fs::write(&config_path, config_str)
-        .context("Failed to save configuration")?;
+    std::fs::write(&config_path, config_str).context("Failed to save configuration")?;
     info!("Configuration saved to: {}", config_path.display());
 
     // Print configuration summary
@@ -215,10 +214,16 @@ fn apply_overrides(config: &mut TrainConfig, args: &Args) {
 fn validate_config(config: &TrainConfig) -> Result<()> {
     // Validate paths exist
     if !config.dataset.train_dir.exists() {
-        anyhow::bail!("Training directory does not exist: {}", config.dataset.train_dir.display());
+        anyhow::bail!(
+            "Training directory does not exist: {}",
+            config.dataset.train_dir.display()
+        );
     }
     if !config.dataset.val_dir.exists() {
-        anyhow::bail!("Validation directory does not exist: {}", config.dataset.val_dir.display());
+        anyhow::bail!(
+            "Validation directory does not exist: {}",
+            config.dataset.val_dir.display()
+        );
     }
 
     // Validate parameters
@@ -342,12 +347,7 @@ fn run_training(config: &TrainConfig, resume: Option<&PathBuf>) -> Result<()> {
 
         // Save checkpoint
         if (epoch + 1) % config.output.save_every == 0 || epoch == total_epochs - 1 {
-            let checkpoint = create_checkpoint(
-                epoch,
-                config,
-                val_acc,
-                &training_history,
-            );
+            let checkpoint = create_checkpoint(epoch, config, val_acc, &training_history);
 
             let is_best = val_acc > best_val_acc;
             if is_best {
@@ -371,8 +371,14 @@ fn run_training(config: &TrainConfig, resume: Option<&PathBuf>) -> Result<()> {
     info!("");
     info!("Training Summary:");
     info!("  Best validation accuracy: {:.4}", best_val_acc);
-    info!("  Final training loss: {:.4}", training_history.last().unwrap().1);
-    info!("  Final validation loss: {:.4}", training_history.last().unwrap().3);
+    info!(
+        "  Final training loss: {:.4}",
+        training_history.last().unwrap().1
+    );
+    info!(
+        "  Final validation loss: {:.4}",
+        training_history.last().unwrap().3
+    );
     info!("  Checkpoints saved to: {}", checkpoint_dir.display());
 
     Ok(())
@@ -451,7 +457,7 @@ fn create_checkpoint(
         metadata: CheckpointMetadata {
             model_architecture: config.model.architecture.clone(),
             num_classes: config.model.num_classes,
-            num_parameters: 5_000_000,  // Approximate
+            num_parameters: 5_000_000, // Approximate
             training_samples: 0,
             validation_accuracy: val_acc,
             notes: Some(format!("Training epoch {}", epoch)),
@@ -474,12 +480,14 @@ fn load_dataset_samples(data_dir: &PathBuf) -> Result<Vec<(PathBuf, usize)>> {
 
         if path.is_dir() {
             // Class directory
-            let class_name = path.file_name()
+            let class_name = path
+                .file_name()
                 .and_then(|n| n.to_str())
                 .unwrap_or("unknown");
 
             // Simple class index from directory name
-            let class_idx = class_name.chars()
+            let class_idx = class_name
+                .chars()
                 .filter(|c| c.is_numeric())
                 .collect::<String>()
                 .parse::<usize>()
@@ -490,9 +498,11 @@ fn load_dataset_samples(data_dir: &PathBuf) -> Result<Vec<(PathBuf, usize)>> {
                 let img_entry = img_entry?;
                 let img_path = img_entry.path();
 
-                if img_path.extension().and_then(|e| e.to_str()).map_or(false, |e| {
-                    matches!(e, "jpg" | "jpeg" | "png")
-                }) {
+                if img_path
+                    .extension()
+                    .and_then(|e| e.to_str())
+                    .map_or(false, |e| matches!(e, "jpg" | "jpeg" | "png"))
+                {
                     samples.push((img_path, class_idx));
                 }
             }

@@ -8,6 +8,7 @@ reliably:
 - put SourceCode paragraphs in visible boxed snippets;
 - center figure images and their captions;
 - split image and caption content into separate Word paragraphs;
+- keep headings, table captions and figures with the following paragraph;
 - make the long thesis title fit on one centered line.
 """
 
@@ -80,6 +81,22 @@ def _set_or_replace(parent: ET.Element, child: ET.Element) -> None:
 
 def _is_caption_text(text: str) -> bool:
     return (text.startswith("Figure ") or text.startswith("Appendix Figure ")) and ":" in text
+
+
+def _is_table_caption_text(text: str) -> bool:
+    return text.startswith("Table ") and ":" in text
+
+
+def _keep_with_next(p: ET.Element) -> None:
+    ppr = _ensure_ppr(p)
+    keep_next = ET.Element(_w("keepNext"))
+    _set_or_replace(ppr, keep_next)
+
+
+def _keep_lines_together(p: ET.Element) -> None:
+    ppr = _ensure_ppr(p)
+    keep_lines = ET.Element(_w("keepLines"))
+    _set_or_replace(ppr, keep_lines)
 
 
 def _box_source_code_paragraph(p: ET.Element) -> None:
@@ -169,6 +186,7 @@ def _split_image_caption_paragraph(parent: ET.Element, index: int, p: ET.Element
     for run in caption_runs:
         caption_p.append(run)
     _center_paragraph(caption_p)
+    _keep_with_next(p)
 
     parent.insert(index + 1, caption_p)
     return True
@@ -229,6 +247,7 @@ def _polish_document(xml_bytes: bytes) -> tuple[bytes, int, int, int, bool]:
     split_captions = _split_inline_figure_captions(root)
     boxed_code_blocks = 0
     centered_figures = 0
+    keep_next_paragraphs = 0
     title_fitted = False
 
     for p in root.findall(f".//{_w('p')}"):
@@ -242,6 +261,18 @@ def _polish_document(xml_bytes: bytes) -> tuple[bytes, int, int, int, bool]:
         if _is_figure_paragraph(p, text):
             _center_paragraph(p)
             centered_figures += 1
+            if p.find(f".//{_w('drawing')}") is not None:
+                _keep_with_next(p)
+                keep_next_paragraphs += 1
+
+        if (style or "").startswith("Heading") and not style == "Heading1":
+            _keep_with_next(p)
+            _keep_lines_together(p)
+            keep_next_paragraphs += 1
+
+        if _is_table_caption_text(text):
+            _keep_with_next(p)
+            keep_next_paragraphs += 1
 
         if (
             not title_fitted
@@ -252,7 +283,7 @@ def _polish_document(xml_bytes: bytes) -> tuple[bytes, int, int, int, bool]:
             title_fitted = True
 
     out = ET.tostring(root, encoding="utf-8", xml_declaration=True)
-    return out, boxed_code_blocks, centered_figures, split_captions, title_fitted
+    return out, boxed_code_blocks, centered_figures, split_captions, keep_next_paragraphs, title_fitted
 
 
 def _log(msg: str, *, quiet: bool) -> None:
@@ -281,7 +312,7 @@ def main() -> None:
             print(f"[polish_docx_layout] skip: {DOCUMENT_PATH} missing in archive", file=sys.stderr)
             return
 
-        document_xml, boxed_code_blocks, centered_figures, split_captions, title_fitted = _polish_document(
+        document_xml, boxed_code_blocks, centered_figures, split_captions, keep_next_paragraphs, title_fitted = _polish_document(
             zin.read(DOCUMENT_PATH)
         )
 
@@ -299,6 +330,7 @@ def main() -> None:
     )
     _log(f"[polish_docx_layout] centered figure paragraphs: {centered_figures}", quiet=quiet)
     _log(f"[polish_docx_layout] split inline figure captions: {split_captions}", quiet=quiet)
+    _log(f"[polish_docx_layout] keep-with-next paragraphs: {keep_next_paragraphs}", quiet=quiet)
     _log(f"[polish_docx_layout] fitted title paragraph: {title_fitted}", quiet=quiet)
     _log("[polish_docx_layout] done (in-place update)", quiet=quiet)
 

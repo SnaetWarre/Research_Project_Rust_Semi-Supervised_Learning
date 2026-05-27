@@ -270,8 +270,6 @@ def figure_pipeline_flowchart() -> None:
     arrow(ax, (80, 73), (80, 67))
     arrow(ax, (80, 49), (80, 48))
     ax.text(89, 50, "Yes", fontsize=7, color=BLUE)
-    arrow(ax, (105, 58), (118, 58))
-    ax.text(109, 61, "No", fontsize=7, color=GRAY)
     arrow(ax, (80, 38), (80, 33))
     arrow(ax, (57, 25), (52, 25))
     ax.text(54, 29, "Yes", fontsize=7, color=BLUE)
@@ -281,9 +279,11 @@ def figure_pipeline_flowchart() -> None:
     ax.plot([17, 3, 3], [8, 8, 78], color=GRAY, linewidth=1.3, linestyle="--")
     arrow(ax, (3, 78), (52, 78), color=GRAY, dashed=True)
     ax.text(9, 80, "No", fontsize=7, color=GRAY)
-    arrow(ax, (103, 25), (121, 71), color=GRAY, dashed=True)
-    arrow(ax, (121, 71), (108, 78), color=GRAY, dashed=True)
-    ax.text(105, 28, "No", fontsize=7, color=GRAY)
+    ax.plot([103, 116, 116], [25, 25, 78], color=GRAY, linewidth=1.3, linestyle="--")
+    arrow(ax, (116, 78), (108, 78), color=GRAY, dashed=True)
+    ax.text(106, 28, "No", fontsize=7, color=GRAY)
+    arrow(ax, (105, 58), (118, 58))
+    ax.text(109, 61, "No", fontsize=7, color=GRAY)
 
     save(fig, FIG_DIR / "pipeline_flowchart.svg")
 

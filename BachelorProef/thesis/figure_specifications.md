@@ -6,7 +6,7 @@ This document lists every figure referenced in the thesis, with precise instruct
 
 ---
 
-## Summary: 10 Figures Total
+## Summary: 11 Figures Total
 
 | # | Caption | File Path | Status | Type |
 |---|---------|-----------|--------|------|
@@ -14,12 +14,13 @@ This document lists every figure referenced in the thesis, with precise instruct
 | 2.1 | Flowchart of the implemented pseudo-labeling pipeline | `BachelorProef/thesis/figures/pipeline_flowchart.svg` | **EXISTS** | Conceptual diagram |
 | 2.2 | Conceptual comparison of deployment models for Burn, Candle and tch-rs | `BachelorProef/thesis/figures/framework_deployment.svg` | **EXISTS** | Conceptual diagram |
 | 2.3 | Conceptual overview of catastrophic forgetting mitigation strategies | `BachelorProef/thesis/figures/forgetting_strategies.svg` | **EXISTS** | Conceptual diagram |
-| 3.1 | Accuracy as a function of labeled images per class | `plantvillage_ssl/output/experiments/label_efficiency/label_efficiency_curve.svg` | **EXISTS** | Line chart |
-| 3.2 | Bar chart comparison of accuracy at each labeling level | `plantvillage_ssl/output/experiments/label_efficiency/label_efficiency_bars.svg` | **EXISTS** | Bar chart |
-| 3.3 | Visual comparison of accuracy metrics between small-base and large-base scenarios | `plantvillage_ssl/output/experiments/class_scaling/class_scaling_comparison.svg` | **EXISTS** | Grouped bar chart |
-| 3.4 | New class accuracy as a function of labeled samples, for both base sizes | `plantvillage_ssl/output/experiments/new_class_position/new_class_accuracy_curve.svg` | **EXISTS** | Line chart (dual series) |
-| 3.5 | Detailed comparison at 50 labeled samples | `plantvillage_ssl/output/experiments/new_class_position/position_comparison_50.svg` | **EXISTS** | Grouped bar chart |
-| 3.6 | Catastrophic forgetting as a function of labeled samples for the new class | `plantvillage_ssl/output/experiments/new_class_position/forgetting_curve.svg` | **EXISTS** | Line chart (dual series) |
+| 3.1 | Accuracy as a function of labeled images per class | `BachelorProef/thesis/figures/label_efficiency_curve.svg` | **EXISTS** | Line chart |
+| 3.2 | Bar chart comparison of accuracy at each labeling level | `BachelorProef/thesis/figures/label_efficiency_bars.svg` | **EXISTS** | Bar chart |
+| 3.3 | Visual comparison of accuracy metrics between small-base and large-base scenarios | `BachelorProef/thesis/figures/class_scaling_comparison.svg` | **EXISTS** | Grouped bar chart |
+| 3.4 | New class accuracy as a function of labeled samples, for both base sizes | `BachelorProef/thesis/figures/new_class_accuracy_curve.svg` | **EXISTS** | Line chart (dual series) |
+| 3.5 | Detailed comparison at 50 labeled samples | `BachelorProef/thesis/figures/position_comparison_50.svg` | **EXISTS** | Grouped bar chart |
+| 3.6 | Catastrophic forgetting as a function of labeled samples for the new class | `BachelorProef/thesis/figures/forgetting_curve.svg` | **EXISTS** | Line chart (dual series) |
+| 3.7 | Screenshot of the Tauri desktop application dashboard | `BachelorProef/thesis/figures/tauri_application_screenshot.png` | **EXISTS** | Screenshot |
 
 ---
 
@@ -178,7 +179,7 @@ graph TD
 
 **Caption:** Accuracy as a function of labeled images per class.
 
-**File:** `plantvillage_ssl/output/experiments/label_efficiency/label_efficiency_curve.svg`
+**File:** `BachelorProef/thesis/figures/label_efficiency_curve.svg`
 
 **Status:** EXISTS (but you may want to regenerate for consistent style)
 
@@ -214,7 +215,7 @@ graph TD
 
 **Caption:** Bar chart comparison of accuracy at each labeling level.
 
-**File:** `plantvillage_ssl/output/experiments/label_efficiency/label_efficiency_bars.svg`
+**File:** `BachelorProef/thesis/figures/label_efficiency_bars.svg`
 
 **Status:** EXISTS (but you may want to regenerate for consistent style)
 
@@ -240,7 +241,7 @@ graph TD
 
 **Caption:** Visual comparison of accuracy metrics between the small-base (5 classes) and large-base (30 classes) incremental learning scenarios.
 
-**File:** `plantvillage_ssl/output/experiments/class_scaling/class_scaling_comparison.svg`
+**File:** `BachelorProef/thesis/figures/class_scaling_comparison.svg`
 
 **Status:** EXISTS (but you may want to regenerate for consistent style)
 
@@ -281,7 +282,7 @@ graph TD
 
 **Caption:** New class accuracy as a function of labeled samples, for both base sizes.
 
-**File:** `plantvillage_ssl/output/experiments/new_class_position/new_class_accuracy_curve.svg`
+**File:** `BachelorProef/thesis/figures/new_class_accuracy_curve.svg`
 
 **Status:** EXISTS (but you may want to regenerate for consistent style)
 
@@ -318,7 +319,7 @@ graph TD
 
 **Caption:** Detailed comparison at 50 labeled samples.
 
-**File:** `plantvillage_ssl/output/experiments/new_class_position/position_comparison_50.svg`
+**File:** `BachelorProef/thesis/figures/position_comparison_50.svg`
 
 **Status:** EXISTS (but you may want to regenerate for consistent style)
 
@@ -351,7 +352,7 @@ graph TD
 
 **Caption:** Catastrophic forgetting as a function of labeled samples for the new class.
 
-**File:** `plantvillage_ssl/output/experiments/new_class_position/forgetting_curve.svg`
+**File:** `BachelorProef/thesis/figures/forgetting_curve.svg`
 
 **Status:** EXISTS (but you may want to regenerate for consistent style)
 
@@ -385,6 +386,22 @@ graph TD
 
 ---
 
+## Figure 3.7: Tauri Application Screenshot
+
+**Caption:** Screenshot of the Tauri desktop application dashboard, showing dataset loading, model status, experiment count and class distribution diagnostics.
+
+**File:** `BachelorProef/thesis/figures/tauri_application_screenshot.png`
+
+**Status:** EXISTS
+
+**Source:** Cropped from `/tmp/images/screenshots/screenshot_20260527_192945.png`.
+
+**Type:** Screenshot.
+
+**Placement:** Chapter 3, Section 3.5, after the GUI feature list.
+
+---
+
 ## General Style Guide for All Figures
 
 **Color palette:**
@@ -412,7 +429,7 @@ graph TD
 - Tight layout, but leave enough padding so labels are not clipped.
 
 **File format:**
-- Save all as SVG for crisp scaling in Word and PDF.
+- Save diagrams and data plots as SVG for crisp scaling in Word and PDF. Screenshots can use PNG.
 - If using matplotlib, use `plt.savefig('filename.svg', format='svg', bbox_inches='tight')`.
 
 ---
@@ -423,11 +440,12 @@ graph TD
 - [x] Figure 2.1 renders correctly from saved SVG (`BachelorProef/thesis/figures/pipeline_flowchart.svg`)
 - [x] Figure 2.2 created and saved to `BachelorProef/thesis/figures/framework_deployment.svg`
 - [x] Figure 2.3 created and saved to `BachelorProef/thesis/figures/forgetting_strategies.svg`
-- [ ] Figure 3.1 exists at `plantvillage_ssl/output/experiments/label_efficiency/label_efficiency_curve.svg` (regenerate if style is inconsistent)
-- [ ] Figure 3.2 exists at `plantvillage_ssl/output/experiments/label_efficiency/label_efficiency_bars.svg` (regenerate if style is inconsistent)
-- [ ] Figure 3.3 exists at `plantvillage_ssl/output/experiments/class_scaling/class_scaling_comparison.svg` (regenerate if style is inconsistent)
-- [ ] Figure 3.4 exists at `plantvillage_ssl/output/experiments/new_class_position/new_class_accuracy_curve.svg` (regenerate if style is inconsistent)
-- [ ] Figure 3.5 exists at `plantvillage_ssl/output/experiments/new_class_position/position_comparison_50.svg` (regenerate if style is inconsistent)
-- [ ] Figure 3.6 exists at `plantvillage_ssl/output/experiments/new_class_position/forgetting_curve.svg` (regenerate if style is inconsistent)
+- [x] Figure 3.1 exists at `BachelorProef/thesis/figures/label_efficiency_curve.svg`
+- [x] Figure 3.2 exists at `BachelorProef/thesis/figures/label_efficiency_bars.svg`
+- [x] Figure 3.3 exists at `BachelorProef/thesis/figures/class_scaling_comparison.svg`
+- [x] Figure 3.4 exists at `BachelorProef/thesis/figures/new_class_accuracy_curve.svg`
+- [x] Figure 3.5 exists at `BachelorProef/thesis/figures/position_comparison_50.svg`
+- [x] Figure 3.6 exists at `BachelorProef/thesis/figures/forgetting_curve.svg`
+- [x] Figure 3.7 exists at `BachelorProef/thesis/figures/tauri_application_screenshot.png`
 - [ ] All figure captions in the markdown are updated to match the final figure numbering
 - [ ] All figures are centered and display correctly in the Word build

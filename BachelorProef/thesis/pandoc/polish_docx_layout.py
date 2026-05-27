@@ -7,6 +7,7 @@ reliably:
 
 - put SourceCode paragraphs in visible boxed snippets;
 - center figure images and their captions;
+- split image and caption content into separate Word paragraphs;
 - make the long thesis title fit on one centered line.
 """
 
@@ -77,6 +78,10 @@ def _set_or_replace(parent: ET.Element, child: ET.Element) -> None:
     parent.append(child)
 
 
+def _is_caption_text(text: str) -> bool:
+    return (text.startswith("Figure ") or text.startswith("Appendix Figure ")) and ":" in text
+
+
 def _box_source_code_paragraph(p: ET.Element) -> None:
     ppr = _ensure_ppr(p)
 
@@ -119,6 +124,56 @@ def _is_figure_paragraph(p: ET.Element, text: str) -> bool:
     return has_drawing or has_figure_caption
 
 
+def _copy_paragraph_properties(p: ET.Element) -> ET.Element:
+    ppr = _child(p, "pPr")
+    if ppr is not None:
+        return ET.fromstring(ET.tostring(ppr, encoding="utf-8"))
+
+    copied = ET.Element(_w("pPr"))
+    style = ET.SubElement(copied, _w("pStyle"))
+    style.set(_attr("val"), "BodyText")
+    return copied
+
+
+def _split_image_caption_paragraph(parent: ET.Element, index: int, p: ET.Element) -> bool:
+    if p.find(f".//{_w('drawing')}") is None:
+        return False
+
+    runs = list(p.findall(_w("r")))
+    caption_start = None
+    for run_index, run in enumerate(runs):
+        text = "".join(t.text or "" for t in run.findall(f".//{_w('t')}")).strip()
+        if _is_caption_text(text):
+            caption_start = run_index
+            break
+
+    if caption_start is None:
+        return False
+
+    caption_runs = runs[caption_start:]
+    for run in caption_runs:
+        p.remove(run)
+
+    # Remove whitespace-only runs left after the drawing so the image paragraph
+    # contains only the image. This prevents Word from treating the caption as
+    # trailing inline content beside the figure.
+    for run in list(p.findall(_w("r"))):
+        if run.find(f".//{_w('drawing')}") is not None:
+            continue
+        text = "".join(t.text or "" for t in run.findall(f".//{_w('t')}"))
+        if text.strip() == "":
+            p.remove(run)
+
+    caption_p = ET.Element(_w("p"))
+    caption_p.append(_copy_paragraph_properties(p))
+    for run in caption_runs:
+        caption_p.append(run)
+    _center_paragraph(caption_p)
+
+    parent.insert(index + 1, caption_p)
+    return True
+
+
 def _fit_title_paragraph(p: ET.Element) -> None:
     ppr = _ensure_ppr(p)
 
@@ -155,8 +210,23 @@ def _fit_title_paragraph(p: ET.Element) -> None:
         _set_or_replace(rpr, sz_cs)
 
 
-def _polish_document(xml_bytes: bytes) -> tuple[bytes, int, int, bool]:
+def _split_inline_figure_captions(root: ET.Element) -> int:
+    split_count = 0
+    for parent in root.iter():
+        children = list(parent)
+        inserted_for_parent = 0
+        for index, child in enumerate(children):
+            if child.tag != _w("p"):
+                continue
+            if _split_image_caption_paragraph(parent, index + inserted_for_parent, child):
+                split_count += 1
+                inserted_for_parent += 1
+    return split_count
+
+
+def _polish_document(xml_bytes: bytes) -> tuple[bytes, int, int, int, bool]:
     root = ET.fromstring(xml_bytes)
+    split_captions = _split_inline_figure_captions(root)
     boxed_code_blocks = 0
     centered_figures = 0
     title_fitted = False
@@ -182,7 +252,7 @@ def _polish_document(xml_bytes: bytes) -> tuple[bytes, int, int, bool]:
             title_fitted = True
 
     out = ET.tostring(root, encoding="utf-8", xml_declaration=True)
-    return out, boxed_code_blocks, centered_figures, title_fitted
+    return out, boxed_code_blocks, centered_figures, split_captions, title_fitted
 
 
 def _log(msg: str, *, quiet: bool) -> None:
@@ -211,7 +281,7 @@ def main() -> None:
             print(f"[polish_docx_layout] skip: {DOCUMENT_PATH} missing in archive", file=sys.stderr)
             return
 
-        document_xml, boxed_code_blocks, centered_figures, title_fitted = _polish_document(
+        document_xml, boxed_code_blocks, centered_figures, split_captions, title_fitted = _polish_document(
             zin.read(DOCUMENT_PATH)
         )
 
@@ -228,6 +298,7 @@ def main() -> None:
         quiet=quiet,
     )
     _log(f"[polish_docx_layout] centered figure paragraphs: {centered_figures}", quiet=quiet)
+    _log(f"[polish_docx_layout] split inline figure captions: {split_captions}", quiet=quiet)
     _log(f"[polish_docx_layout] fitted title paragraph: {title_fitted}", quiet=quiet)
     _log("[polish_docx_layout] done (in-place update)", quiet=quiet)
 

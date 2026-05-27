@@ -4,9 +4,9 @@ This chapter gives a critical evaluation of the research results. It is divided 
 
 ## 4.1 External Feedback
 
-I contacted two researchers from the 2AI-IPCA research lab, Helena Torres and Pedro Morais, who work in image processing and deep learning. I sent them the detailed interview questions by email. Pedro Morais answered five of the twenty questions.
+I contacted two researchers from the 2AI-IPCA research lab, Helena Torres and Pedro Morais, who work in image processing and deep learning. I sent them the detailed interview questions by email. Pedro Morais answered five of the twenty questions. No response had been received from Helena Torres by the final thesis build.
 
-His feedback is integrated into the reflection below. The full responses are included in Appendix B. Helena Torres's responses will be included in Appendix C when available.
+Pedro Morais's feedback is integrated into the reflection below. The full responses are included in Appendix B. Appendix C documents the unanswered feedback request to Helena Torres for transparency.
 
 ## 4.2 Self-Reflection
 

@@ -6,7 +6,7 @@
 - [ ] Re-check Chapter 4 reflection after Helena's answers are added.
 - [ ] Re-check Chapter 5 advice after Helena's answers are added.
 - [ ] Re-check Chapter 6 conclusion after the final feedback state is known.
-- [ ] Decide whether Appendix C remains a full answered expert-feedback appendix or becomes a short pending/no-response appendix.
+- [x] Decide whether Appendix C remains a full answered expert-feedback appendix or becomes a short pending/no-response appendix.
 
 ## Pedro Feedback Already Received
 

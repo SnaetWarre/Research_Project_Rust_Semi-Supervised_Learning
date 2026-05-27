@@ -2,7 +2,7 @@
 
 All references follow the IEEE citation style.
 
-## Peer-Reviewed and Formal Sources
+## Sources
 
 [1] M. Jannat, "Real-time jute leaf disease classification using an effective deep learning-based semi-supervised learning approach," *Scientific Reports*, vol. 15, 2025. [Online]. Available: https://pmc.ncbi.nlm.nih.gov/articles/PMC12592198/ [Accessed: May 24, 2026].
 

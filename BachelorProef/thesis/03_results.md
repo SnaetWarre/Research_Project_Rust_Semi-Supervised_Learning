@@ -148,10 +148,10 @@ The model was trained from scratch at seven different labeled data quantities, r
 | 200 | 88.75 | 439.1 |
 | 500 | 94.47 | 1,101.1 |
 
-![Label Efficiency Curve](../../plantvillage_ssl/output/experiments/label_efficiency/label_efficiency_curve.svg)
+![Label Efficiency Curve](figures/label_efficiency_curve.svg)
 *Figure 3.1: Accuracy as a function of labeled images per class.*
 
-![Label Efficiency Bars](../../plantvillage_ssl/output/experiments/label_efficiency/label_efficiency_bars.svg)
+![Label Efficiency Bars](figures/label_efficiency_bars.svg)
 *Figure 3.2: Bar chart comparison of accuracy at each labeling level.*
 
 **Key findings:**
@@ -178,7 +178,7 @@ Two scenarios were compared. In Scenario A, a model was trained on 5 base classe
 | Forgetting | 0.21 pp | 1.26 pp |
 | Training time | 1,573 s | 8,359 s |
 
-![Class Scaling Comparison](../../plantvillage_ssl/output/experiments/class_scaling/class_scaling_comparison.svg)
+![Class Scaling Comparison](figures/class_scaling_comparison.svg)
 *Figure 3.3: Visual comparison of accuracy metrics between the small-base and large-base scenarios.*
 
 **Key findings:**
@@ -214,13 +214,13 @@ Both scenarios were evaluated at five labeling levels: 5, 10, 25, 50 and 100 lab
 | 50 | -2.84% | 0.62% | +3.46 pp |
 | 100 | -2.50% | 0.55% | +3.06 pp |
 
-![New Class Accuracy Curve](../../plantvillage_ssl/output/experiments/new_class_position/new_class_accuracy_curve.svg)
+![New Class Accuracy Curve](figures/new_class_accuracy_curve.svg)
 *Figure 3.4: New class accuracy as a function of labeled samples, for both base sizes.*
 
-![Position Comparison at 50 Samples](../../plantvillage_ssl/output/experiments/new_class_position/position_comparison_50.svg)
+![Position Comparison at 50 Samples](figures/position_comparison_50.svg)
 *Figure 3.5: Detailed comparison at 50 labeled samples.*
 
-![Forgetting Curve](../../plantvillage_ssl/output/experiments/new_class_position/forgetting_curve.svg)
+![Forgetting Curve](figures/forgetting_curve.svg)
 *Figure 3.6: Catastrophic forgetting as a function of labeled samples for the new class.*
 
 **Key findings:**
@@ -288,6 +288,9 @@ The application supports:
 - Real-time classification with a confidence bar for each of the top-5 predicted classes.
 - Switching between the supervised baseline model and the SSL-enhanced model.
 - Full offline operation, with no network requirements after installation.
+
+![Tauri desktop application dashboard](figures/tauri_application_screenshot.png)
+*Figure 3.7: Screenshot of the Tauri desktop application dashboard, showing dataset loading, model status, experiment count and class distribution diagnostics.*
 
 ## 3.6 Challenges Encountered
 

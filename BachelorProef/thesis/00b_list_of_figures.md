@@ -12,6 +12,7 @@
 | Figure 3.4 | New class accuracy as a function of labeled samples, plotted for both the 6th class and 31st class scenarios. | Ch. 3 |
 | Figure 3.5 | Detailed metric comparison at 50 labeled samples for the new class, contrasting the small-base and large-base conditions. | Ch. 3 |
 | Figure 3.6 | Catastrophic forgetting as a function of labeled samples for the new class, across both base sizes. | Ch. 3 |
+| Figure 3.7 | Screenshot of the Tauri desktop application dashboard, showing dataset loading, model status and class distribution diagnostics. | Ch. 3 |
 
 ---
 

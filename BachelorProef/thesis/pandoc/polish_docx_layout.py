@@ -9,6 +9,7 @@ reliably:
 - center figure images and their captions;
 - split image and caption content into separate Word paragraphs;
 - keep headings, table captions and figures with the following paragraph;
+- add subtle internal grid lines to generated Word tables;
 - make the long thesis title fit on one centered line.
 """
 
@@ -72,6 +73,14 @@ def _ensure_ppr(p: ET.Element) -> ET.Element:
     return ppr
 
 
+def _ensure_tbl_pr(tbl: ET.Element) -> ET.Element:
+    tbl_pr = _child(tbl, "tblPr")
+    if tbl_pr is None:
+        tbl_pr = ET.Element(_w("tblPr"))
+        tbl.insert(0, tbl_pr)
+    return tbl_pr
+
+
 def _set_or_replace(parent: ET.Element, child: ET.Element) -> None:
     existing = _child(parent, child.tag.rsplit("}", 1)[-1])
     if existing is not None:
@@ -97,6 +106,44 @@ def _keep_lines_together(p: ET.Element) -> None:
     ppr = _ensure_ppr(p)
     keep_lines = ET.Element(_w("keepLines"))
     _set_or_replace(ppr, keep_lines)
+
+
+def _table_column_count(tbl: ET.Element) -> int:
+    grid_cols = tbl.findall(f"./{_w('tblGrid')}/{_w('gridCol')}")
+    if grid_cols:
+        return len(grid_cols)
+
+    first_row = tbl.find(_w("tr"))
+    if first_row is None:
+        return 0
+    return len(first_row.findall(_w("tc")))
+
+
+def _table_row_count(tbl: ET.Element) -> int:
+    return len(tbl.findall(_w("tr")))
+
+
+def _apply_internal_table_grid(tbl: ET.Element) -> bool:
+    if _table_row_count(tbl) < 2 and _table_column_count(tbl) < 2:
+        return False
+
+    tbl_pr = _ensure_tbl_pr(tbl)
+    borders = ET.Element(_w("tblBorders"))
+
+    # Keep the outside edge clean and only draw the internal grid.
+    for side in ("top", "left", "bottom", "right"):
+        border = ET.SubElement(borders, _w(side))
+        border.set(_attr("val"), "nil")
+
+    for side in ("insideH", "insideV"):
+        border = ET.SubElement(borders, _w(side))
+        border.set(_attr("val"), "single")
+        border.set(_attr("sz"), "4")
+        border.set(_attr("space"), "0")
+        border.set(_attr("color"), "D9DEE7")
+
+    _set_or_replace(tbl_pr, borders)
+    return True
 
 
 def _box_source_code_paragraph(p: ET.Element) -> None:
@@ -242,13 +289,18 @@ def _split_inline_figure_captions(root: ET.Element) -> int:
     return split_count
 
 
-def _polish_document(xml_bytes: bytes) -> tuple[bytes, int, int, int, bool]:
+def _polish_document(xml_bytes: bytes) -> tuple[bytes, int, int, int, int, bool]:
     root = ET.fromstring(xml_bytes)
     split_captions = _split_inline_figure_captions(root)
     boxed_code_blocks = 0
     centered_figures = 0
     keep_next_paragraphs = 0
+    gridded_tables = 0
     title_fitted = False
+
+    for tbl in root.findall(f".//{_w('tbl')}"):
+        if _apply_internal_table_grid(tbl):
+            gridded_tables += 1
 
     for p in root.findall(f".//{_w('p')}"):
         style = _paragraph_style(p)
@@ -283,7 +335,7 @@ def _polish_document(xml_bytes: bytes) -> tuple[bytes, int, int, int, bool]:
             title_fitted = True
 
     out = ET.tostring(root, encoding="utf-8", xml_declaration=True)
-    return out, boxed_code_blocks, centered_figures, split_captions, keep_next_paragraphs, title_fitted
+    return out, boxed_code_blocks, centered_figures, split_captions, keep_next_paragraphs, gridded_tables, title_fitted
 
 
 def _log(msg: str, *, quiet: bool) -> None:
@@ -312,7 +364,7 @@ def main() -> None:
             print(f"[polish_docx_layout] skip: {DOCUMENT_PATH} missing in archive", file=sys.stderr)
             return
 
-        document_xml, boxed_code_blocks, centered_figures, split_captions, keep_next_paragraphs, title_fitted = _polish_document(
+        document_xml, boxed_code_blocks, centered_figures, split_captions, keep_next_paragraphs, gridded_tables, title_fitted = _polish_document(
             zin.read(DOCUMENT_PATH)
         )
 
@@ -331,6 +383,7 @@ def main() -> None:
     _log(f"[polish_docx_layout] centered figure paragraphs: {centered_figures}", quiet=quiet)
     _log(f"[polish_docx_layout] split inline figure captions: {split_captions}", quiet=quiet)
     _log(f"[polish_docx_layout] keep-with-next paragraphs: {keep_next_paragraphs}", quiet=quiet)
+    _log(f"[polish_docx_layout] internal-grid tables: {gridded_tables}", quiet=quiet)
     _log(f"[polish_docx_layout] fitted title paragraph: {title_fitted}", quiet=quiet)
     _log("[polish_docx_layout] done (in-place update)", quiet=quiet)
 

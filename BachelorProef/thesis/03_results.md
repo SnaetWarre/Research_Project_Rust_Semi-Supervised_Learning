@@ -304,7 +304,7 @@ Model weights cannot be transferred directly between these two workspaces. To sh
 
 ### 3.6.2 CUDA Memory Management
 
-During the pseudo-labeling simulation, the training loop creates and destroys thousands of tensors per epoch. Burn's CUDA backend allocates GPU memory through a caching allocator, but under sustained load, fragmentation can cause out-of-memory errors even when the total allocated memory is still below the device limit. The fix was to insert explicit synchronisation points at the end of each retraining cycle, so the allocator could compact its memory pools. On the 6 GB RTX 3060 used for development, this reduced peak memory usage from roughly 5.8 GB to 4.2 GB.
+During the pseudo-labeling simulation, the training loop creates and destroys thousands of tensors per epoch. Burn's CUDA backend allocates GPU memory through a caching allocator, but under sustained load, fragmentation can cause out-of-memory errors even when the total allocated memory is still below the device limit. The fix was to insert explicit synchronisation points at the end of each retraining cycle, so the allocator could compact its memory pools. On the 6 GB laptop RTX 3060 used for development, this reduced peak memory usage from roughly 5.8 GB to 4.2 GB.
 
 ### 3.6.3 Cross-Platform Image Preprocessing
 

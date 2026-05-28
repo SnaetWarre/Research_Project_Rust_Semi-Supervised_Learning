@@ -4,9 +4,9 @@ This chapter gives a critical evaluation of the research results. It is divided 
 
 ## 4.1 External Feedback
 
-I contacted two researchers from the 2AI-IPCA research lab, Helena Torres and Pedro Morais, who work in image processing and deep learning. I sent them the detailed interview questions by email. Pedro Morais answered five of the twenty questions. No response had been received from Helena Torres by the final thesis build.
+I contacted two researchers from the 2AI-IPCA research lab, Helena Torres and Pedro Morais, who work in image processing and deep learning. I sent them the detailed interview questions by email. Pedro Morais answered five of the twenty questions, and Helena Torres answered all twenty.
 
-Pedro Morais's feedback is integrated into the reflection below. The full responses are included in Appendix B. Appendix C documents the unanswered feedback request to Helena Torres for transparency.
+Their feedback is used throughout this chapter. Pedro Morais's full answers are in Appendix B, and Helena Torres's are in Appendix C.
 
 ## 4.2 Self-Reflection
 
@@ -20,7 +20,9 @@ Pedro Morais's feedback is integrated into the reflection below. The full respon
 
 ### 4.2.2 Weaknesses and Limitations
 
-**External expert feedback.** Pedro Morais from 2AI-IPCA reviewed the approach and confirmed that the 90% confidence threshold is a sensible starting point for controlled imaging conditions. He recommended sticking with a fixed threshold for this application, which is the strategy used in the current pipeline. He also suggested evaluating EfficientNet rather than the custom CNN, which aligns with the broader literature on mobile architectures and is a valid direction for future work. On augmentation, he cautioned that contrast and brightness manipulations can damage stability, a point that was not fully quantified in this project and that would benefit from a dedicated ablation study.
+**External expert feedback.** Pedro Morais from 2AI-IPCA reviewed the approach and confirmed that the 90% confidence threshold is a sensible starting point for controlled imaging conditions. He recommended keeping it fixed for this application, which is what the current pipeline does. Helena Torres agreed that pseudo-labeling makes sense when you want to keep deployment simple, but she warned that the initial model should be checked carefully at that 90% threshold. She specifically mentioned looking for systematic errors, class-specific bias and confusion between visually similar classes. Instead of relying on a single global threshold, she suggested trying per-class thresholds or uncertainty estimation.
+
+Both experts also commented on the model and the preprocessing. Pedro suggested evaluating EfficientNet, and Helena recommended comparing the custom CNN with MobileNetV3 or EfficientNet-Lite. This confirms that the custom architecture is a valid choice for an edge-focused prototype, but it is probably not the strongest mobile baseline available. On augmentation, Pedro cautioned that contrast and brightness manipulations can hurt stability. Helena gave a broader warning: intensity and spatial augmentations are useful when labeled data is scarce, but deformable transformations should be used with care in medical imaging because they can distort clinically meaningful structures. For this project, that means controlled augmentation ablations are needed, rather than assuming that every augmentation automatically improves robustness.
 
 **Pseudo-label quality is bounded by the initial model.** The effectiveness of the SSL pipeline is limited by the accuracy of the model that was trained on the 20% labeled subset. If the initial model systematically misclasses certain classes, those errors can continue through the pseudo-labeling cycle. Techniques such as co-training, where two models look at different views of the data, could reduce this risk, but they were not implemented because of the VRAM constraints on edge devices.
 
@@ -66,4 +68,5 @@ A few directions for future work stand out:
 2. **Active learning:** instead of discarding every low-confidence sample, the system could flag uncertain predictions and ask for human input. That would turn the SSL loop into a targeted labeling tool.
 3. **Federated learning:** multiple deployed devices could share model updates without sharing raw images, which would allow the model to improve over time while keeping data local.
 4. **Multi-disease detection:** extending the model to handle images where several diseases appear on the same leaf simultaneously.
-5. **Burn ecosystem contributions:** contributing missing features (mixed-precision training, model quantisation) back to the open-source framework.
+5. **Segmentation-assisted classification:** using leaf or symptom segmentation before classification to improve explainability and reduce the effect of irrelevant backgrounds.
+6. **Burn ecosystem contributions:** contributing missing features (mixed-precision training, model quantisation) back to the open-source framework.

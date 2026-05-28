@@ -50,6 +50,8 @@ Based on the experimental results and the literature review, the following param
 
 **A pitfall to avoid:** do not use the test set for any decision during training, including pseudo-label threshold tuning. This is one of the most common reasons why SSL research reports accuracy that is too optimistic.
 
+Do not treat the global 0.9 threshold as permanently correct either. It is a good starting point, but you should log per-class acceptance rates, confidence histograms and validation accuracy after every retraining cycle. If one class ends up with far more pseudo-labels than the others, or if visually similar classes keep getting confused, switch to per-class thresholds or add uncertainty estimation before you continue the SSL cycle.
+
 ## 5.4 Plan for Incremental Class Addition
 
 If the deployment scenario involves adding new classes over time, which is very likely in any real-world agricultural application, the experimental results from Chapter 3 provide a few important guidelines:
@@ -87,6 +89,8 @@ Testing on the actual device early reveals:
 - **Permissions and sandboxing:** iOS and Android restrict file system access, camera access and background processing. Those restrictions affect how the model is loaded and where inference results can be stored.
 
 **Recommendation:** by week 2 of development, have a minimal Tauri app that loads the model and runs inference on a single image on the target device. That establishes the deployment pipeline early and surfaces integration issues while they are still cheap to fix.
+
+For image preprocessing specifically, keep a small set of fixed reference images and compare the model's numerical outputs across desktop, mobile and web runtimes. That catches mistakes in channel ordering, resizing and normalisation before they turn into silent deployment bugs.
 
 ## 5.7 Practical Pitfalls and How to Avoid Them
 

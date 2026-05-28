@@ -1,18 +1,21 @@
 # Thesis TODO
 
-## Waiting For External Feedback
+## External Feedback Completed
 
-- [ ] Add Helena Torres's answers once received.
-- [ ] Re-check Chapter 4 reflection after Helena's answers are added.
-- [ ] Re-check Chapter 5 advice after Helena's answers are added.
-- [ ] Re-check Chapter 6 conclusion after the final feedback state is known.
-- [x] Decide whether Appendix C remains a full answered expert-feedback appendix or becomes a short pending/no-response appendix.
+- [x] Add Helena Torres's answers once received.
+- [x] Re-check Chapter 4 reflection after Helena's answers are added.
+- [x] Re-check Chapter 5 advice after Helena's answers are added.
+- [x] Re-check Chapter 6 conclusion after the final feedback state is known.
+- [x] Keep Appendix C as a full answered expert-feedback appendix.
 
-## Pedro Feedback Already Received
+## Expert Feedback Incorporated
 
 - [x] Pedro Morais answered five questions.
 - [x] Keep Pedro's feedback in Appendix B.
 - [x] Keep Chapter 4, Chapter 6, and the foreword aligned with the fact that Pedro answered.
+- [x] Helena Torres answered the full questionnaire.
+- [x] Keep Helena's feedback in Appendix C.
+- [x] Keep Chapter 4, Chapter 5, Chapter 6, and the foreword aligned with the fact that Helena answered.
 
 ## Non-Feedback Cleanup
 

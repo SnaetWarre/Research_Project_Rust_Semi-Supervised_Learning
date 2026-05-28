@@ -406,7 +406,7 @@ fn print_banner() {
         "{}",
         r#"
  ╔══════════════════════════════════════════════════════════════════╗
- ║   🌱 PlantVillage Semi-Supervised Learning                           ║
+ ║    PlantVillage Semi-Supervised Learning                           ║
  ║   Plant Disease Classification with Burn + Rust                      ║
  ║   Designed for GPU Training with CUDA                               ║
  ╚════════════════════════════════════════════════════════════════╝
@@ -466,8 +466,8 @@ fn cmd_stats(data_dir: &str, show_splits: bool) -> Result<()> {
             let stats = dataset.get_stats();
 
             println!("{}", "Dataset Statistics:".cyan().bold());
-            println!("  📊 Total samples: {}", stats.total_samples);
-            println!("  🏷️  Number of classes: {}", stats.num_classes);
+            println!("   Total samples: {}", stats.total_samples);
+            println!("    Number of classes: {}", stats.num_classes);
             println!();
 
             if show_splits {
@@ -480,22 +480,22 @@ fn cmd_stats(data_dir: &str, show_splits: bool) -> Result<()> {
                 let stream_size = remaining - labeled_size;
 
                 println!(
-                    "  🧪 Test set:        {} ({:.1}%)",
+                    "   Test set:        {} ({:.1}%)",
                     test_size,
                     100.0 * test_size as f64 / total as f64
                 );
                 println!(
-                    "  ✅ Validation set:  {} ({:.1}%)",
+                    "   Validation set:  {} ({:.1}%)",
                     val_size,
                     100.0 * val_size as f64 / total as f64
                 );
                 println!(
-                    "  🏷️  Labeled pool:    {} ({:.1}%)",
+                    "    Labeled pool:    {} ({:.1}%)",
                     labeled_size,
                     100.0 * labeled_size as f64 / total as f64
                 );
                 println!(
-                    "  📷 Stream pool:     {} ({:.1}%)",
+                    "   Stream pool:     {} ({:.1}%)",
                     stream_size,
                     100.0 * stream_size as f64 / total as f64
                 );
@@ -637,9 +637,9 @@ fn cmd_infer<B: Backend>(input: &str, model: &str, backend_name: &str) -> Result
     info!("  Model: {}", model);
 
     println!("{}", "Inference Configuration:".cyan().bold());
-    println!("  📷 Input:  {}", input);
-    println!("  🧠 Model:  {}", model);
-    println!("  🖥️  Backend: {}", backend_name);
+    println!("   Input:  {}", input);
+    println!("   Model:  {}", model);
+    println!("    Backend: {}", backend_name);
     println!();
 
     if !Path::new(input).exists() {
@@ -735,7 +735,7 @@ fn cmd_infer<B: Backend>(input: &str, model: &str, backend_name: &str) -> Result
         let is_correct = actual_class == *predicted_class;
 
         println!(
-            "📷 {}",
+            " {}",
             file_path.file_name().unwrap_or_default().to_string_lossy()
         );
         println!("  Actual:    {}", actual_class.yellow());
@@ -743,9 +743,9 @@ fn cmd_infer<B: Backend>(input: &str, model: &str, backend_name: &str) -> Result
             "  Predicted: {} {}",
             predicted_class,
             if is_correct {
-                "✅".green()
+                "".green()
             } else {
-                "❌".red()
+                "".red()
             }
         );
         println!("  Confidence: {:.1}%", indexed[0].1 * 100.0);
@@ -925,19 +925,19 @@ fn cmd_simulate<B: AutodiffBackend>(
     info!("  Labeled ratio: {:.0}%", labeled_ratio * 100.0);
 
     println!("{}", "Simulation Configuration:".cyan().bold());
-    println!("  📁 Data directory:    {}", data_dir);
-    println!("  🧠 Initial model:     {}", model);
-    println!("  📅 Simulated days:   {} (0 = unlimited)", days);
-    println!("  📷 Images per day:   {}", images_per_day);
-    println!("  🎯 Confidence threshold: {}", confidence_threshold);
-    println!("  🔄 Retrain threshold:  {} images", retrain_threshold);
+    println!("   Data directory:    {}", data_dir);
+    println!("   Initial model:     {}", model);
+    println!("   Simulated days:   {} (0 = unlimited)", days);
+    println!("   Images per day:   {}", images_per_day);
+    println!("   Confidence threshold: {}", confidence_threshold);
+    println!("   Retrain threshold:  {} images", retrain_threshold);
     println!(
-        "  🏷️  Labeled ratio:     {:.0}% (SSL stream: {:.0}%)",
+        "    Labeled ratio:     {:.0}% (SSL stream: {:.0}%)",
         labeled_ratio * 100.0,
         (1.0 - labeled_ratio) * 100.0
     );
-    println!("  💾 Output directory:   {}", output_dir);
-    println!("  🖥️  Backend:          {}", backend_name);
+    println!("   Output directory:   {}", output_dir);
+    println!("    Backend:          {}", backend_name);
     println!();
 
     let config = SimulationConfig {
@@ -1185,11 +1185,11 @@ fn cmd_eval<B: Backend>(
     }
 
     println!("{}", "Evaluation Configuration:".cyan().bold());
-    println!("  📁 Data directory: {}", data_dir);
-    println!("  🧠 Model: {}", model_path.display());
-    println!("  📦 Batch size: {}", batch_size);
-    println!("  🏷️  Labeled ratio: {:.0}%", labeled_ratio * 100.0);
-    println!("  🖥️  Backend: {}", backend_name);
+    println!("   Data directory: {}", data_dir);
+    println!("   Model: {}", model_path.display());
+    println!("   Batch size: {}", batch_size);
+    println!("    Labeled ratio: {:.0}%", labeled_ratio * 100.0);
+    println!("    Backend: {}", backend_name);
     println!();
 
     let dataset = PlantVillageDataset::new(data_dir)?;
@@ -1245,8 +1245,8 @@ fn cmd_eval<B: Backend>(
 
     println!();
     println!("{}", "Evaluation Results:".green().bold());
-    println!("  ✅ Accuracy (Top-1): {:.2}%", accuracy);
-    println!("  ✅ Macro F1:          {:.2}%", macro_f1);
+    println!("   Accuracy (Top-1): {:.2}%", accuracy);
+    println!("   Macro F1:          {:.2}%", macro_f1);
 
     Ok(())
 }
@@ -1258,9 +1258,9 @@ fn cmd_export(_input_dir: &str, _format: &str, _output: &str) -> Result<()> {
     info!("  Output: {}", _output);
 
     println!("{}", "Export Configuration:".cyan().bold());
-    println!("  📁 Input directory: {}", _input_dir);
-    println!("  📄 Format:          {}", _format);
-    println!("  💾 Output:          {}", _output);
+    println!("   Input directory: {}", _input_dir);
+    println!("   Format:          {}", _format);
+    println!("   Output:          {}", _output);
     println!();
 
     println!("{} Export implementation pending.", "Note:".yellow());

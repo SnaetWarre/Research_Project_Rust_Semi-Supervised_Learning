@@ -179,9 +179,9 @@ where
         model = model
             .load_file(&load_path, &recorder, &device)
             .map_err(|e| anyhow::anyhow!("Failed to load model: {:?}", e))?;
-        println!("  ✅ Checkpoint loaded");
+        println!("   Checkpoint loaded");
     } else {
-        println!("  ⚠️  No checkpoint found at {:?}", model_path);
+        println!("    No checkpoint found at {:?}", model_path);
         println!("  Tip: Train a model first with: plantvillage_ssl train");
     }
 

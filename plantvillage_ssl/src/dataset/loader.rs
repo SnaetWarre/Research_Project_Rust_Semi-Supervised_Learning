@@ -300,7 +300,7 @@ pub struct DatasetStats {
 impl DatasetStats {
     /// Print statistics to console
     pub fn print(&self) {
-        println!("\n📊 Dataset Statistics:");
+        println!("\n Dataset Statistics:");
         println!("  Total samples: {}", self.total_samples);
         println!("  Number of classes: {}", self.num_classes);
         println!("\n  Samples per class:");

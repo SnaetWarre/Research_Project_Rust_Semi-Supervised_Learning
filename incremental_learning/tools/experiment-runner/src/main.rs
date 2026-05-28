@@ -346,7 +346,7 @@ fn print_experiment_summary(config: &ExperimentConfig) {
     info!("Methods:");
     for method in &config.methods {
         if method.enabled {
-            info!("  ✓ {}", method.name);
+            info!("   {}", method.name);
         }
     }
     info!("");

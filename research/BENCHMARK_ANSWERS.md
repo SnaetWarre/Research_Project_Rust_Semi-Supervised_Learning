@@ -52,14 +52,14 @@ To ensure a fair comparison, we verified that both implementations use identical
 
 | Layer / Component | Specification | Verified in Code |
 |-------------------|---------------|------------------|
-| **Conv Block 1** | In: 3, Out: 32, Kernel: 3, Padding: Same, MaxPool: 2x2 | ✅ Match |
-| **Conv Block 2** | In: 32, Out: 64, Kernel: 3, Padding: Same, MaxPool: 2x2 | ✅ Match |
-| **Conv Block 3** | In: 64, Out: 128, Kernel: 3, Padding: Same, MaxPool: 2x2 | ✅ Match |
-| **Conv Block 4** | In: 128, Out: 256, Kernel: 3, Padding: Same, MaxPool: 2x2 | ✅ Match |
-| **Global Pooling** | Adaptive Average Pooling -> [Batch, Channels, 1, 1] | ✅ Match |
-| **Classifier Head** | Linear(256 -> 256) -> ReLU -> Dropout -> Linear(256 -> Classes) | ✅ Match |
-| **Activation** | ReLU (after every Conv and first Linear) | ✅ Match |
-| **Normalization** | BatchNorm (after every Conv) | ✅ Match |
+| **Conv Block 1** | In: 3, Out: 32, Kernel: 3, Padding: Same, MaxPool: 2x2 |  Match |
+| **Conv Block 2** | In: 32, Out: 64, Kernel: 3, Padding: Same, MaxPool: 2x2 |  Match |
+| **Conv Block 3** | In: 64, Out: 128, Kernel: 3, Padding: Same, MaxPool: 2x2 |  Match |
+| **Conv Block 4** | In: 128, Out: 256, Kernel: 3, Padding: Same, MaxPool: 2x2 |  Match |
+| **Global Pooling** | Adaptive Average Pooling -> [Batch, Channels, 1, 1] |  Match |
+| **Classifier Head** | Linear(256 -> 256) -> ReLU -> Dropout -> Linear(256 -> Classes) |  Match |
+| **Activation** | ReLU (after every Conv and first Linear) |  Match |
+| **Normalization** | BatchNorm (after every Conv) |  Match |
 
 Both models have approximately **0.46 million parameters** and are structurally identical.
 

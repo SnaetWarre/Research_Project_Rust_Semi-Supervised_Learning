@@ -482,10 +482,10 @@ incremental_learning/
 
 | Method | Avg Accuracy | Backward Transfer | Forgetting | Status |
 |--------|--------------|-------------------|------------|--------|
-| **Fine-Tuning** | 82.5% | -5.0% | 5.0% | ✅ Baseline |
-| **LwF** | 82.5% | -5.0% | 5.0% | ✅ Complete |
-| **EWC** | 82.5% | -5.0% | 5.0% | ✅ Complete |
-| **Rehearsal** | 82.5% | -5.0% | 5.0% | ✅ Complete |
+| **Fine-Tuning** | 82.5% | -5.0% | 5.0% |  Baseline |
+| **LwF** | 82.5% | -5.0% | 5.0% |  Complete |
+| **EWC** | 82.5% | -5.0% | 5.0% |  Complete |
+| **Rehearsal** | 82.5% | -5.0% | 5.0% |  Complete |
 
 ### Incremental Learning Configuration
 

@@ -386,7 +386,7 @@ fn print_banner() {
         "{}",
         r#"
 ╔══════════════════════════════════════════════════════════════════╗
-║   🔬 Plant Disease Classification - Experiment Runner               ║
+║    Plant Disease Classification - Experiment Runner               ║
 ║   Research Project: Semi-Supervised Learning on Edge Devices        ║
 ╚══════════════════════════════════════════════════════════════════╝
   "#

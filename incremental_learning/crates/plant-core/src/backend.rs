@@ -55,15 +55,15 @@ static BACKEND_INFO: OnceLock<String> = OnceLock::new();
 pub fn init_backend(config: &BackendConfig) -> Device {
     let device = match config.device {
         Device::Cpu => {
-            eprintln!("💻 Using CPU backend");
+            eprintln!(" Using CPU backend");
             Device::Cpu
         }
         Device::Gpu(id) => {
             if is_gpu_available() {
-                eprintln!("🚀 GPU detected (ID: {}) - will accelerate training", id);
+                eprintln!(" GPU detected (ID: {}) - will accelerate training", id);
                 Device::Gpu(id)
             } else {
-                eprintln!("⚠️  GPU requested but not available - falling back to CPU");
+                eprintln!("  GPU requested but not available - falling back to CPU");
                 Device::Cpu
             }
         }
@@ -73,7 +73,7 @@ pub fn init_backend(config: &BackendConfig) -> Device {
     let info = format!("Using device: {}", device);
     let _ = BACKEND_INFO.set(info.clone());
 
-    eprintln!("🔥 Burn backend initialized: {}", info);
+    eprintln!(" Burn backend initialized: {}", info);
 
     device
 }
@@ -82,12 +82,12 @@ pub fn init_backend(config: &BackendConfig) -> Device {
 pub fn select_best_device() -> Device {
     // Try GPU first if available
     if is_discrete_gpu_available() {
-        eprintln!("🚀 Discrete GPU detected - will use for acceleration");
+        eprintln!(" Discrete GPU detected - will use for acceleration");
         return Device::Gpu(0);
     }
 
     // Fallback to CPU
-    eprintln!("💻 No discrete GPU detected - using CPU backend");
+    eprintln!(" No discrete GPU detected - using CPU backend");
     Device::Cpu
 }
 
@@ -177,28 +177,28 @@ pub fn get_recommended_device() -> Device {
 
 /// Print system GPU information
 pub fn print_gpu_info() {
-    println!("🔍 System GPU Detection:");
+    println!(" System GPU Detection:");
     println!(
         "  NVIDIA GPU: {}",
         if has_nvidia_gpu() {
-            "✓ Detected"
+            " Detected"
         } else {
-            "✗ Not found"
+            " Not found"
         }
     );
     println!(
         "  AMD GPU:    {}",
         if has_amd_gpu() {
-            "✓ Detected"
+            " Detected"
         } else {
-            "✗ Not found"
+            " Not found"
         }
     );
     println!("  Recommended device: {}", get_recommended_device());
     println!();
 
     if is_gpu_available() {
-        println!("📝 Note: GPU detected but Burn will use NdArray backend (CPU) by default.");
+        println!(" Note: GPU detected but Burn will use NdArray backend (CPU) by default.");
         println!("   For GPU acceleration, additional setup is required:");
         println!("   - NVIDIA: Install CUDA toolkit and use burn-tch or burn-wgpu backend");
         println!("   - AMD: Install ROCm and use burn-tch backend");

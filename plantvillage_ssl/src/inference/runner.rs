@@ -216,14 +216,14 @@ pub fn run_benchmark<B: Backend>(
         println!();
         println!(
             "{} Meets target latency of {} ms!",
-            "✓".green().bold(),
+            "".green().bold(),
             target_latency_ms
         );
     } else {
         println!();
         println!(
             "{} Exceeds target latency of {} ms by {:.1} ms",
-            "⚠".yellow().bold(),
+            "".yellow().bold(),
             target_latency_ms,
             output.mean_ms - target_latency_ms
         );

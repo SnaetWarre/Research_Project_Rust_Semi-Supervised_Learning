@@ -156,7 +156,7 @@ where
         .map_err(|e| anyhow::anyhow!("Failed to create splits: {:?}", e))?;
 
     let split_stats = splits.stats();
-    println!("  📊 Stratified split created:");
+    println!("   Stratified split created:");
     println!("    Classes represented: {}", split_stats.num_classes);
     println!(
         "    Labeled pool: {} samples",
@@ -196,8 +196,8 @@ where
 
     println!();
     println!("{}", "Dataset Splits:".cyan().bold());
-    println!("  🏷️  Training samples:   {}", train_samples.len());
-    println!("  ✅ Validation samples: {}", val_samples.len());
+    println!("    Training samples:   {}", train_samples.len());
+    println!("   Validation samples: {}", val_samples.len());
 
     // Create datasets and batcher
     // Use 128x128 images for better GPU memory usage on 6GB cards
@@ -273,14 +273,14 @@ where
     let total_samples = train_samples.len() + val_samples.len();
     println!();
     println!("{}", "Training Configuration:".cyan().bold());
-    println!("  📊 Total samples:     {}", total_samples);
-    println!("  🏷️  Training samples:  {}", train_samples.len());
-    println!("  ✅ Validation samples: {}", val_samples.len());
-    println!("  🔄 Epochs:            {}", epochs);
-    println!("  📦 Batch size:        {}", batch_size);
-    println!("  📈 Learning rate:     {}", learning_rate);
+    println!("   Total samples:     {}", total_samples);
+    println!("    Training samples:  {}", train_samples.len());
+    println!("   Validation samples: {}", val_samples.len());
+    println!("   Epochs:            {}", epochs);
+    println!("   Batch size:        {}", batch_size);
+    println!("   Learning rate:     {}", learning_rate);
     println!(
-        "  🎨 Augmentation:      {}",
+        "   Augmentation:      {}",
         if use_augmentation {
             "enabled"
         } else {
@@ -289,14 +289,14 @@ where
     );
     if early_stop_config.enabled {
         println!(
-            "  🛑 Early stopping:    at {:.0}% val acc ({} epochs)",
+            "   Early stopping:    at {:.0}% val acc ({} epochs)",
             early_stop_config.target_accuracy * 100.0,
             early_stop_config.patience
         );
     } else {
-        println!("  🛑 Early stopping:    disabled");
+        println!("   Early stopping:    disabled");
     }
-    println!("  🧠 Device:            {:?}", device);
+    println!("   Device:            {:?}", device);
     println!();
 
     println!("{}", "Starting Training...".green().bold());
@@ -494,7 +494,7 @@ where
             println!(
                 "{}",
                 format!(
-                    "🛑 Early stopping: reached {:.1}% validation accuracy for {} epochs",
+                    " Early stopping: reached {:.1}% validation accuracy for {} epochs",
                     early_stop_config.target_accuracy * 100.0,
                     early_stop_config.patience
                 )
@@ -522,11 +522,11 @@ where
         .save_file(&checkpoint_path, &recorder)
         .map_err(|e| anyhow::anyhow!("Failed to save model: {:?}", e))?;
 
-    println!("  💾 Saved to: {:?}", checkpoint_path);
+    println!("   Saved to: {:?}", checkpoint_path);
     println!();
 
     println!("{}", "Training Complete!".green().bold());
-    println!("  🎉 Best validation accuracy: {:.2}%", best_val_acc);
+    println!("   Best validation accuracy: {:.2}%", best_val_acc);
     println!();
 
     println!("{}", "Next steps:".cyan().bold());

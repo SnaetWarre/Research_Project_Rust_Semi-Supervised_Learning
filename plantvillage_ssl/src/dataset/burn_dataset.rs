@@ -129,7 +129,7 @@ impl RawPlantVillageDataset {
     /// Create a new dataset by loading all images into memory (raw, unprocessed)
     pub fn new_cached(samples: Vec<(PathBuf, usize)>) -> anyhow::Result<Self> {
         let total = samples.len();
-        println!("  📦 Pre-loading {} raw images for augmentation...", total);
+        println!("   Pre-loading {} raw images for augmentation...", total);
 
         let pb = ProgressBar::new(total as u64);
         pb.set_style(
@@ -156,7 +156,7 @@ impl RawPlantVillageDataset {
 
         pb.finish_with_message(format!("Loaded {} raw images", items.len()));
         println!(
-            "  ✅ Loaded {} raw images for on-the-fly augmentation",
+            "   Loaded {} raw images for on-the-fly augmentation",
             items.len()
         );
 
@@ -216,7 +216,7 @@ impl PlantVillageBurnDataset {
     pub fn new_cached(samples: Vec<(PathBuf, usize)>, image_size: usize) -> anyhow::Result<Self> {
         let total = samples.len();
         println!(
-            "  📦 Pre-loading {} images into memory (parallel)...",
+            "   Pre-loading {} images into memory (parallel)...",
             total
         );
 
@@ -245,7 +245,7 @@ impl PlantVillageBurnDataset {
 
         pb.finish_with_message(format!("Loaded {} images", cached_items.len()));
         println!(
-            "  ✅ Loaded {} images into GPU-ready format",
+            "   Loaded {} images into GPU-ready format",
             cached_items.len()
         );
 

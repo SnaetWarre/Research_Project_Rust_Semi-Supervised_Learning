@@ -138,11 +138,11 @@ Deze gastsessie was zeer relevant voor mijn Research Project om de volgende rede
 
 ## Key Takeaways
 
-- ✅ AI-gegenereerde deepfakes zijn **verrassend makkelijk** te maken
-- ✅ Social engineering blijft een major threat vector
-- ✅ Training en awareness zijn de eerste verdedigingslinie
-- ✅ AI kan zowel **wapen** als **schild** zijn
-- ✅ SOAR en automatisering helpen security teams effectiever te werken
+-  AI-gegenereerde deepfakes zijn **verrassend makkelijk** te maken
+-  Social engineering blijft een major threat vector
+-  Training en awareness zijn de eerste verdedigingslinie
+-  AI kan zowel **wapen** als **schild** zijn
+-  SOAR en automatisering helpen security teams effectiever te werken
 
 ---
 

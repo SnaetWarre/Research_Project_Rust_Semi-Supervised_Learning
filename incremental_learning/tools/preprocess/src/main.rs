@@ -262,7 +262,7 @@ fn process_images(
         pb.finish_with_message("Done");
     }
 
-    info!("✓ Processing complete!");
+    info!(" Processing complete!");
     Ok(())
 }
 
@@ -365,7 +365,7 @@ fn split_dataset(
         );
     }
 
-    info!("\n✓ Split complete!");
+    info!("\n Split complete!");
     info!(
         "  Total - Train: {}, Val: {}, Test: {}",
         total_train, total_val, total_test
@@ -481,7 +481,7 @@ fn augment_dataset(
         pb.finish_with_message("Done");
     }
 
-    info!("✓ Augmentation complete!");
+    info!(" Augmentation complete!");
     Ok(())
 }
 
@@ -498,7 +498,7 @@ fn analyze_dataset(data_dir: &Path, output: Option<&Path>) -> Result<()> {
         .filter(|e| e.path().is_dir())
         .collect::<Vec<_>>();
 
-    println!("\n📊 Dataset Statistics\n");
+    println!("\n Dataset Statistics\n");
     println!("{:<40} {:>10} {:>15}", "Class", "Images", "Avg Size");
     println!("{}", "=".repeat(70));
 
@@ -563,7 +563,7 @@ fn analyze_dataset(data_dir: &Path, output: Option<&Path>) -> Result<()> {
         0
     };
 
-    println!("\n📈 Summary:");
+    println!("\n Summary:");
     println!("  Total classes:       {}", num_classes);
     println!("  Total images:        {}", total_images);
     println!("  Avg images/class:    {}", avg_per_class);
@@ -583,7 +583,7 @@ fn analyze_dataset(data_dir: &Path, output: Option<&Path>) -> Result<()> {
         });
 
         fs::write(output_path, serde_json::to_string_pretty(&full_stats)?)?;
-        info!("\n✓ Statistics saved to {:?}", output_path);
+        info!("\n Statistics saved to {:?}", output_path);
     }
 
     Ok(())
@@ -621,6 +621,6 @@ fn select_classes(input_dir: &Path, output_dir: &Path, classes: &[String]) -> Re
         info!("  Copied {} images", images.len());
     }
 
-    info!("✓ Class selection complete!");
+    info!(" Class selection complete!");
     Ok(())
 }

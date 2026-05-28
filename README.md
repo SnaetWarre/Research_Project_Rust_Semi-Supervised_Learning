@@ -6,11 +6,11 @@ Semi-supervised learning for plant disease classification on embedded edge devic
 
 ---
 
-## 📁 Structure
+##  Structure
 
 ```
 Source/
-├── plantvillage_ssl/      # SSL implementation (pseudo-labeling) ✅ WORKS
+├── plantvillage_ssl/      # SSL implementation (pseudo-labeling)  WORKS
 ├── incremental_learning/  # Add new classes (5→6, 30→31 experiments)
 ├── pytorch_reference/     # Python reference for comparison
 ├── benchmarks/            # Framework comparison scripts
@@ -19,7 +19,7 @@ Source/
 
 ---
 
-## 🚀 Quick Start
+##  Quick Start
 
 ### 1. Download Dataset (Once)
 ```bash
@@ -49,7 +49,7 @@ cargo build --release
 
 ---
 
-## 🎯 Research Questions
+##  Research Questions
 
 1. **SSL:** How efficient is pseudo-labeling on edge devices?
 2. **Incremental:** Is 5→6 harder than 30→31 classes?
@@ -57,7 +57,7 @@ cargo build --release
 
 ---
 
-## 📖 Documentation
+##  Documentation
 
 - [plantvillage_ssl/docs/](plantvillage_ssl/docs/) - Installation & user guide
 - [research/literatuurstudie.md](research/literatuurstudie.md) - Literature review

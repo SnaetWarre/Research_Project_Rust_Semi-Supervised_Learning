@@ -135,7 +135,7 @@ pub fn create_mobile_bundle(config: BundleConfig) -> Result<BundleMetadata> {
         metadata.total_images += sample_size;
         metadata.num_classes += 1;
 
-        println!("  ✓ {} ({} images)", class_name, sample_size);
+        println!("   {} ({} images)", class_name, sample_size);
     }
 
     // Save metadata

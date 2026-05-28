@@ -1,4 +1,4 @@
-# 📊 Benchmarks
+#  Benchmarks
 
 This directory contains benchmark results comparing different configurations and implementations of the PlantVillage semi-supervised learning system.
 

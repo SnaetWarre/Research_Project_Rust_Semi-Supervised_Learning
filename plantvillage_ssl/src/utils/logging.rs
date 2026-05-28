@@ -282,7 +282,7 @@ impl TrainingLogger {
 
     /// Log a new best model
     pub fn log_new_best(&self, accuracy: f64) {
-        tracing::info!("🎉 New best model! Accuracy: {:.2}%", accuracy * 100.0);
+        tracing::info!(" New best model! Accuracy: {:.2}%", accuracy * 100.0);
     }
 
     /// Log early stopping

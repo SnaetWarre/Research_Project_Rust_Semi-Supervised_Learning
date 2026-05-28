@@ -67,7 +67,7 @@ Best for scripting or server environments.
 
 This section describes what you can do with the application.
 
-### 🍃 A. Real-time Disease Detection (Inference)
+###  A. Real-time Disease Detection (Inference)
 
 **Goal**: Identify plant diseases from leaf images instantly.
 
@@ -79,7 +79,7 @@ This section describes what you can do with the application.
         * **Confidence**: How certain the model is (Green = High, Red = Low).
         * **Top 5**: A chart showing other potential matches.
 
-### 🔄 B. Semi-Supervised Learning Simulation
+###  B. Semi-Supervised Learning Simulation
 
 **Goal**: Visualize how the model improves by learning from unlabeled data without human intervention.
 
@@ -92,7 +92,7 @@ This section describes what you can do with the application.
         * High-confidence predictions become "pseudo-labels".
         * The model **automatically retrains** when enough new data is collected.
 
-### 🧪 C. Experiments
+###  C. Experiments
 
 **Goal**: Run specific experimental scenarios to validate learning performance.
 
@@ -101,7 +101,7 @@ This section describes what you can do with the application.
     2. Select an experiment type (e.g., Class Incremental Learning).
     3. Monitor the metrics as the experiment runs.
 
-### 🏋️ D. Train New Models
+###  D. Train New Models
 
 **Goal**: Create a custom classification model from a dataset.
 

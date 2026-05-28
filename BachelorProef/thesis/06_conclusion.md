@@ -2,7 +2,7 @@
 
 This thesis set out to answer the question: **How can a semi-supervised neural network be efficiently implemented in Rust for the automatic labeling of partially labeled datasets on an edge device?**
 
-The short answer is that it can be done by combining a lightweight custom CNN built with the Burn framework, an iterative pseudo-labeling pipeline with confidence-based filtering, and a cross-platform deployment strategy built around Tauri. The longer answer involves the specific trade-offs, numbers and lessons learned that emerged from the research.
+The short answer is that it can be done by combining a lightweight custom CNN built with the Burn framework, an iterative pseudo-labeling pipeline with confidence-based filtering, and a cross-platform deployment strategy built around Tauri. The longer answer involves the specific trade-offs, numbers and lessons learned that came out of this project.
 
 ## 6.1 What Was Built
 

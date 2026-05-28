@@ -71,7 +71,7 @@ As a result, the same model code compiles for CUDA (for GPU-accelerated training
 
 ### 3.1.3 Model Size
 
-The trained model weights take up about 916 KB in Burn's native CompactRecorder format. The compiled Rust release binary, which includes the model, the inference runtime and the application code, is roughly 26 MB. The PyTorch checkpoint for the same CNN architecture is similar in size, only a few MB. **The model weights themselves are therefore comparable between both stacks.**
+The trained model weights take up about 916 KB in Burn's native CompactRecorder format. The compiled Rust release binary, which includes the model, the inference runtime and the application code, is roughly 26 MB. The PyTorch checkpoint for the same CNN architecture is similar in size, only a few MB. **The model weights are simular in both of these stacks.**
 
 The important difference is **what has to be present on the end user's device to run inference.** With Rust, the release binary is the only artefact that has to be there. It is a single 26 MB file that contains the compiled runtime and the dependencies. With Python, running the same model requires the Python interpreter, the PyTorch library, with or without CUDA support, and several extra packages. A CUDA-enabled PyTorch wheel alone is typically in the low gigabytes once unpacked [6][7], and a practical environment with TorchVision, NumPy, Pillow and similar packages grows further from there.
 
@@ -260,7 +260,7 @@ A few things stand out in the benchmark results.
 
 **Mobile performance.** The iPhone 12, running the model through Tauri's Rust backend, reached roughly 80 ms per inference (around 12 FPS) in local testing. That is within the usability threshold for a camera-based application where a farmer points a phone at a leaf and waits for a classification, though this measurement was taken on a single device and may vary across iOS versions and hardware revisions.
 
-**The Jetson result.** The Jetson Orin Nano, which is a dedicated edge AI device costing €350, performed worse than the iPhone 12 in this test, with 120 ms compared to 80 ms. That result shaped the project's deployment strategy. Consumer devices that many users already own can outperform dedicated low-end edge hardware for this specific model. The project therefore shifted to a BYOD (Bring Your Own Device) model, which removes extra hardware cost.
+**The Jetson result.** The Jetson Orin Nano, which is a dedicated edge AI device costing €350, performed worse than the iPhone 12 in this test, with 120 ms compared to 80 ms. That result shaped the project's deployment strategy. Consumer devices that many users already own can outperform dedicated low-end edge hardware for this specific model. Because of that, the project shifted to a BYOD (Bring Your Own Device) model, which removes extra hardware cost.
 
 **Deployment size advantage.** The compiled binary of roughly 26 MB can be distributed over Bluetooth, a USB drive or a short mobile data connection. A Python/PyTorch deployment requires a multi-gigabyte environment on the target device, which is not practical over those same channels and makes offline-first deployment harder.
 

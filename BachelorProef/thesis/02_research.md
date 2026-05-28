@@ -6,7 +6,7 @@ This chapter explains the theoretical background that is needed to understand th
 
 ### 2.1.1 Fundamentals
 
-Semi-supervised learning (SSL) sits between supervised learning, where every data point is labeled, and unsupervised learning, where there are no labels at all. SSL combines a small set of labeled examples with a large pool of unlabeled data to train a model that performs comparably to one trained on a fully labeled dataset [1]. That is particularly valuable in domains where labeling is expensive, and agricultural image annotation by plant pathologists is a clear example of such a domain.
+Semi-supervised learning (SSL) is the middle ground between supervised learning, where every data point is labeled, and unsupervised learning, where there are no labels at all. SSL combines a small set of labeled examples with a large pool of unlabeled data to train a model that performs comparably to one trained on a fully labeled dataset [1]. That is particularly valuable in domains where labeling is expensive, and agricultural image annotation by plant pathologists is a perfect example for this.
 
 The core assumption behind SSL is the **cluster assumption**: data points that lie close together in feature space are likely to share the same label. When that assumption holds, the structure of the unlabeled data provides useful information about where the decision boundary should run [1].
 
@@ -26,13 +26,13 @@ The critical design choice here is the **confidence threshold**. If the threshol
 
 Several recent studies have applied SSL to plant disease detection with good results:
 
-**Ambiguity-Aware Semi-Supervised Learning (AaSSL).** Pham et al. (2025) address the problem of ambiguous samples near the decision boundary. Their method explicitly filters these samples out rather than accepting them as pseudo-labels. With only 5% of the data labeled, accuracy improved from 90.74% to 94.09% [3]. This idea directly influenced the confidence-threshold filtering used in this project.
+**Ambiguity-Aware Semi-Supervised Learning (AaSSL).** Pham et al. (2025) address the problem of ambiguous samples near the decision boundary. Their method explicitly filters these samples out rather than accepting them as pseudo-labels. With only 5% of the data labeled, accuracy improved from 90.74% to 94.09% [3]. That is why in this project I will be using the confidence-threshold filtering method.
 
 **Mean Teacher and Consistency Regularization.** Ilsever and Baz (2024) apply a student-teacher architecture to the PlantVillage dataset. The teacher's weights are an exponential moving average (EMA) of the student's weights, and a consistency loss is applied under different augmentations. That approach reached 88.50% accuracy with 5% labeled data [4]. It is effective, but Mean Teacher requires two models in memory at the same time. That is a real constraint on edge devices with limited VRAM.
 
-**Semi-supervised jute leaf disease classification.** Jannat (2025) shows that a lightweight CNN combined with SSL on 10% labeled and 90% unlabeled data can reach 97.89% accuracy, specifically with mobile and edge deployment in mind [1]. This result supports the broader idea that simple architectures paired with effective SSL can outperform more complex models in constrained environments.
+**Semi-supervised jute leaf disease classification.** Jannat (2025) shows that a lightweight CNN combined with SSL on 10% labeled and 90% unlabeled data can reach 97.89% accuracy, specifically with mobile and edge deployment in mind [1]. This shows that simple architectures paired with effective SSL can outperform more complex models in constrained environments.
 
-**Self-supervised pretraining.** Wang et al. (2024) show that self-supervised pretraining using Masked Autoencoders (MAE) and attention mechanisms such as CBAM can improve feature extractors for downstream classification with limited labels [5]. That approach falls outside the scope of the current project, but it is a promising direction for future work.
+**Self-supervised pretraining.** Wang et al. (2024) show that self-supervised pretraining using Masked Autoencoders (MAE) and attention mechanisms such as CBAM can improve feature extractors for downstream classification with limited labels [5]. That was not implemented in this project, but it defenitely could be worth trying later.
 
 ### 2.1.4 The Pseudo-Labeling Pipeline Design
 
@@ -73,7 +73,7 @@ Three Rust ML frameworks were evaluated for this project:
 | **Deployment** | Static binary | Static binary / WASM | Requires LibTorch shared library |
 | **Edge suitability** | High (no heavy dependencies) | High (lightweight) | Medium (complex cross-compilation) |
 
-**Burn** [8][9] is a backend-agnostic framework with a full training API that supports custom training loops. That is exactly what is needed for a pseudo-labeling cycle. Its `Module` derive macro allows type-safe model definitions that are generic over backends, so the same code can compile against CUDA, CPU, wgpu or WASM targets without changing the model code.
+**Burn** [8][9] is a backend-agnostic framework with a full training API that supports custom training loops. That is what you really need for a pseudo-labeling cycle. Its `Module` derive macro allows type-safe model definitions that are generic over backends, so the same code can compile against CUDA, CPU, wgpu or WASM targets without changing the model code.
 
 **Candle**, developed by Hugging Face, is strong at inference for large language models and transformer architectures. Its training API, however, is more limited and does not comfortably support the iterative pseudo-labeling loops that SSL relies on.
 
@@ -156,7 +156,7 @@ Burn also supports `burn-wgpu` for cross-platform GPU (Vulkan, Metal, DX12, WebG
 
 ### 2.3.1 The Problem
 
-In a real-world deployment, the set of classes that the model has to recognise will not stay the same forever. New diseases appear, new crop varieties are introduced and regional conditions change. A practical system should therefore be able to **add new classes** to an existing model without retraining from scratch on the full dataset.
+In practice, the set of classes that the model has to recognise will not stay the same forever. New diseases appear, new crop varieties are introduced and regional conditions change. A practical system should therefore be able to **add new classes** to an existing model without retraining from scratch on the full dataset.
 
 The main obstacle is **catastrophic forgetting**. When a neural network is fine-tuned on new data, it tends to overwrite the weights that encoded knowledge about the older data, which causes performance on the previously learned classes to degrade [12].
 

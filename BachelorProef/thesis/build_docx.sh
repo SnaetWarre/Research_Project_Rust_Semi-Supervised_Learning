@@ -11,11 +11,12 @@
 #     Heading 1/2/4–9 in the output only. The template binds those styles to a multilevel list,
 #     which would otherwise add 1., 2., … before headings that already include chapter numbers.
 #
-# Table of contents: Pandoc TOC is off by default (PANDOC_TOC=1 for a quick draft). For the final
-# document, in Word: cursor after front matter → References → Table of Contents → Custom.
+# Table of contents: enabled by default as a native DOCX/Word TOC field. The Lua filter marks
+# non-numbered headings and headings deeper than X.X as unlisted, so only headings like
+# “1. Introduction” and “1.1 Context” appear. Set PANDOC_TOC=0 to disable it for debugging.
 #
 # Optional environment (combine as needed):
-#   PANDOC_TOC=1             Insert Pandoc TOC at the top.
+#   PANDOC_TOC=0             Disable the generated DOCX table of contents.
 #   BUILD_DOCX_OUT_DIR       Output directory for the generated docx
 #                            (default: /home/warre/ThesisConnectionv2).
 #   BUILD_DOCX_VERBOSE=1     Bash xtrace, verbose strip script.
@@ -69,14 +70,14 @@ fi
 mkdir -p "${OUT_DIR}"
 
 TOC_ARGS=()
-if [[ "${PANDOC_TOC:-}" == "1" ]]; then
-  TOC_ARGS=(--toc --toc-depth=3)
-  log "Pandoc TOC enabled (--toc --toc-depth=3)"
+if [[ "${PANDOC_TOC:-1}" != "0" ]]; then
+  TOC_ARGS=(--toc --toc-depth=2 --metadata=toc-title:"Table of Contents")
+  log "Pandoc TOC enabled (--toc --toc-depth=2; numbered level 1/2 headings only)"
 else
-  log "Pandoc TOC disabled (set PANDOC_TOC=1 to enable)"
+  log "Pandoc TOC disabled (PANDOC_TOC=0)"
 fi
 
-# Title page + abstract only (drop the Markdown “Table of Contents”; Word can add a real TOC).
+# Title page + abstract only. The table of contents is generated as a DOCX field by Pandoc.
 TITLE_FRONT="$(mktemp)"
 trap 'rm -f "${TITLE_FRONT}"' EXIT
 head -n 35 "${SCRIPT_DIR}/00_title_and_abstract.md" > "${TITLE_FRONT}"

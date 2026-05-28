@@ -12,6 +12,7 @@ reliably:
 - add subtle internal grid lines to generated Word tables;
 - keep regular chapter tables on one page when they fit;
 - make regular chapter tables use the full printable width;
+- keep non-numbered front matter and appendix headings out of the native TOC;
 - make the long thesis title fit on one centered line.
 """
 
@@ -22,11 +23,13 @@ import os
 import re
 import sys
 import zipfile
+from copy import deepcopy
 from io import BytesIO
 import xml.etree.ElementTree as ET
 
 W_NS = "http://schemas.openxmlformats.org/wordprocessingml/2006/main"
 DOCUMENT_PATH = "word/document.xml"
+STYLES_PATH = "word/styles.xml"
 
 ET.register_namespace("w", W_NS)
 
@@ -68,6 +71,15 @@ def _paragraph_style(p: ET.Element) -> str | None:
     return style.get(_attr("val"))
 
 
+def _set_paragraph_style(p: ET.Element, style_id: str) -> None:
+    ppr = _ensure_ppr(p)
+    style = _child(ppr, "pStyle")
+    if style is None:
+        style = ET.Element(_w("pStyle"))
+        ppr.insert(0, style)
+    style.set(_attr("val"), style_id)
+
+
 def _ensure_ppr(p: ET.Element) -> ET.Element:
     ppr = _child(p, "pPr")
     if ppr is None:
@@ -97,6 +109,10 @@ def _is_caption_text(text: str) -> bool:
 
 def _is_table_caption_text(text: str) -> bool:
     return text.startswith("Table ") and ":" in text
+
+
+def _is_numbered_toc_heading_text(text: str) -> bool:
+    return re.match(r"^\d+(?:\.\d+)?\.?\s+", text) is not None
 
 
 def _keep_with_next(p: ET.Element) -> None:
@@ -176,6 +192,16 @@ def _keep_table_together(tbl: ET.Element) -> int:
 
 def _is_content_chapter_heading(text: str) -> bool:
     return re.match(r"^[1-6]\.\s+", text) is not None
+
+
+def _detoc_non_numbered_heading(style: str | None, text: str, p: ET.Element) -> bool:
+    if style not in {"Heading1", "Heading2"}:
+        return False
+    if _is_numbered_toc_heading_text(text):
+        return False
+
+    _set_paragraph_style(p, f"{style}Unlisted")
+    return True
 
 
 def _apply_content_table_layout(root: ET.Element) -> tuple[int, int, int]:
@@ -289,6 +315,58 @@ def _copy_paragraph_properties(p: ET.Element) -> ET.Element:
     return copied
 
 
+def _page_break_paragraph() -> ET.Element:
+    p = ET.Element(_w("p"))
+    r = ET.SubElement(p, _w("r"))
+    br = ET.SubElement(r, _w("br"))
+    br.set(_attr("type"), "page")
+    return p
+
+
+def _is_page_break_paragraph(p: ET.Element) -> bool:
+    return p.tag == _w("p") and p.find(f".//{_w('br')}") is not None
+
+
+def _is_toc_block(el: ET.Element) -> bool:
+    return el.find(f".//{_w('instrText')}") is not None and any(
+        "TOC" in (node.text or "") for node in el.findall(f".//{_w('instrText')}")
+    )
+
+
+def _move_toc_after_abstract(root: ET.Element) -> bool:
+    body = root.find(f".//{_w('body')}")
+    if body is None:
+        return False
+
+    children = list(body)
+    toc = next((child for child in children if _is_toc_block(child)), None)
+    if toc is None:
+        return False
+
+    body.remove(toc)
+    children = list(body)
+
+    foreword_index = next(
+        (
+            index
+            for index, child in enumerate(children)
+            if child.tag == _w("p") and _paragraph_text(child).strip() == "Foreword"
+        ),
+        None,
+    )
+    if foreword_index is None:
+        return False
+
+    insert_index = foreword_index
+    if foreword_index > 0 and _is_page_break_paragraph(children[foreword_index - 1]):
+        insert_index = foreword_index - 1
+
+    body.insert(insert_index, _page_break_paragraph())
+    body.insert(insert_index + 1, toc)
+    body.insert(insert_index + 2, _page_break_paragraph())
+    return True
+
+
 def _split_image_caption_paragraph(parent: ET.Element, index: int, p: ET.Element) -> bool:
     if p.find(f".//{_w('drawing')}") is None:
         return False
@@ -365,6 +443,55 @@ def _fit_title_paragraph(p: ET.Element) -> None:
         _set_or_replace(rpr, sz_cs)
 
 
+def _remove_style_child(style: ET.Element, child_name: str) -> None:
+    child = _child(style, child_name)
+    if child is not None:
+        style.remove(child)
+
+
+def _remove_nested_style_child(style: ET.Element, parent_name: str, child_name: str) -> None:
+    parent = _child(style, parent_name)
+    if parent is None:
+        return
+    child = _child(parent, child_name)
+    if child is not None:
+        parent.remove(child)
+
+
+def _ensure_unlisted_heading_style(styles_root: ET.Element, source_style_id: str) -> bool:
+    target_style_id = f"{source_style_id}Unlisted"
+    existing = styles_root.find(f".//{_w('style')}[@{_attr('styleId')}='{target_style_id}']")
+    if existing is not None:
+        return False
+
+    source = styles_root.find(f".//{_w('style')}[@{_attr('styleId')}='{source_style_id}']")
+    if source is None:
+        return False
+
+    style = deepcopy(source)
+    style.set(_attr("styleId"), target_style_id)
+
+    name = _child(style, "name")
+    if name is not None:
+        name.set(_attr("val"), f"{source_style_id} unlisted")
+
+    _remove_style_child(style, "link")
+    _remove_style_child(style, "qFormat")
+    _remove_nested_style_child(style, "pPr", "outlineLvl")
+
+    styles_root.append(style)
+    return True
+
+
+def _polish_styles(xml_bytes: bytes) -> tuple[bytes, int]:
+    root = ET.fromstring(xml_bytes)
+    created = 0
+    for style_id in ("Heading1", "Heading2"):
+        if _ensure_unlisted_heading_style(root, style_id):
+            created += 1
+    return ET.tostring(root, encoding="utf-8", xml_declaration=True), created
+
+
 def _split_inline_figure_captions(root: ET.Element) -> int:
     split_count = 0
     for parent in root.iter():
@@ -379,13 +506,15 @@ def _split_inline_figure_captions(root: ET.Element) -> int:
     return split_count
 
 
-def _polish_document(xml_bytes: bytes) -> tuple[bytes, int, int, int, int, int, int, int, int, bool]:
+def _polish_document(xml_bytes: bytes) -> tuple[bytes, int, int, int, int, int, int, int, int, int, bool, bool]:
     root = ET.fromstring(xml_bytes)
+    moved_toc = _move_toc_after_abstract(root)
     split_captions = _split_inline_figure_captions(root)
     boxed_code_blocks = 0
     centered_figures = 0
     keep_next_paragraphs = 0
     gridded_tables = 0
+    detoc_headings = 0
     title_fitted = False
     widened_tables, kept_tables, kept_table_cell_paragraphs = _apply_content_table_layout(root)
 
@@ -425,6 +554,9 @@ def _polish_document(xml_bytes: bytes) -> tuple[bytes, int, int, int, int, int, 
             _fit_title_paragraph(p)
             title_fitted = True
 
+        if _detoc_non_numbered_heading(style, text, p):
+            detoc_headings += 1
+
     out = ET.tostring(root, encoding="utf-8", xml_declaration=True)
     return (
         out,
@@ -436,7 +568,9 @@ def _polish_document(xml_bytes: bytes) -> tuple[bytes, int, int, int, int, int, 
         widened_tables,
         kept_tables,
         kept_table_cell_paragraphs,
+        detoc_headings,
         title_fitted,
+        moved_toc,
     )
 
 
@@ -466,6 +600,11 @@ def main() -> None:
             print(f"[polish_docx_layout] skip: {DOCUMENT_PATH} missing in archive", file=sys.stderr)
             return
 
+        styles_xml = None
+        created_unlisted_styles = 0
+        if STYLES_PATH in zin.namelist():
+            styles_xml, created_unlisted_styles = _polish_styles(zin.read(STYLES_PATH))
+
         (
             document_xml,
             boxed_code_blocks,
@@ -476,14 +615,21 @@ def main() -> None:
             widened_tables,
             kept_tables,
             kept_table_cell_paragraphs,
+            detoc_headings,
             title_fitted,
+            moved_toc,
         ) = _polish_document(
             zin.read(DOCUMENT_PATH)
         )
 
         with zipfile.ZipFile(buf, "w") as zout:
             for info in zin.infolist():
-                data = document_xml if info.filename == DOCUMENT_PATH else zin.read(info.filename)
+                if info.filename == DOCUMENT_PATH:
+                    data = document_xml
+                elif info.filename == STYLES_PATH and styles_xml is not None:
+                    data = styles_xml
+                else:
+                    data = zin.read(info.filename)
                 zout.writestr(info, data)
 
     with open(docx_path, "wb") as f:
@@ -503,7 +649,10 @@ def main() -> None:
         f"[polish_docx_layout] keep-together table cell paragraphs: {kept_table_cell_paragraphs}",
         quiet=quiet,
     )
+    _log(f"[polish_docx_layout] created unlisted heading styles: {created_unlisted_styles}", quiet=quiet)
+    _log(f"[polish_docx_layout] non-TOC heading paragraphs: {detoc_headings}", quiet=quiet)
     _log(f"[polish_docx_layout] fitted title paragraph: {title_fitted}", quiet=quiet)
+    _log(f"[polish_docx_layout] moved TOC after abstract: {moved_toc}", quiet=quiet)
     _log("[polish_docx_layout] done (in-place update)", quiet=quiet)
 
 

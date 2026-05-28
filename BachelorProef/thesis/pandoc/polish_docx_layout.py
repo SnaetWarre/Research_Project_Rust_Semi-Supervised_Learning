@@ -10,6 +10,8 @@ reliably:
 - split image and caption content into separate Word paragraphs;
 - keep headings, table captions and figures with the following paragraph;
 - add subtle internal grid lines to generated Word tables;
+- keep regular chapter tables on one page when they fit;
+- make regular chapter tables use the full printable width;
 - make the long thesis title fit on one centered line.
 """
 
@@ -17,6 +19,7 @@ from __future__ import annotations
 
 import argparse
 import os
+import re
 import sys
 import zipfile
 from io import BytesIO
@@ -121,6 +124,93 @@ def _table_column_count(tbl: ET.Element) -> int:
 
 def _table_row_count(tbl: ET.Element) -> int:
     return len(tbl.findall(_w("tr")))
+
+
+def _table_rows(tbl: ET.Element) -> list[ET.Element]:
+    return tbl.findall(_w("tr"))
+
+
+def _table_cell_paragraphs(row: ET.Element) -> list[ET.Element]:
+    return row.findall(f".//{_w('tc')}/{_w('p')}")
+
+
+def _set_full_width_table(tbl: ET.Element) -> None:
+    tbl_pr = _ensure_tbl_pr(tbl)
+
+    tbl_w = ET.Element(_w("tblW"))
+    tbl_w.set(_attr("w"), "5000")
+    tbl_w.set(_attr("type"), "pct")
+    _set_or_replace(tbl_pr, tbl_w)
+
+    jc = ET.Element(_w("jc"))
+    jc.set(_attr("val"), "center")
+    _set_or_replace(tbl_pr, jc)
+
+
+def _set_row_cannot_split(row: ET.Element) -> None:
+    tr_pr = _child(row, "trPr")
+    if tr_pr is None:
+        tr_pr = ET.Element(_w("trPr"))
+        row.insert(0, tr_pr)
+
+    cant_split = ET.Element(_w("cantSplit"))
+    _set_or_replace(tr_pr, cant_split)
+
+
+def _keep_table_together(tbl: ET.Element) -> int:
+    rows = _table_rows(tbl)
+    if len(rows) <= 1:
+        return 0
+
+    kept = 0
+    for row_index, row in enumerate(rows):
+        _set_row_cannot_split(row)
+        paragraphs = _table_cell_paragraphs(row)
+        for p in paragraphs:
+            _keep_lines_together(p)
+            if row_index < len(rows) - 1:
+                _keep_with_next(p)
+                kept += 1
+    return kept
+
+
+def _is_content_chapter_heading(text: str) -> bool:
+    return re.match(r"^[1-6]\.\s+", text) is not None
+
+
+def _apply_content_table_layout(root: ET.Element) -> tuple[int, int, int]:
+    body = root.find(f".//{_w('body')}")
+    if body is None:
+        return 0, 0, 0
+
+    in_content_chapter = False
+    widened_tables = 0
+    kept_tables = 0
+    kept_cell_paragraphs = 0
+
+    for child in body:
+        if child.tag == _w("p"):
+            style = _paragraph_style(child)
+            text = _paragraph_text(child).strip()
+            if style == "Heading1":
+                in_content_chapter = _is_content_chapter_heading(text)
+            continue
+
+        if child.tag != _w("tbl") or not in_content_chapter:
+            continue
+
+        rows = _table_row_count(child)
+        # Large lists are allowed to flow over pages. Regular content tables in
+        # the thesis chapters are short enough to keep together.
+        if rows > 12:
+            continue
+
+        _set_full_width_table(child)
+        widened_tables += 1
+        kept_cell_paragraphs += _keep_table_together(child)
+        kept_tables += 1
+
+    return widened_tables, kept_tables, kept_cell_paragraphs
 
 
 def _apply_internal_table_grid(tbl: ET.Element) -> bool:
@@ -289,7 +379,7 @@ def _split_inline_figure_captions(root: ET.Element) -> int:
     return split_count
 
 
-def _polish_document(xml_bytes: bytes) -> tuple[bytes, int, int, int, int, bool]:
+def _polish_document(xml_bytes: bytes) -> tuple[bytes, int, int, int, int, int, int, int, int, bool]:
     root = ET.fromstring(xml_bytes)
     split_captions = _split_inline_figure_captions(root)
     boxed_code_blocks = 0
@@ -297,6 +387,7 @@ def _polish_document(xml_bytes: bytes) -> tuple[bytes, int, int, int, int, bool]
     keep_next_paragraphs = 0
     gridded_tables = 0
     title_fitted = False
+    widened_tables, kept_tables, kept_table_cell_paragraphs = _apply_content_table_layout(root)
 
     for tbl in root.findall(f".//{_w('tbl')}"):
         if _apply_internal_table_grid(tbl):
@@ -335,7 +426,18 @@ def _polish_document(xml_bytes: bytes) -> tuple[bytes, int, int, int, int, bool]
             title_fitted = True
 
     out = ET.tostring(root, encoding="utf-8", xml_declaration=True)
-    return out, boxed_code_blocks, centered_figures, split_captions, keep_next_paragraphs, gridded_tables, title_fitted
+    return (
+        out,
+        boxed_code_blocks,
+        centered_figures,
+        split_captions,
+        keep_next_paragraphs,
+        gridded_tables,
+        widened_tables,
+        kept_tables,
+        kept_table_cell_paragraphs,
+        title_fitted,
+    )
 
 
 def _log(msg: str, *, quiet: bool) -> None:
@@ -364,7 +466,18 @@ def main() -> None:
             print(f"[polish_docx_layout] skip: {DOCUMENT_PATH} missing in archive", file=sys.stderr)
             return
 
-        document_xml, boxed_code_blocks, centered_figures, split_captions, keep_next_paragraphs, gridded_tables, title_fitted = _polish_document(
+        (
+            document_xml,
+            boxed_code_blocks,
+            centered_figures,
+            split_captions,
+            keep_next_paragraphs,
+            gridded_tables,
+            widened_tables,
+            kept_tables,
+            kept_table_cell_paragraphs,
+            title_fitted,
+        ) = _polish_document(
             zin.read(DOCUMENT_PATH)
         )
 
@@ -384,6 +497,12 @@ def main() -> None:
     _log(f"[polish_docx_layout] split inline figure captions: {split_captions}", quiet=quiet)
     _log(f"[polish_docx_layout] keep-with-next paragraphs: {keep_next_paragraphs}", quiet=quiet)
     _log(f"[polish_docx_layout] internal-grid tables: {gridded_tables}", quiet=quiet)
+    _log(f"[polish_docx_layout] full-width content tables: {widened_tables}", quiet=quiet)
+    _log(f"[polish_docx_layout] keep-together content tables: {kept_tables}", quiet=quiet)
+    _log(
+        f"[polish_docx_layout] keep-together table cell paragraphs: {kept_table_cell_paragraphs}",
+        quiet=quiet,
+    )
     _log(f"[polish_docx_layout] fitted title paragraph: {title_fitted}", quiet=quiet)
     _log("[polish_docx_layout] done (in-place update)", quiet=quiet)
 

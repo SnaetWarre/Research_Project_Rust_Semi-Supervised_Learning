@@ -119,10 +119,10 @@ The saved checkpoints were re-evaluated with Burn 0.21.0 on the held-out test sp
 
 **Table 3.1:** Held-out test evaluation of saved checkpoints
 
-| Model | Checkpoint | Split | Samples | Top-1 accuracy | Macro F1 | Backend |
-|:---|:---|:---|---:|---:|---:|:---|
-| Supervised baseline | `output/models/plant_classifier_20260411_220030.mpk` | Test | 8,786 | 86.06% | 86.08% | CUDA (Burn 0.21) |
-| SSL checkpoint | `output/simulation/plant_classifier_ssl_20260412_002832.mpk` | Test | 8,786 | 94.90% | 94.74% | CUDA (Burn 0.21) |
+| Model | Samples | Top-1 accuracy | Macro F1 |
+|:---|---:|---:|---:|
+| Supervised baseline | 8,786 | 86.06% | 86.08% |
+| SSL checkpoint | 8,786 | 94.90% | 94.74% |
 
 The saved SSL checkpoint improves held-out test accuracy by 8.84 percentage points and macro F1 by 8.66 percentage points compared with the saved supervised baseline. This supports the central SSL claim more strongly than the earlier validation-only wording, because the comparison is now made on the held-out test split. These values are still single-checkpoint results rather than averages over multiple random seeds.
 

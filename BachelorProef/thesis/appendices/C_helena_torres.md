@@ -96,7 +96,3 @@ Helena Torres answered the full expert-feedback questionnaire. The questions and
 **Question 19:** Is there anything else you would like to add, or any aspect of the approach that you think deserves more attention?
 
 > I do not know if you already evaluated this, but it could also be interesting to analyse the model's performance across different datasets or acquisition conditions, such as different environments, plant species, lighting conditions, or the presence of bugs and other visual artefacts.
-
-**Question 20:** May I reference you by name and organization in my thesis?
-
-> Yes.

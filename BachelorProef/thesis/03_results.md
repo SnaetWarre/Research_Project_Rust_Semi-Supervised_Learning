@@ -194,6 +194,10 @@ Two scenarios were compared. In Scenario A, a model was trained on 5 base classe
 
 Both scenarios were evaluated at five labeling levels: 5, 10, 25, 50 and 100 labeled samples for the new class.
 
+```{=openxml}
+<w:p><w:r><w:br w:type="page"/></w:r></w:p>
+```
+
 **Table 3.4:** New class accuracy by label count and base size
 
 | Labeled samples | 6th class accuracy | 31st class accuracy | Difference |

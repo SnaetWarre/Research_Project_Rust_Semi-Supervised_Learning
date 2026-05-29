@@ -9,9 +9,8 @@ reliably:
 - center figure images and their captions;
 - split image and caption content into separate Word paragraphs;
 - keep headings, table captions and figures with the following paragraph;
-- add subtle internal grid lines to generated Word tables;
-- keep regular chapter tables on one page when they fit;
-- make regular chapter tables use the full printable width;
+- keep key-finding labels with the first finding;
+- make generated tables use explicit cell widths for stable DOCX import;
 - keep non-numbered front matter and appendix headings out of the native TOC;
 - make the long thesis title fit on one centered line.
 """
@@ -163,6 +162,41 @@ def _set_full_width_table(tbl: ET.Element) -> None:
     _set_or_replace(tbl_pr, jc)
 
 
+def _stabilize_table_width(tbl: ET.Element) -> bool:
+    cols = _table_column_count(tbl)
+    if cols <= 0:
+        return False
+
+    _set_full_width_table(tbl)
+
+    total_width = 9000
+    col_width = total_width // cols
+
+    grid = _child(tbl, "tblGrid")
+    if grid is None:
+        grid = ET.Element(_w("tblGrid"))
+        insert_at = 1 if _child(tbl, "tblPr") is not None else 0
+        tbl.insert(insert_at, grid)
+    for child in list(grid):
+        grid.remove(child)
+    for _ in range(cols):
+        grid_col = ET.SubElement(grid, _w("gridCol"))
+        grid_col.set(_attr("w"), str(col_width))
+
+    for row in _table_rows(tbl):
+        for cell in row.findall(_w("tc")):
+            tc_pr = _child(cell, "tcPr")
+            if tc_pr is None:
+                tc_pr = ET.Element(_w("tcPr"))
+                cell.insert(0, tc_pr)
+            tc_w = ET.Element(_w("tcW"))
+            tc_w.set(_attr("w"), str(col_width))
+            tc_w.set(_attr("type"), "dxa")
+            _set_or_replace(tc_pr, tc_w)
+
+    return True
+
+
 def _set_row_cannot_split(row: ET.Element) -> None:
     tr_pr = _child(row, "trPr")
     if tr_pr is None:
@@ -173,21 +207,95 @@ def _set_row_cannot_split(row: ET.Element) -> None:
     _set_or_replace(tr_pr, cant_split)
 
 
+def _remove_table_keep_next(tbl: ET.Element) -> None:
+    for ppr in tbl.findall(f".//{_w('pPr')}"):
+        keep_next = _child(ppr, "keepNext")
+        if keep_next is not None:
+            ppr.remove(keep_next)
+
+
+def _remove_table_keep_next_from_all(root: ET.Element) -> None:
+    for tbl in root.findall(f".//{_w('tbl')}"):
+        _remove_table_keep_next(tbl)
+
+
 def _keep_table_together(tbl: ET.Element) -> int:
     rows = _table_rows(tbl)
     if len(rows) <= 1:
         return 0
 
     kept = 0
-    for row_index, row in enumerate(rows):
-        _set_row_cannot_split(row)
+    for row in rows:
         paragraphs = _table_cell_paragraphs(row)
         for p in paragraphs:
             _keep_lines_together(p)
-            if row_index < len(rows) - 1:
-                _keep_with_next(p)
-                kept += 1
     return kept
+
+
+def _keep_result_table_captions_on_fresh_page(root: ET.Element) -> int:
+    body = root.find(f".//{_w('body')}")
+    if body is None:
+        return 0
+
+    moved = 0
+    result_table_numbers = {"3.3", "3.4", "3.5"}
+    offset = 0
+    children = list(body)
+    for index, child in enumerate(children):
+        if child.tag != _w("p"):
+            continue
+        text = _paragraph_text(child).strip()
+        match = re.match(r"^Table\s+(\d+\.\d+):", text)
+        if match and match.group(1) in result_table_numbers:
+            insert_at = index + offset
+            current_children = list(body)
+            if insert_at == 0 or not _is_page_break_paragraph(current_children[insert_at - 1]):
+                body.insert(insert_at, _page_break_paragraph())
+                offset += 1
+            _keep_with_next(child)
+            moved += 1
+    return moved
+
+
+def _is_block_boundary(child: ET.Element) -> bool:
+    if child.tag != _w("p"):
+        return child.tag == _w("tbl")
+
+    style = _paragraph_style(child)
+    text = _paragraph_text(child).strip()
+    if text == "":
+        return True
+    if (style or "").startswith("Heading"):
+        return True
+    if _is_table_caption_text(text) or _is_caption_text(text):
+        return True
+    return False
+
+
+def _apply_key_findings_layout(root: ET.Element) -> tuple[int, int]:
+    body = root.find(f".//{_w('body')}")
+    if body is None:
+        return 0, 0
+
+    blocks = 0
+    paragraphs = 0
+    children = list(body)
+    for index, child in enumerate(children):
+        if child.tag != _w("p") or _paragraph_text(child).strip() != "Key findings:":
+            continue
+
+        blocks += 1
+        _keep_with_next(child)
+        _keep_lines_together(child)
+        paragraphs += 1
+
+        follower = next((item for item in children[index + 1 :] if item.tag == _w("p")), None)
+        if follower is not None and not _is_block_boundary(follower):
+            _keep_with_next(follower)
+            _keep_lines_together(follower)
+            paragraphs += 1
+
+    return blocks, paragraphs
 
 
 def _is_content_chapter_heading(text: str) -> bool:
@@ -204,15 +312,13 @@ def _detoc_non_numbered_heading(style: str | None, text: str, p: ET.Element) -> 
     return True
 
 
-def _apply_content_table_layout(root: ET.Element) -> tuple[int, int, int]:
+def _apply_content_table_layout(root: ET.Element) -> int:
     body = root.find(f".//{_w('body')}")
     if body is None:
-        return 0, 0, 0
+        return 0
 
     in_content_chapter = False
     widened_tables = 0
-    kept_tables = 0
-    kept_cell_paragraphs = 0
 
     for child in body:
         if child.tag == _w("p"):
@@ -225,18 +331,11 @@ def _apply_content_table_layout(root: ET.Element) -> tuple[int, int, int]:
         if child.tag != _w("tbl") or not in_content_chapter:
             continue
 
-        rows = _table_row_count(child)
-        # Large lists are allowed to flow over pages. Regular content tables in
-        # the thesis chapters are short enough to keep together.
-        if rows > 12:
-            continue
-
+        _remove_table_keep_next(child)
         _set_full_width_table(child)
         widened_tables += 1
-        kept_cell_paragraphs += _keep_table_together(child)
-        kept_tables += 1
 
-    return widened_tables, kept_tables, kept_cell_paragraphs
+    return widened_tables
 
 
 def _apply_internal_table_grid(tbl: ET.Element) -> bool:
@@ -508,21 +607,22 @@ def _split_inline_figure_captions(root: ET.Element) -> int:
     return split_count
 
 
-def _polish_document(xml_bytes: bytes) -> tuple[bytes, int, int, int, int, int, int, int, int, int, bool, bool]:
+def _polish_document(xml_bytes: bytes) -> tuple[bytes, int, int, int, int, int, int, int, int, bool, bool]:
     root = ET.fromstring(xml_bytes)
     moved_toc = _move_toc_after_abstract(root)
     split_captions = _split_inline_figure_captions(root)
     boxed_code_blocks = 0
     centered_figures = 0
     keep_next_paragraphs = 0
-    gridded_tables = 0
+    stabilized_tables = 0
     detoc_headings = 0
     title_fitted = False
-    widened_tables, kept_tables, kept_table_cell_paragraphs = _apply_content_table_layout(root)
+    _remove_table_keep_next_from_all(root)
+    key_finding_blocks, key_finding_paragraphs = _apply_key_findings_layout(root)
 
     for tbl in root.findall(f".//{_w('tbl')}"):
-        if _apply_internal_table_grid(tbl):
-            gridded_tables += 1
+        if _stabilize_table_width(tbl):
+            stabilized_tables += 1
 
     for p in root.findall(f".//{_w('p')}"):
         style = _paragraph_style(p)
@@ -566,10 +666,9 @@ def _polish_document(xml_bytes: bytes) -> tuple[bytes, int, int, int, int, int, 
         centered_figures,
         split_captions,
         keep_next_paragraphs,
-        gridded_tables,
-        widened_tables,
-        kept_tables,
-        kept_table_cell_paragraphs,
+        stabilized_tables,
+        key_finding_blocks,
+        key_finding_paragraphs,
         detoc_headings,
         title_fitted,
         moved_toc,
@@ -613,10 +712,9 @@ def main() -> None:
             centered_figures,
             split_captions,
             keep_next_paragraphs,
-            gridded_tables,
-            widened_tables,
-            kept_tables,
-            kept_table_cell_paragraphs,
+            stabilized_tables,
+            key_finding_blocks,
+            key_finding_paragraphs,
             detoc_headings,
             title_fitted,
             moved_toc,
@@ -644,11 +742,10 @@ def main() -> None:
     _log(f"[polish_docx_layout] centered figure paragraphs: {centered_figures}", quiet=quiet)
     _log(f"[polish_docx_layout] split inline figure captions: {split_captions}", quiet=quiet)
     _log(f"[polish_docx_layout] keep-with-next paragraphs: {keep_next_paragraphs}", quiet=quiet)
-    _log(f"[polish_docx_layout] internal-grid tables: {gridded_tables}", quiet=quiet)
-    _log(f"[polish_docx_layout] full-width content tables: {widened_tables}", quiet=quiet)
-    _log(f"[polish_docx_layout] keep-together content tables: {kept_tables}", quiet=quiet)
+    _log(f"[polish_docx_layout] stabilized table widths: {stabilized_tables}", quiet=quiet)
+    _log(f"[polish_docx_layout] key-finding blocks: {key_finding_blocks}", quiet=quiet)
     _log(
-        f"[polish_docx_layout] keep-together table cell paragraphs: {kept_table_cell_paragraphs}",
+        f"[polish_docx_layout] key-finding keep-with-next paragraphs: {key_finding_paragraphs}",
         quiet=quiet,
     )
     _log(f"[polish_docx_layout] created unlisted heading styles: {created_unlisted_styles}", quiet=quiet)

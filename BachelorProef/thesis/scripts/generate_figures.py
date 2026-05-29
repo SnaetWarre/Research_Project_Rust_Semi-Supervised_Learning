@@ -242,48 +242,63 @@ def figure_deployment_comparison() -> None:
 
 
 def figure_pipeline_flowchart() -> None:
-    fig, ax = plt.subplots(figsize=mm_to_inches(160, 115))
-    strip_axes(ax, (0, 160), (0, 115))
+    fig, ax = plt.subplots(figsize=mm_to_inches(180, 130))
+    strip_axes(ax, (0, 180), (0, 130))
 
     def node(x: float, y: float, w: float, h: float, text: str, face: str = "white") -> None:
-        draw_box(ax, x, y, w, h, text, face=face, edge=BLUE if face != "white" else LIGHT_GRAY, color="white" if face != "white" else TEXT, size=8, wrap=18)
+        draw_box(
+            ax,
+            x,
+            y,
+            w,
+            h,
+            text,
+            face=face,
+            edge=BLUE if face != "white" else LIGHT_GRAY,
+            color="white" if face != "white" else TEXT,
+            size=7.8,
+            wrap=20,
+        )
 
     def diamond(cx: float, cy: float, w: float, h: float, text: str) -> None:
         pts = [(cx, cy + h / 2), (cx + w / 2, cy), (cx, cy - h / 2), (cx - w / 2, cy)]
         ax.add_patch(Polygon(pts, closed=True, facecolor="white", edgecolor=BLUE, linewidth=1.3))
-        ax.text(cx, cy, fill(text, 14), ha="center", va="center", fontsize=8)
+        ax.text(cx, cy, fill(text, 16), ha="center", va="center", fontsize=7.8)
 
-    center_x = 80
-    node(56, 103, 48, 10, "Start: labeled data (20%)", BLUE)
-    node(56, 88, 48, 10, "Train initial CNN")
-    node(52, 73, 56, 10, "Inference on unlabeled stream")
-    diamond(center_x, 58, 50, 18, "Confidence >= 0.9?")
-    node(56, 38, 48, 10, "Accept as pseudo-label")
-    node(118, 53, 34, 10, "Reject / discard")
-    diamond(center_x, 25, 46, 16, "Buffer >= 200?")
-    node(6, 20, 46, 11, "Retrain CNN on labeled + pseudo")
-    diamond(38, 8, 42, 14, "Validation plateau?")
-    node(108, 3, 36, 10, "Final model", BLUE)
+    center_x = 90
+    node(60, 116, 60, 10, "Start: labeled data (20%)", BLUE)
+    node(60, 99, 60, 10, "Train initial CNN")
+    node(56, 82, 68, 10, "Inference on unlabeled stream")
+    diamond(center_x, 63, 64, 20, "Confidence >= 0.9?")
+    node(60, 40, 60, 10, "Accept as pseudo-label")
+    node(134, 58, 38, 10, "Reject / discard")
+    diamond(center_x, 28, 56, 18, "Buffer >= 200?")
+    node(8, 22, 56, 11, "Retrain CNN on labeled + pseudo")
+    diamond(46, 8, 52, 15, "Validation plateau?")
+    node(128, 2, 42, 11, "Final model", BLUE)
 
-    arrow(ax, (80, 103), (80, 98))
-    arrow(ax, (80, 88), (80, 83))
-    arrow(ax, (80, 73), (80, 67))
-    arrow(ax, (80, 49), (80, 48))
-    ax.text(89, 50, "Yes", fontsize=7, color=BLUE)
-    arrow(ax, (80, 38), (80, 33))
-    arrow(ax, (57, 25), (52, 25))
-    ax.text(54, 29, "Yes", fontsize=7, color=BLUE)
-    arrow(ax, (29, 20), (33, 15))
-    arrow(ax, (59, 8), (108, 8), color=BLUE)
-    ax.text(72, 10, "Yes", fontsize=7, color=BLUE)
-    ax.plot([17, 3, 3], [8, 8, 78], color=GRAY, linewidth=1.3, linestyle="--")
-    arrow(ax, (3, 78), (52, 78), color=GRAY, dashed=True)
-    ax.text(9, 80, "No", fontsize=7, color=GRAY)
-    ax.plot([103, 116, 116], [25, 25, 78], color=GRAY, linewidth=1.3, linestyle="--")
-    arrow(ax, (116, 78), (108, 78), color=GRAY, dashed=True)
-    ax.text(106, 28, "No", fontsize=7, color=GRAY)
-    arrow(ax, (105, 58), (118, 58))
-    ax.text(109, 61, "No", fontsize=7, color=GRAY)
+    arrow(ax, (90, 116), (90, 109), mutation_scale=9)
+    arrow(ax, (90, 99), (90, 92), mutation_scale=9)
+    arrow(ax, (90, 82), (90, 73), mutation_scale=9)
+    arrow(ax, (90, 53), (90, 50), mutation_scale=9)
+    ax.text(101, 51.5, "Yes", fontsize=7, color=BLUE)
+    arrow(ax, (90, 40), (90, 37), mutation_scale=9)
+    arrow(ax, (62, 28), (64, 28), mutation_scale=9)
+    ax.text(61, 32.5, "Yes", fontsize=7, color=BLUE)
+    arrow(ax, (34, 22), (39, 15), mutation_scale=9)
+    arrow(ax, (72, 8), (128, 8), color=BLUE, mutation_scale=9)
+    ax.text(84, 11.5, "Yes", fontsize=7, color=BLUE)
+
+    ax.plot([20, 4, 4], [8, 8, 87], color=GRAY, linewidth=1.3, linestyle="--")
+    arrow(ax, (4, 87), (56, 87), color=GRAY, dashed=True, mutation_scale=9)
+    ax.text(10, 90, "No", fontsize=7, color=GRAY)
+
+    ax.plot([118, 132, 132], [28, 28, 87], color=GRAY, linewidth=1.3, linestyle="--")
+    arrow(ax, (132, 87), (124, 87), color=GRAY, dashed=True, mutation_scale=9)
+    ax.text(120, 32, "No", fontsize=7, color=GRAY)
+
+    arrow(ax, (122, 63), (134, 63), mutation_scale=9)
+    ax.text(124, 66.5, "No", fontsize=7, color=GRAY)
 
     save(fig, FIG_DIR / "pipeline_flowchart.svg")
 

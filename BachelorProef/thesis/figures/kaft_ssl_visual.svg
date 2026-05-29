@@ -1,0 +1,377 @@
+<svg id="kaft-ssl-visual" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1920 1080" role="img" aria-label="Semi-supervised learning pseudo-labeling overview">
+  <style>
+    text {
+      font-family: "Noto Sans", "DejaVu Sans", Helvetica, Arial, sans-serif;
+      letter-spacing: 0;
+    }
+    .canvas {
+      fill: #FFFFFF;
+    }
+    .panel {
+      fill: #FBFCFC;
+      stroke: #CAD6D2;
+      stroke-width: 4;
+    }
+    .panel-label {
+      fill: #102033;
+      font-size: 33px;
+      font-weight: 850;
+    }
+    .panel-sub {
+      fill: #5C6B78;
+      font-size: 20px;
+      font-weight: 650;
+    }
+    .chip-title {
+      fill: #FFFFFF;
+      font-size: 42px;
+      font-weight: 850;
+    }
+    .chip-sub {
+      fill: rgba(255,255,255,0.82);
+      font-size: 22px;
+      font-weight: 700;
+    }
+    .pseudo-title {
+      fill: #102033;
+      font-size: 34px;
+      font-weight: 850;
+    }
+    .pseudo-sub {
+      fill: #5C6B78;
+      font-size: 20px;
+      font-weight: 650;
+    }
+    .arrow {
+      fill: none;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+      stroke-width: 7;
+    }
+    .arrow-blue { stroke: #174A7C; }
+    .arrow-teal { stroke: #0F6B63; }
+    .loop {
+      stroke: #5C6B78;
+      stroke-width: 4.5;
+      stroke-dasharray: 9 12;
+      opacity: 0.55;
+    }
+    .step {
+      fill: #FFFFFF;
+      stroke: #CAD6D2;
+      stroke-width: 3;
+    }
+    .step-text {
+      fill: #5C6B78;
+      font-size: 18px;
+      font-weight: 750;
+    }
+    .pin {
+      fill: #EAF1F7;
+      stroke: #C9D8E4;
+      stroke-width: 2;
+    }
+    .shadow {
+      filter: url(#shadow);
+    }
+  </style>
+  <defs>
+    <marker id="arrow-blue" markerWidth="18" markerHeight="18" refX="16" refY="9" orient="auto" markerUnits="userSpaceOnUse">
+      <path d="M2 2 L16 9 L2 16 Z" fill="#174A7C" />
+    </marker>
+    <marker id="arrow-teal" markerWidth="18" markerHeight="18" refX="16" refY="9" orient="auto" markerUnits="userSpaceOnUse">
+      <path d="M2 2 L16 9 L2 16 Z" fill="#0F6B63" />
+    </marker>
+    <marker id="arrow-muted" markerWidth="16" markerHeight="16" refX="14" refY="8" orient="auto" markerUnits="userSpaceOnUse">
+      <path d="M2 2 L14 8 L2 14 Z" fill="#5C6B78" opacity="0.55" />
+    </marker>
+    <filter id="shadow" x="-16%" y="-18%" width="132%" height="138%">
+      <feDropShadow dx="0" dy="14" stdDeviation="15" flood-color="#102033" flood-opacity="0.10" />
+    </filter>
+  </defs>
+
+  <rect class="canvas" x="0" y="0" width="1920" height="1080" />
+
+  <g id="labeled-data" class="shadow">
+    <rect class="panel" x="82" y="222" width="430" height="246" rx="36" />
+    <text class="panel-label" x="126" y="278" text-anchor="start">Labeled data</text>
+    <text class="panel-sub" x="126" y="308" text-anchor="start">small trusted set</text>
+    
+      <g class="">
+        <rect x="148.5" y="338.0" width="43.0" height="32.7" fill="#FFFFFF" stroke="#2F7D5B" stroke-width="2.6" />
+        <ellipse cx="170" cy="338.0" rx="21.5" ry="6.9" fill="#FFFFFF" stroke="#2F7D5B" stroke-width="2.6" />
+        <ellipse cx="170" cy="370.7" rx="21.5" ry="6.9" fill="#2F7D5B" fill-opacity="0.15" stroke="#2F7D5B" stroke-width="2.6" />
+        <path d="M 148.5 351.7 C 159.2 356.0, 180.8 356.0, 191.5 351.7" fill="none" stroke="#2F7D5B" stroke-width="1.8" opacity="0.65" />
+      </g>
+    
+
+      <g class="">
+        <rect x="220.5" y="338.0" width="43.0" height="32.7" fill="#FFFFFF" stroke="#D98B2B" stroke-width="2.6" />
+        <ellipse cx="242" cy="338.0" rx="21.5" ry="6.9" fill="#FFFFFF" stroke="#D98B2B" stroke-width="2.6" />
+        <ellipse cx="242" cy="370.7" rx="21.5" ry="6.9" fill="#D98B2B" fill-opacity="0.15" stroke="#D98B2B" stroke-width="2.6" />
+        <path d="M 220.5 351.7 C 231.2 356.0, 252.8 356.0, 263.5 351.7" fill="none" stroke="#D98B2B" stroke-width="1.8" opacity="0.65" />
+      </g>
+    
+
+      <g class="">
+        <rect x="292.5" y="338.0" width="43.0" height="32.7" fill="#FFFFFF" stroke="#4979B6" stroke-width="2.6" />
+        <ellipse cx="314" cy="338.0" rx="21.5" ry="6.9" fill="#FFFFFF" stroke="#4979B6" stroke-width="2.6" />
+        <ellipse cx="314" cy="370.7" rx="21.5" ry="6.9" fill="#4979B6" fill-opacity="0.15" stroke="#4979B6" stroke-width="2.6" />
+        <path d="M 292.5 351.7 C 303.2 356.0, 324.8 356.0, 335.5 351.7" fill="none" stroke="#4979B6" stroke-width="1.8" opacity="0.65" />
+      </g>
+    
+
+      <g class="">
+        <rect x="184.5" y="410.0" width="43.0" height="32.7" fill="#FFFFFF" stroke="#2F7D5B" stroke-width="2.6" />
+        <ellipse cx="206" cy="410.0" rx="21.5" ry="6.9" fill="#FFFFFF" stroke="#2F7D5B" stroke-width="2.6" />
+        <ellipse cx="206" cy="442.7" rx="21.5" ry="6.9" fill="#2F7D5B" fill-opacity="0.15" stroke="#2F7D5B" stroke-width="2.6" />
+        <path d="M 184.5 423.7 C 195.2 428.0, 216.8 428.0, 227.5 423.7" fill="none" stroke="#2F7D5B" stroke-width="1.8" opacity="0.65" />
+      </g>
+    
+
+      <g class="">
+        <rect x="256.5" y="410.0" width="43.0" height="32.7" fill="#FFFFFF" stroke="#D98B2B" stroke-width="2.6" />
+        <ellipse cx="278" cy="410.0" rx="21.5" ry="6.9" fill="#FFFFFF" stroke="#D98B2B" stroke-width="2.6" />
+        <ellipse cx="278" cy="442.7" rx="21.5" ry="6.9" fill="#D98B2B" fill-opacity="0.15" stroke="#D98B2B" stroke-width="2.6" />
+        <path d="M 256.5 423.7 C 267.2 428.0, 288.8 428.0, 299.5 423.7" fill="none" stroke="#D98B2B" stroke-width="1.8" opacity="0.65" />
+      </g>
+    
+  </g>
+
+  <g id="unlabeled-data" class="shadow">
+    <rect class="panel" x="82" y="540" width="430" height="328" rx="36" />
+    <text class="panel-label" x="126" y="596" text-anchor="start">Unlabeled data</text>
+    <text class="panel-sub" x="126" y="626" text-anchor="start">larger pool</text>
+    
+      <g class="">
+        <rect x="130.5" y="650.0" width="39.0" height="29.6" fill="#FFFFFF" stroke="#AEB9C3" stroke-width="2.3" />
+        <ellipse cx="150" cy="650.0" rx="19.5" ry="6.2" fill="#FFFFFF" stroke="#AEB9C3" stroke-width="2.3" />
+        <ellipse cx="150" cy="679.6" rx="19.5" ry="6.2" fill="#AEB9C3" fill-opacity="0.15" stroke="#AEB9C3" stroke-width="2.3" />
+        <path d="M 130.5 662.4 C 140.2 666.3, 159.8 666.3, 169.5 662.4" fill="none" stroke="#AEB9C3" stroke-width="1.6" opacity="0.65" />
+      </g>
+    
+
+      <g class="">
+        <rect x="202.5" y="650.0" width="39.0" height="29.6" fill="#FFFFFF" stroke="#AEB9C3" stroke-width="2.3" />
+        <ellipse cx="222" cy="650.0" rx="19.5" ry="6.2" fill="#FFFFFF" stroke="#AEB9C3" stroke-width="2.3" />
+        <ellipse cx="222" cy="679.6" rx="19.5" ry="6.2" fill="#AEB9C3" fill-opacity="0.15" stroke="#AEB9C3" stroke-width="2.3" />
+        <path d="M 202.5 662.4 C 212.2 666.3, 231.8 666.3, 241.5 662.4" fill="none" stroke="#AEB9C3" stroke-width="1.6" opacity="0.65" />
+      </g>
+    
+
+      <g class="">
+        <rect x="274.5" y="650.0" width="39.0" height="29.6" fill="#FFFFFF" stroke="#AEB9C3" stroke-width="2.3" />
+        <ellipse cx="294" cy="650.0" rx="19.5" ry="6.2" fill="#FFFFFF" stroke="#AEB9C3" stroke-width="2.3" />
+        <ellipse cx="294" cy="679.6" rx="19.5" ry="6.2" fill="#AEB9C3" fill-opacity="0.15" stroke="#AEB9C3" stroke-width="2.3" />
+        <path d="M 274.5 662.4 C 284.2 666.3, 303.8 666.3, 313.5 662.4" fill="none" stroke="#AEB9C3" stroke-width="1.6" opacity="0.65" />
+      </g>
+    
+
+      <g class="">
+        <rect x="346.5" y="650.0" width="39.0" height="29.6" fill="#FFFFFF" stroke="#AEB9C3" stroke-width="2.3" />
+        <ellipse cx="366" cy="650.0" rx="19.5" ry="6.2" fill="#FFFFFF" stroke="#AEB9C3" stroke-width="2.3" />
+        <ellipse cx="366" cy="679.6" rx="19.5" ry="6.2" fill="#AEB9C3" fill-opacity="0.15" stroke="#AEB9C3" stroke-width="2.3" />
+        <path d="M 346.5 662.4 C 356.2 666.3, 375.8 666.3, 385.5 662.4" fill="none" stroke="#AEB9C3" stroke-width="1.6" opacity="0.65" />
+      </g>
+    
+
+      <g class="">
+        <rect x="130.5" y="724.0" width="39.0" height="29.6" fill="#FFFFFF" stroke="#AEB9C3" stroke-width="2.3" />
+        <ellipse cx="150" cy="724.0" rx="19.5" ry="6.2" fill="#FFFFFF" stroke="#AEB9C3" stroke-width="2.3" />
+        <ellipse cx="150" cy="753.6" rx="19.5" ry="6.2" fill="#AEB9C3" fill-opacity="0.15" stroke="#AEB9C3" stroke-width="2.3" />
+        <path d="M 130.5 736.4 C 140.2 740.3, 159.8 740.3, 169.5 736.4" fill="none" stroke="#AEB9C3" stroke-width="1.6" opacity="0.65" />
+      </g>
+    
+
+      <g class="">
+        <rect x="202.5" y="724.0" width="39.0" height="29.6" fill="#FFFFFF" stroke="#AEB9C3" stroke-width="2.3" />
+        <ellipse cx="222" cy="724.0" rx="19.5" ry="6.2" fill="#FFFFFF" stroke="#AEB9C3" stroke-width="2.3" />
+        <ellipse cx="222" cy="753.6" rx="19.5" ry="6.2" fill="#AEB9C3" fill-opacity="0.15" stroke="#AEB9C3" stroke-width="2.3" />
+        <path d="M 202.5 736.4 C 212.2 740.3, 231.8 740.3, 241.5 736.4" fill="none" stroke="#AEB9C3" stroke-width="1.6" opacity="0.65" />
+      </g>
+    
+
+      <g class="">
+        <rect x="274.5" y="724.0" width="39.0" height="29.6" fill="#FFFFFF" stroke="#AEB9C3" stroke-width="2.3" />
+        <ellipse cx="294" cy="724.0" rx="19.5" ry="6.2" fill="#FFFFFF" stroke="#AEB9C3" stroke-width="2.3" />
+        <ellipse cx="294" cy="753.6" rx="19.5" ry="6.2" fill="#AEB9C3" fill-opacity="0.15" stroke="#AEB9C3" stroke-width="2.3" />
+        <path d="M 274.5 736.4 C 284.2 740.3, 303.8 740.3, 313.5 736.4" fill="none" stroke="#AEB9C3" stroke-width="1.6" opacity="0.65" />
+      </g>
+    
+
+      <g class="">
+        <rect x="346.5" y="724.0" width="39.0" height="29.6" fill="#FFFFFF" stroke="#AEB9C3" stroke-width="2.3" />
+        <ellipse cx="366" cy="724.0" rx="19.5" ry="6.2" fill="#FFFFFF" stroke="#AEB9C3" stroke-width="2.3" />
+        <ellipse cx="366" cy="753.6" rx="19.5" ry="6.2" fill="#AEB9C3" fill-opacity="0.15" stroke="#AEB9C3" stroke-width="2.3" />
+        <path d="M 346.5 736.4 C 356.2 740.3, 375.8 740.3, 385.5 736.4" fill="none" stroke="#AEB9C3" stroke-width="1.6" opacity="0.65" />
+      </g>
+    
+
+      <g class="">
+        <rect x="130.5" y="798.0" width="39.0" height="29.6" fill="#FFFFFF" stroke="#AEB9C3" stroke-width="2.3" />
+        <ellipse cx="150" cy="798.0" rx="19.5" ry="6.2" fill="#FFFFFF" stroke="#AEB9C3" stroke-width="2.3" />
+        <ellipse cx="150" cy="827.6" rx="19.5" ry="6.2" fill="#AEB9C3" fill-opacity="0.15" stroke="#AEB9C3" stroke-width="2.3" />
+        <path d="M 130.5 810.4 C 140.2 814.3, 159.8 814.3, 169.5 810.4" fill="none" stroke="#AEB9C3" stroke-width="1.6" opacity="0.65" />
+      </g>
+    
+
+      <g class="">
+        <rect x="202.5" y="798.0" width="39.0" height="29.6" fill="#FFFFFF" stroke="#AEB9C3" stroke-width="2.3" />
+        <ellipse cx="222" cy="798.0" rx="19.5" ry="6.2" fill="#FFFFFF" stroke="#AEB9C3" stroke-width="2.3" />
+        <ellipse cx="222" cy="827.6" rx="19.5" ry="6.2" fill="#AEB9C3" fill-opacity="0.15" stroke="#AEB9C3" stroke-width="2.3" />
+        <path d="M 202.5 810.4 C 212.2 814.3, 231.8 814.3, 241.5 810.4" fill="none" stroke="#AEB9C3" stroke-width="1.6" opacity="0.65" />
+      </g>
+    
+
+      <g class="">
+        <rect x="274.5" y="798.0" width="39.0" height="29.6" fill="#FFFFFF" stroke="#AEB9C3" stroke-width="2.3" />
+        <ellipse cx="294" cy="798.0" rx="19.5" ry="6.2" fill="#FFFFFF" stroke="#AEB9C3" stroke-width="2.3" />
+        <ellipse cx="294" cy="827.6" rx="19.5" ry="6.2" fill="#AEB9C3" fill-opacity="0.15" stroke="#AEB9C3" stroke-width="2.3" />
+        <path d="M 274.5 810.4 C 284.2 814.3, 303.8 814.3, 313.5 810.4" fill="none" stroke="#AEB9C3" stroke-width="1.6" opacity="0.65" />
+      </g>
+    
+
+      <g class="">
+        <rect x="346.5" y="798.0" width="39.0" height="29.6" fill="#FFFFFF" stroke="#AEB9C3" stroke-width="2.3" />
+        <ellipse cx="366" cy="798.0" rx="19.5" ry="6.2" fill="#FFFFFF" stroke="#AEB9C3" stroke-width="2.3" />
+        <ellipse cx="366" cy="827.6" rx="19.5" ry="6.2" fill="#AEB9C3" fill-opacity="0.15" stroke="#AEB9C3" stroke-width="2.3" />
+        <path d="M 346.5 810.4 C 356.2 814.3, 375.8 814.3, 385.5 810.4" fill="none" stroke="#AEB9C3" stroke-width="1.6" opacity="0.65" />
+      </g>
+    
+  </g>
+
+  <g id="initial-model">
+    
+      <g class="chip shadow">
+        <rect class="pin" x="771.0" y="352" width="14" height="21" rx="3" />
+<rect class="pin" x="807.7" y="352" width="14" height="21" rx="3" />
+<rect class="pin" x="844.3" y="352" width="14" height="21" rx="3" />
+<rect class="pin" x="881.0" y="352" width="14" height="21" rx="3" />
+<rect class="pin" x="917.7" y="352" width="14" height="21" rx="3" />
+<rect class="pin" x="954.3" y="352" width="14" height="21" rx="3" />
+<rect class="pin" x="991.0" y="352" width="14" height="21" rx="3" />
+        <rect class="pin" x="771.0" y="661" width="14" height="21" rx="3" />
+<rect class="pin" x="807.7" y="661" width="14" height="21" rx="3" />
+<rect class="pin" x="844.3" y="661" width="14" height="21" rx="3" />
+<rect class="pin" x="881.0" y="661" width="14" height="21" rx="3" />
+<rect class="pin" x="917.7" y="661" width="14" height="21" rx="3" />
+<rect class="pin" x="954.3" y="661" width="14" height="21" rx="3" />
+<rect class="pin" x="991.0" y="661" width="14" height="21" rx="3" />
+        <rect x="742" y="374" width="292" height="286" rx="38" fill="#174A7C" stroke="#103A60" stroke-width="5" />
+        <text class="chip-title" x="888" y="454" text-anchor="middle">Model</text>
+        <text class="chip-sub" x="888" y="490" text-anchor="middle">trained</text>
+        
+      <g transform="translate(820 508)" fill="none">
+        <line x1="0" y1="52" x2="76" y2="10" stroke="rgba(255,255,255,0.62)" stroke-width="5" />
+        <line x1="0" y1="52" x2="76" y2="94" stroke="rgba(255,255,255,0.62)" stroke-width="5" />
+        <line x1="76" y1="10" x2="152" y2="52" stroke="rgba(255,255,255,0.62)" stroke-width="5" />
+        <line x1="76" y1="94" x2="152" y2="52" stroke="rgba(255,255,255,0.62)" stroke-width="5" />
+        <line x1="76" y1="10" x2="76" y2="94" stroke="rgba(255,255,255,0.62)" stroke-width="5" opacity="0.45" />
+        <circle cx="0" cy="52" r="13" fill="rgba(255,255,255,0.92)" stroke="#FFFFFF" stroke-width="4" />
+        <circle cx="76" cy="10" r="13" fill="rgba(255,255,255,0.92)" stroke="#FFFFFF" stroke-width="4" />
+        <circle cx="76" cy="94" r="13" fill="rgba(255,255,255,0.92)" stroke="#FFFFFF" stroke-width="4" />
+        <circle cx="152" cy="52" r="13" fill="rgba(255,255,255,0.92)" stroke="#FFFFFF" stroke-width="4" />
+      </g>
+    
+      </g>
+    
+  </g>
+
+  <g id="pseudo-labels" class="shadow">
+    <rect x="1180" y="390" width="330" height="304" rx="42" fill="#E8F3F1" stroke="#BCD7D2" stroke-width="5" />
+    <text class="pseudo-title" x="1345" y="462" text-anchor="middle">Pseudo-labels</text>
+    <text class="pseudo-sub" x="1345" y="492" text-anchor="middle">accepted predictions</text>
+    
+      <g class="">
+        <rect x="1178.5" y="560.0" width="43.0" height="32.7" fill="#FFFFFF" stroke="#2F7D5B" stroke-width="2.6" />
+        <ellipse cx="1200" cy="560.0" rx="21.5" ry="6.9" fill="#FFFFFF" stroke="#2F7D5B" stroke-width="2.6" />
+        <ellipse cx="1200" cy="592.7" rx="21.5" ry="6.9" fill="#2F7D5B" fill-opacity="0.15" stroke="#2F7D5B" stroke-width="2.6" />
+        <path d="M 1178.5 573.7 C 1189.2 578.0, 1210.8 578.0, 1221.5 573.7" fill="none" stroke="#2F7D5B" stroke-width="1.8" opacity="0.65" />
+      </g>
+    
+
+      <g class="">
+        <rect x="1256.5" y="560.0" width="43.0" height="32.7" fill="#FFFFFF" stroke="#D98B2B" stroke-width="2.6" />
+        <ellipse cx="1278" cy="560.0" rx="21.5" ry="6.9" fill="#FFFFFF" stroke="#D98B2B" stroke-width="2.6" />
+        <ellipse cx="1278" cy="592.7" rx="21.5" ry="6.9" fill="#D98B2B" fill-opacity="0.15" stroke="#D98B2B" stroke-width="2.6" />
+        <path d="M 1256.5 573.7 C 1267.2 578.0, 1288.8 578.0, 1299.5 573.7" fill="none" stroke="#D98B2B" stroke-width="1.8" opacity="0.65" />
+      </g>
+    
+
+      <g class="">
+        <rect x="1334.5" y="560.0" width="43.0" height="32.7" fill="#FFFFFF" stroke="#4979B6" stroke-width="2.6" />
+        <ellipse cx="1356" cy="560.0" rx="21.5" ry="6.9" fill="#FFFFFF" stroke="#4979B6" stroke-width="2.6" />
+        <ellipse cx="1356" cy="592.7" rx="21.5" ry="6.9" fill="#4979B6" fill-opacity="0.15" stroke="#4979B6" stroke-width="2.6" />
+        <path d="M 1334.5 573.7 C 1345.2 578.0, 1366.8 578.0, 1377.5 573.7" fill="none" stroke="#4979B6" stroke-width="1.8" opacity="0.65" />
+      </g>
+    
+
+      <g class="">
+        <rect x="1217.5" y="640.0" width="43.0" height="32.7" fill="#FFFFFF" stroke="#2F7D5B" stroke-width="2.6" />
+        <ellipse cx="1239" cy="640.0" rx="21.5" ry="6.9" fill="#FFFFFF" stroke="#2F7D5B" stroke-width="2.6" />
+        <ellipse cx="1239" cy="672.7" rx="21.5" ry="6.9" fill="#2F7D5B" fill-opacity="0.15" stroke="#2F7D5B" stroke-width="2.6" />
+        <path d="M 1217.5 653.7 C 1228.2 658.0, 1249.8 658.0, 1260.5 653.7" fill="none" stroke="#2F7D5B" stroke-width="1.8" opacity="0.65" />
+      </g>
+    
+
+      <g class="">
+        <rect x="1295.5" y="640.0" width="43.0" height="32.7" fill="#FFFFFF" stroke="#D98B2B" stroke-width="2.6" />
+        <ellipse cx="1317" cy="640.0" rx="21.5" ry="6.9" fill="#FFFFFF" stroke="#D98B2B" stroke-width="2.6" />
+        <ellipse cx="1317" cy="672.7" rx="21.5" ry="6.9" fill="#D98B2B" fill-opacity="0.15" stroke="#D98B2B" stroke-width="2.6" />
+        <path d="M 1295.5 653.7 C 1306.2 658.0, 1327.8 658.0, 1338.5 653.7" fill="none" stroke="#D98B2B" stroke-width="1.8" opacity="0.65" />
+      </g>
+    
+  </g>
+
+  <g id="improved-model">
+    
+      <g class="chip shadow">
+        <rect class="pin" x="1649.0" y="352" width="14" height="21" rx="3" />
+<rect class="pin" x="1683.8" y="352" width="14" height="21" rx="3" />
+<rect class="pin" x="1718.6" y="352" width="14" height="21" rx="3" />
+<rect class="pin" x="1753.4" y="352" width="14" height="21" rx="3" />
+<rect class="pin" x="1788.2" y="352" width="14" height="21" rx="3" />
+<rect class="pin" x="1823.0" y="352" width="14" height="21" rx="3" />
+        <rect class="pin" x="1649.0" y="661" width="14" height="21" rx="3" />
+<rect class="pin" x="1683.8" y="661" width="14" height="21" rx="3" />
+<rect class="pin" x="1718.6" y="661" width="14" height="21" rx="3" />
+<rect class="pin" x="1753.4" y="661" width="14" height="21" rx="3" />
+<rect class="pin" x="1788.2" y="661" width="14" height="21" rx="3" />
+<rect class="pin" x="1823.0" y="661" width="14" height="21" rx="3" />
+        <rect x="1620" y="374" width="246" height="286" rx="38" fill="#0F6B63" stroke="#084A44" stroke-width="5" />
+        <text class="chip-title" x="1743" y="454" text-anchor="middle">Model</text>
+        <text class="chip-sub" x="1743" y="490" text-anchor="middle">improved</text>
+        
+      <g transform="translate(1698 508)" fill="none">
+        <line x1="0" y1="52" x2="76" y2="10" stroke="rgba(255,255,255,0.62)" stroke-width="5" />
+        <line x1="0" y1="52" x2="76" y2="94" stroke="rgba(255,255,255,0.62)" stroke-width="5" />
+        <line x1="76" y1="10" x2="152" y2="52" stroke="rgba(255,255,255,0.62)" stroke-width="5" />
+        <line x1="76" y1="94" x2="152" y2="52" stroke="rgba(255,255,255,0.62)" stroke-width="5" />
+        <line x1="76" y1="10" x2="76" y2="94" stroke="rgba(255,255,255,0.62)" stroke-width="5" opacity="0.45" />
+        <circle cx="0" cy="52" r="13" fill="rgba(255,255,255,0.92)" stroke="#FFFFFF" stroke-width="4" />
+        <circle cx="76" cy="10" r="13" fill="rgba(255,255,255,0.92)" stroke="#FFFFFF" stroke-width="4" />
+        <circle cx="76" cy="94" r="13" fill="rgba(255,255,255,0.92)" stroke="#FFFFFF" stroke-width="4" />
+        <circle cx="152" cy="52" r="13" fill="rgba(255,255,255,0.92)" stroke="#FFFFFF" stroke-width="4" />
+      </g>
+    
+      </g>
+    
+  </g>
+
+  <g id="arrows">
+    <path class="arrow arrow-blue" d="M512 338 C594 338 654 380 734 456" marker-end="url(#arrow-blue)" />
+    <path class="arrow arrow-blue" d="M512 702 C606 700 660 624 734 562" marker-end="url(#arrow-blue)" />
+    <path class="arrow arrow-teal" d="M1034 514 C1086 514 1124 514 1172 514" marker-end="url(#arrow-teal)" />
+    <path class="arrow arrow-teal" d="M1510 514 C1550 514 1578 514 1612 514" marker-end="url(#arrow-teal)" />
+    <path class="arrow loop" d="M1744 686 C1620 842 1008 848 904 688" marker-end="url(#arrow-muted)" />
+  </g>
+
+  <g id="step-labels">
+    <rect class="step" x="590" y="356" width="114" height="38" rx="19" />
+    <text class="step-text" x="647" y="381" text-anchor="middle">train</text>
+    <rect class="step" x="1078" y="466" width="116" height="38" rx="19" />
+    <text class="step-text" x="1136" y="491" text-anchor="middle">predict</text>
+    <rect class="step" x="1534" y="466" width="116" height="38" rx="19" />
+    <text class="step-text" x="1592" y="491" text-anchor="middle">retrain</text>
+  </g>
+</svg>

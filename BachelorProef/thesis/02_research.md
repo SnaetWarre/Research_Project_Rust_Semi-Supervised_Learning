@@ -1,14 +1,12 @@
 # 2. Research: Literature Study
 
-This chapter explains the theoretical background that is needed to understand the research and the results. In line with the thesis guidelines, only topics that fall **outside the standard MCT curriculum** are discussed in depth. The intended audience is IT professionals. The chapter covers semi-supervised learning theory, the Rust machine learning ecosystem, incremental learning, edge AI deployment and the PlantVillage dataset.
+Deep learning-based plant disease classification typically requires large amounts of labeled training data. In practice, however, annotating agricultural images by plant pathologists is labor-intensive and expensive, which limits the scalability of fully supervised approaches [1]. This problem is compounded when deploying on edge devices, where compute, memory and storage impose additional constraints. This chapter situates the research within the existing literature and discusses the theoretical foundations needed to address these challenges: semi-supervised learning as a response to the shortage of labeled data, the Rust machine learning ecosystem as an alternative to the classical Python stack, incremental learning in light of catastrophic forgetting, and the specific boundary conditions of edge AI deployments. The topics discussed fall largely outside the standard MCT curriculum and are therefore explained in depth.
 
 ## 2.1 Semi-Supervised Learning
 
 ### 2.1.1 Fundamentals
 
-Semi-supervised learning (SSL) is the middle ground between supervised learning, where every data point is labeled, and unsupervised learning, where there are no labels at all. SSL combines a small set of labeled examples with a large pool of unlabeled data to train a model that performs comparably to one trained on a fully labeled dataset [1]. That is particularly valuable in domains where labeling is expensive, and agricultural image annotation by plant pathologists is a perfect example for this.
-
-The core assumption behind SSL is the **cluster assumption**: data points that lie close together in feature space are likely to share the same label. When that assumption holds, the structure of the unlabeled data provides useful information about where the decision boundary should run [1].
+The availability of labeled data constitutes a structural bottleneck in training deep learning models for specialised domains such as plant disease recognition. Semi-supervised learning (SSL) offers a solution to this problem by combining a small set of labeled examples with a larger pool of unlabeled data. Under certain assumptions, a model trained in this manner can achieve comparable performance to one trained on a fully labeled dataset [1]. The core idea is that the structure of the unlabeled data contains information about the optimal position of the decision boundary. This assumption is referred to in the literature as the **cluster assumption**: data points that lie close together in feature space are likely to share the same label [1].
 
 ### 2.1.2 Pseudo-Labeling
 

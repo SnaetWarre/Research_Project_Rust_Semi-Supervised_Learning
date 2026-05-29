@@ -14,12 +14,10 @@
 #     Heading 1/2/4–9 in the output only. The template binds those styles to a multilevel list,
 #     which would otherwise add 1., 2., … before headings that already include chapter numbers.
 #
-# Table of contents: enabled by default as a native DOCX/Word TOC field. The Lua filter marks
-# non-numbered headings and headings deeper than X.X as unlisted, so only headings like
-# “1. Introduction” and “1.1 Context” appear. Set PANDOC_TOC=0 to disable it for debugging.
+# Table of contents: the build inserts only a plain “Table of Contents” page.
+# Fill the actual TOC manually in Google Docs/Word so later manual edits remain simple.
 #
 # Optional environment (combine as needed):
-#   PANDOC_TOC=0             Disable the generated DOCX table of contents.
 #   BUILD_DOCX_OUT_DIR       Output directory for the generated docx
 #                            (default: /home/warre/ThesisConnectionv2).
 #   BUILD_DOCX_VERBOSE=1     Bash xtrace, verbose strip script.
@@ -84,13 +82,7 @@ fi
 
 mkdir -p "${OUT_DIR}" "${LOCAL_BUILD_DIR}"
 
-TOC_ARGS=()
-if [[ "${PANDOC_TOC:-1}" != "0" ]]; then
-  TOC_ARGS=(--toc --toc-depth=2 --metadata=toc-title:"Table of Contents")
-  log "Pandoc TOC enabled (--toc --toc-depth=2; numbered level 1/2 headings only)"
-else
-  log "Pandoc TOC disabled (PANDOC_TOC=0)"
-fi
+log "manual TOC placeholder enabled (plain heading only; no generated Word TOC field)"
 
 # Keep the abstract, but drop the old Markdown title/metadata page. The prepared
 # kaft DOCX is prepended after the body has been polished.
@@ -108,6 +100,7 @@ log "running pandoc body build → ${BODY_FILE}"
 pandoc \
   "${SCRIPT_DIR}/00a_foreword.md" \
   "${ABSTRACT_FRONT}" \
+  "${SCRIPT_DIR}/00e_table_of_contents.md" \
   "${SCRIPT_DIR}/00b_list_of_figures.md" \
   "${SCRIPT_DIR}/00c_abbreviations.md" \
   "${SCRIPT_DIR}/00d_glossary.md" \
@@ -129,8 +122,7 @@ pandoc \
   --reference-doc="${TEMPLATE}" \
   --resource-path="${SCRIPT_DIR}:${REPO_ROOT}" \
   --lua-filter="${LUA_FILTER}" \
-  --highlight-style=tango \
-  "${TOC_ARGS[@]}"
+  --highlight-style=tango
 
 if [[ ! -f "${BODY_FILE}" ]]; then
   log "error: pandoc did not create ${BODY_FILE}" >&2

@@ -114,6 +114,12 @@ def _is_numbered_toc_heading_text(text: str) -> bool:
     return re.match(r"^\d+(?:\.\d+)?\.?\s+", text) is not None
 
 
+def _is_subheading_style(style: str | None) -> bool:
+    if style is None:
+        return False
+    return re.match(r"^Heading[2-9](?:Unlisted)?$", style) is not None
+
+
 def _keep_with_next(p: ET.Element) -> None:
     ppr = _ensure_ppr(p)
     keep_next = ET.Element(_w("keepNext"))
@@ -639,7 +645,7 @@ def _polish_document(xml_bytes: bytes) -> tuple[bytes, int, int, int, int, int, 
                 _keep_with_next(p)
                 keep_next_paragraphs += 1
 
-        if (style or "").startswith("Heading") and not style == "Heading1":
+        if _is_subheading_style(style):
             _keep_with_next(p)
             _keep_lines_together(p)
             keep_next_paragraphs += 1

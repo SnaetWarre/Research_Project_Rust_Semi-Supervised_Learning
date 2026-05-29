@@ -17,7 +17,7 @@ Helena Torres answered the full expert-feedback questionnaire. The questions and
 
 > Since a fixed global threshold may not be sufficient, I would consider using per-class thresholds and/or uncertainty estimation methods.
 
-**Question 3:** The initial CNN is trained on roughly 17,400 labeled images from a total dataset of about 87,000 images, across 38 classes. From your experience with medical or biomedical image datasets, is this a realistic labeled-data scenario? How does it compare with the amount and quality of annotation you typically see in your own work?
+**Question 3:** The initial CNN is trained on approximately 17,400 labeled images from a total dataset of approximately 87,000 images, across 38 classes. From your experience with medical or biomedical image datasets, is this a realistic labeled-data scenario? How does it compare with the amount and quality of annotation you typically see in your own work?
 
 > From a medical imaging perspective, 17k labeled images is actually a relatively large annotated dataset and not really a scarcity scenario, although the number of classes is usually lower in medical imaging. In practice, the main challenges in medical imaging are often more related to annotation quality, label consistency, and inter-observer variability.
 
@@ -51,7 +51,7 @@ Helena Torres answered the full expert-feedback questionnaire. The questions and
 
 ## Rust and Burn Compared with Python and PyTorch
 
-**Question 10:** The whole system, including training, inference and the GUI backend, is implemented in Rust with the Burn ML framework instead of the standard Python/PyTorch stack. The trained model is small and the compiled deployment binary is roughly 26 MB. What is your reaction to this technology choice from a research reproducibility, maintainability and collaboration perspective?
+**Question 10:** The whole system, including training, inference and the GUI backend, is implemented in Rust with the Burn ML framework instead of the standard Python/PyTorch stack. The trained model is small and the compiled deployment binary is approximately 26 MB. What is your reaction to this technology choice from a research reproducibility, maintainability and collaboration perspective?
 
 > Although I am not very familiar with Rust/Burn, I think it is an interesting and refreshing choice. However, Python/PyTorch still remains the standard ecosystem for deep learning research, making collaboration, reproducibility, and benchmarking generally easier within the community.
 
@@ -71,7 +71,7 @@ Helena Torres answered the full expert-feedback questionnaire. The questions and
 
 ## Edge Deployment and Real-World Viability
 
-**Question 14:** The benchmarks show inference times of about 0.39 ms on a desktop GPU and about 80 ms on an iPhone 12. The project therefore focuses on consumer devices instead of dedicated edge hardware. From a technical perspective, is this a reasonable deployment strategy for interactive image classification?
+**Question 14:** The benchmarks show inference times of approximately 0.39 ms on a desktop GPU and approximately 80 ms on an iPhone 12. The project therefore focuses on consumer devices instead of dedicated edge hardware. From a technical perspective, is this a reasonable deployment strategy for interactive image classification?
 
 > If I understood correctly, your application does not require fully real-time performance. In that context, 80 ms on a consumer mobile device is already very responsive from a user perspective.
 

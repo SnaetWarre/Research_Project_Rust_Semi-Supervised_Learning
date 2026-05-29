@@ -17,7 +17,7 @@ Pedro Morais answered the following five questions from a broader questionnaire 
 
 > Based on your application, I will begin with a fixed confidence threshold.
 
-**Question 3:** The initial CNN is trained on roughly 17,400 labeled images from a total dataset of about 87,000 images, across 38 classes. From your experience with medical or biomedical image datasets, is this a realistic labeled-data scenario? How does it compare with the amount and quality of annotation you typically see in your own work?
+**Question 3:** The initial CNN is trained on approximately 17,400 labeled images from a total dataset of approximately 87,000 images, across 38 classes. From your experience with medical or biomedical image datasets, is this a realistic labeled-data scenario? How does it compare with the amount and quality of annotation you typically see in your own work?
 
 > Medical case volumes are frequently low.
 

@@ -22,15 +22,15 @@ The critical design choice here is the **confidence threshold**. If the threshol
 
 ### 2.1.3 Related Work in Plant Disease Classification
 
-Several recent studies have applied SSL to plant disease detection with good results:
+Several recent studies have applied SSL to plant disease detection with promising results:
 
-**Ambiguity-Aware Semi-Supervised Learning (AaSSL).** Pham et al. (2025) address the problem of ambiguous samples near the decision boundary. Their method explicitly filters these samples out rather than accepting them as pseudo-labels. With only 5% of the data labeled, accuracy improved from 90.74% to 94.09% [3]. That is why in this project I will be using the confidence-threshold filtering method.
+**Ambiguity-Aware Semi-Supervised Learning (AaSSL).** Pham et al. (2025) address the problem of ambiguous samples near the decision boundary. Their method explicitly filters these samples out rather than accepting them as pseudo-labels. With only 5% of the data labeled, accuracy improved from 90.74% to 94.09% [3]. This project therefore adopts confidence-threshold filtering.
 
-**Mean Teacher and Consistency Regularization.** Ilsever and Baz (2024) apply a student-teacher architecture to the PlantVillage dataset. The teacher's weights are an exponential moving average (EMA) of the student's weights, and a consistency loss is applied under different augmentations. That approach reached 88.50% accuracy with 5% labeled data [4]. It is effective, but Mean Teacher requires two models in memory at the same time. That is a real constraint on edge devices with limited VRAM.
+**Mean Teacher and Consistency Regularization.** Ilsever and Baz (2024) apply a student-teacher architecture to the PlantVillage dataset. The teacher's weights are an exponential moving average (EMA) of the student's weights, and a consistency loss is applied under different augmentations. That approach reached 88.50% accuracy with 5% labeled data [4]. It is effective, but Mean Teacher requires two models in memory at the same time. This constitutes a significant constraint on edge devices with limited VRAM.
 
-**Semi-supervised jute leaf disease classification.** Jannat (2025) shows that a lightweight CNN combined with SSL on 10% labeled and 90% unlabeled data can reach 97.89% accuracy, specifically with mobile and edge deployment in mind [1]. This shows that simple architectures paired with effective SSL can outperform more complex models in constrained environments.
+**Semi-supervised jute leaf disease classification.** Jannat (2025) shows that a lightweight CNN combined with SSL on 10% labeled and 90% unlabeled data can reach 97.89% accuracy, specifically with mobile and edge deployment in mind [1]. These results demonstrate that simple architectures paired with effective SSL can outperform more complex models in constrained environments.
 
-**Self-supervised pretraining.** Wang et al. (2024) show that self-supervised pretraining using Masked Autoencoders (MAE) and attention mechanisms such as CBAM can improve feature extractors for downstream classification with limited labels [5]. That was not implemented in this project, but it defenitely could be worth trying later.
+**Self-supervised pretraining.** Wang et al. (2024) show that self-supervised pretraining using Masked Autoencoders (MAE) and attention mechanisms such as CBAM can improve feature extractors for downstream classification with limited labels [5]. This was not implemented in the project, but it represents a promising direction for future research.
 
 ### 2.1.4 The Pseudo-Labeling Pipeline Design
 
@@ -39,10 +39,10 @@ Based on the literature review, the following design decisions were taken for th
 ![Flowchart of the implemented pseudo-labeling pipeline](figures/pipeline_flowchart.svg)
 *Figure 2.1: Flowchart of the implemented pseudo-labeling pipeline.*
 
-1. **A single model** rather than a student-teacher setup, to keep the VRAM usage within edge device limits.
-2. **A high confidence threshold (0.9)** to prioritise label precision over recall, following the ambiguity-aware filtering principle from Pham et al.
-3. **A retrain threshold of 200 samples** to batch pseudo-labels together rather than adding them one at a time, which reduces the overhead of retraining.
-4. **Label-consistent augmentations** (horizontal flip, vertical flip, rotation, brightness, contrast, saturation, blur and noise): augmentations that do not alter the semantic content of the image.
+1. **A single model** is used rather than a student-teacher setup, to keep VRAM usage within edge device limits.
+2. **A high confidence threshold (0.9)** prioritises label precision over recall, following the ambiguity-aware filtering principle from Pham et al.
+3. **A retrain threshold of 200 samples** batches pseudo-labels together rather than adding them one at a time, which reduces the overhead of retraining.
+4. **Label-consistent augmentations** (horizontal flip, vertical flip, rotation, brightness, contrast, saturation, blur and noise) preserve the semantic content of the image.
 
 ## 2.2 The Rust ML Ecosystem: Burn Framework
 
@@ -50,8 +50,8 @@ Based on the literature review, the following design decisions were taken for th
 
 The standard ML stack (Python, PyTorch, CUDA) is optimised for research flexibility and GPU throughput. For edge deployment, however, it runs into several issues:
 
-- **Deployment size.** Running a PyTorch model requires the Python interpreter, the PyTorch library and a number of supporting packages on the target device. A CUDA-enabled PyTorch wheel on its own is already in the low gigabytes once unpacked. The full environment grows further once TorchVision, NumPy and tooling are added [6][7]. That is comparable in scale to a Rust `target/` build directory, around 2 GB, but unlike Rust, Python has no way to reduce that to a single small binary for distribution.
-- **Startup latency.** Python interpreter initialisation takes about 3 seconds, which is very noticeable in interactive applications.
+- **Deployment size.** Running a PyTorch model requires the Python interpreter, the PyTorch library and a number of supporting packages on the target device. A CUDA-enabled PyTorch wheel on its own is already in the low gigabytes once unpacked. The full environment grows further once TorchVision, NumPy and tooling are added [6][7]. This is comparable in scale to a Rust `target/` build directory (approximately 2 GB), but unlike Rust, Python has no way to reduce that to a single small binary for distribution.
+- **Startup latency.** Python interpreter initialisation takes approximately 3 seconds, which introduces noticeable latency in interactive applications.
 - **Cross-compilation.** Deploying Python ML models to iOS, Android or embedded ARM devices requires wrapper frameworks (CoreML, TFLite, ONNX Runtime) and format conversion steps.
 - **Memory safety.** Python's garbage collector and the C++ backend (LibTorch) can cause unpredictable memory behaviour, which is problematic for long-running processes on an edge device.
 
@@ -71,13 +71,13 @@ Three Rust ML frameworks were evaluated for this project:
 | **Deployment** | Static binary | Static binary / WASM | Requires LibTorch shared library |
 | **Edge suitability** | High (no heavy dependencies) | High (lightweight) | Medium (complex cross-compilation) |
 
-**Burn** [8][9] is a backend-agnostic framework with a full training API that supports custom training loops. That is what you really need for a pseudo-labeling cycle. Its `Module` derive macro allows type-safe model definitions that are generic over backends, so the same code can compile against CUDA, CPU, wgpu or WASM targets without changing the model code.
+**Burn** [8][9] is a backend-agnostic framework with a full training API that supports custom training loops. This is essential for a pseudo-labeling cycle. Its `Module` derive macro allows type-safe model definitions that are generic over backends, so the same code can compile against CUDA, CPU, wgpu or WASM targets without changing the model code.
 
 **Candle**, developed by Hugging Face, is strong at inference for large language models and transformer architectures. Its training API, however, is more limited and does not comfortably support the iterative pseudo-labeling loops that SSL relies on.
 
-**tch-rs** provides direct Rust bindings to LibTorch, which is PyTorch's C++ backend. That gives full PyTorch compatibility, but it also reintroduces the dependency on a large C++ shared library (around 1.5 GB), which undoes the deployment size advantage of Rust.
+**tch-rs** provides direct Rust bindings to LibTorch, which is PyTorch's C++ backend. This provides full PyTorch compatibility, but it also reintroduces the dependency on a large C++ shared library (around 1.5 GB), which undoes the deployment size advantage of Rust.
 
-**Conclusion:** Burn was selected because it combines backend-agnostic deployment, a training API that is suitable for custom SSL loops, and the option to produce a self-contained binary for edge devices [9][10][11].
+Burn was therefore selected because it combines backend-agnostic deployment, a training API that is suitable for custom SSL loops, and the option to produce a self-contained binary for edge devices [9][10][11].
 
 ![Conceptual comparison of deployment models for Burn, Candle and tch-rs](figures/framework_deployment.svg)
 *Figure 2.2: Conceptual overview of the runtime dependencies for each Rust ML framework. Burn and Candle compile to a static binary, while tch-rs needs the LibTorch shared library on the target device.*
@@ -201,7 +201,7 @@ Several deployment paths exist for ML models on edge devices:
 - **ONNX (Open Neural Network Exchange):** a vendor-neutral model format supported by ONNX Runtime, with backends for CPU, GPU, CoreML (iOS), NNAPI (Android) and WebAssembly. It is widely used, but it always requires a conversion step from the training framework.
 - **TensorFlow Lite (TFLite):** Google's edge inference runtime, optimised for mobile devices. It requires models to be converted from TensorFlow format and has limited support for custom operations.
 - **WebAssembly (WASM):** allows ML models to run inside web browsers at near-native performance. It makes Progressive Web Apps (PWAs) possible and those can work fully offline after the first load.
-- **Native compilation (Rust/C++):** compiling the model and the inference runtime into a single binary removes all dependency management entirely. That is the approach used in this project via Burn.
+- **Native compilation (Rust/C++):** compiling the model and the inference runtime into a single binary removes all dependency management entirely. This is the approach used in this project via Burn.
 
 ### 2.4.3 Tauri for Cross-Platform Deployment
 
@@ -237,7 +237,7 @@ The dataset includes both healthy and diseased classes across 38 categories, so 
 
 For this project, the existing train and valid split is merged and then re-split according to the four-pool strategy described in Chapter 3 (20% labeled, 60% stream, 10% validation, 10% test). This makes sure that the SSL pipeline has access to a large pool of unlabeled data while also keeping a held-out test set that is never seen during training.
 
-Because the dataset is pre-balanced, with roughly 2,000 images per class, the experimental setup is simpler. Class imbalance should not distort the results of the label efficiency and class scaling experiments.
+Because the dataset is pre-balanced, with approximately 2,000 images per class, the experimental setup is simpler. Class imbalance should not distort the results of the label efficiency and class scaling experiments.
 
 ### 2.5.1 Limitations of the Dataset
 

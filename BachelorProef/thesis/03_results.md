@@ -1,6 +1,6 @@
 # 3. Research Results
 
-This chapter describes the system that was built to answer the research question. It covers the architecture, the semi-supervised learning pipeline, three controlled experiments that matter for deployment, cross-platform benchmarks and the graphical user interface.
+This chapter describes the system that was built to answer the research question. It covers the architecture, the semi-supervised learning pipeline, three controlled experiments that are relevant to deployment, cross-platform benchmarks and the graphical user interface.
 
 ## 3.1 System Architecture
 
@@ -71,11 +71,11 @@ As a result, the same model code compiles for CUDA (for GPU-accelerated training
 
 ### 3.1.3 Model Size
 
-The trained model weights take up about 916 KB in Burn's native CompactRecorder format. The compiled Rust release binary, which includes the model, the inference runtime and the application code, is roughly 26 MB. The PyTorch checkpoint for the same CNN architecture is similar in size, only a few MB. **The model weights are simular in both of these stacks.**
+The trained model weights take up approximately 916 KB in Burn's native CompactRecorder format. The compiled Rust release binary, which includes the model, the inference runtime and the application code, is approximately 26 MB. The PyTorch checkpoint for the same CNN architecture is similar in size, at only a few MB. **The model weights are similar in both of these stacks.**
 
 The important difference is **what has to be present on the end user's device to run inference.** With Rust, the release binary is the only artefact that has to be there. It is a single 26 MB file that contains the compiled runtime and the dependencies. With Python, running the same model requires the Python interpreter, the PyTorch library, with or without CUDA support, and several extra packages. A CUDA-enabled PyTorch wheel alone is typically in the low gigabytes once unpacked [6][7], and a practical environment with TorchVision, NumPy, Pillow and similar packages grows further from there.
 
-To put that in perspective, the Rust `target/` build directory, which is comparable to `node_modules` or a Python virtual environment, is itself around 2.1 GB. That is similar to a PyTorch virtual environment. **Both stacks require gigabytes of tooling during development.** The difference is that Rust's compilation step reduces all of that to a single portable binary, while a Python deployment has to carry its interpreter and library tree to the target device.
+To put that in perspective, the Rust `target/` build directory, which is comparable to `node_modules` or a Python virtual environment, is itself around 2.1 GB. This is similar to a PyTorch virtual environment. **Both stacks require gigabytes of tooling during development.** The difference is that Rust's compilation step reduces all of that to a single portable binary, while a Python deployment has to carry its interpreter and library tree to the target device.
 
 For edge deployment, this means that the Rust binary can be distributed over Bluetooth, on a USB stick or through a brief mobile data connection. A Python-based deployment either requires a multi-gigabyte environment to be pre-installed on every device or forces the team to ship a container or bundle that includes the interpreter and wheels.
 
@@ -83,7 +83,7 @@ For edge deployment, this means that the Rust binary can be distributed over Blu
 
 ### 3.2.1 Data Split Strategy
 
-The PlantVillage dataset (roughly 87,000 images across 38 classes) is split into four non-overlapping pools:
+The PlantVillage dataset (approximately 87,000 images across 38 classes) is split into four non-overlapping pools:
 
 | Pool | Fraction | Purpose |
 |:--|:--:|:--|
@@ -96,7 +96,7 @@ The labeled ratio is intentionally kept low at 20%. This simulates a realistic s
 
 ### 3.2.2 Training Pipeline
 
-**Step 1: Initial supervised training.** The CNN is trained on the 20% labeled pool for 30 epochs using cross-entropy loss, the Adam optimizer and standard data augmentations (horizontal and vertical flip, rotation, brightness, contrast, saturation, blur and noise). This produces a baseline model with roughly 70 to 75% validation accuracy.
+**Step 1: Initial supervised training.** The CNN is trained on the 20% labeled pool for 30 epochs using cross-entropy loss, the Adam optimizer and standard data augmentations (horizontal and vertical flip, rotation, brightness, contrast, saturation, blur and noise). This produces a baseline model with approximately 70 to 75% validation accuracy.
 
 **Step 2: Pseudo-labeling simulation.** The trained model is then used to classify images from the 60% unlabeled stream pool. Images are processed in batches of 100, which are referred to as "images per day" in the streaming simulation. For every image, the model produces a softmax probability distribution over all 38 classes. If the maximum predicted probability is above the **confidence threshold of 0.9**, the image is accepted as a pseudo-labeled sample with the predicted class as its label. Images that fall below this threshold are discarded.
 
@@ -128,7 +128,7 @@ The saved SSL checkpoint improves held-out test accuracy by 8.84 percentage poin
 
 ## 3.3 Incremental Learning Experiments
 
-Three controlled experiments were carried out to evaluate parts of the system that matter for real-world deployment: how much labeled data is actually needed, what happens when new classes have to be added to an existing model, and whether the difficulty of adding a class depends on the size of the existing taxonomy.
+Three controlled experiments were carried out to evaluate parts of the system that are relevant to real-world deployment: how much labeled data is needed, what happens when new classes have to be added to an existing model, and whether the difficulty of adding a class depends on the size of the existing taxonomy.
 
 ### 3.3.1 Experiment 1: Label Efficiency Curve
 
@@ -156,7 +156,7 @@ The model was trained from scratch at seven different labeled data quantities, r
 
 **Key findings:**
 
-1. With only 5 labeled images per class, the model reaches 34.21% accuracy. That is well above random chance for 38 classes (2.63%), but it is still too low for practical use.
+1. With only 5 labeled images per class, the model reaches 34.21% accuracy. This exceeds random chance for 38 classes (2.63%), but it is still too low for practical use.
 2. The sharpest improvement happens between 25 and 100 images per class, where accuracy jumps from 57.89% to 85.53%.
 3. Beyond 100 images per class, returns diminish quickly: going from 100 to 200 yields only a 3.22 percentage point gain.
 4. **Practical recommendation:** a minimum of 100 labeled images per class is needed for production-viable accuracy, meaning above 80%. SSL methods are useful for bridging the gap whenever fewer labels are available.
@@ -185,7 +185,7 @@ Two scenarios were compared. In Scenario A, a model was trained on 5 base classe
 
 1. The large-base model (30 classes) shows **6× more forgetting** than the small-base model (1.26 percentage points versus 0.21 percentage points). The model is measurably more biased towards existing classes when the base is larger.
 2. New class accuracy drops by 3.02 percentage points in the large-base scenario (96.98% versus 100.00%), which confirms that class competition increases as the number of existing classes grows.
-3. Training time scales roughly linearly with the number of classes (5.3× longer for 6× more base classes).
+3. Training time scales approximately linearly with the number of classes (5.3× longer for 6× more base classes).
 4. **Practical recommendation:** for production systems with many existing classes, use incremental learning methods such as Learning without Forgetting (LwF), Elastic Weight Consolidation (EWC) or rehearsal-based approaches to keep catastrophic forgetting under control. Accuracy on existing classes should be checked after every model update.
 
 ### 3.3.3 Experiment 3: New Class Position Effect
@@ -230,7 +230,7 @@ Both scenarios were evaluated at five labeling levels: 5, 10, 25, 50 and 100 lab
 **Key findings:**
 
 1. Learning a new class is substantially harder as the 31st class than as the 6th class. At 50 labeled samples, the 6th class already reaches 84.27% accuracy while the 31st class only reaches 25.62%.
-2. The 6th class passes 70% accuracy with just 50 samples. The 31st class does not reach 70% accuracy at any of the tested sample counts (up to 100).
+2. The 6th class passes 70% accuracy with only 50 samples. The 31st class does not reach 70% accuracy at any of the tested sample counts (up to 100).
 3. Negative forgetting values in the small-base scenario (for example -2.84% at 50 samples) show that the model occasionally improves on existing classes during incremental training, probably because the additional data acts as implicit regularisation.
 4. **Practical recommendation:** when the deployment scenario assumes that new classes will be added over time, start with a broad base model. Adding classes to a large taxonomy requires much more labeled data than adding them to a small one. SSL pseudo-labeling can help bridge that gap by generating extra training samples for the new class.
 
@@ -258,17 +258,17 @@ The system was benchmarked on four hardware configurations. All tests used the s
 
 ### 3.4.2 Analysis
 
-A few things stand out in the benchmark results.
+Several observations stand out in the benchmark results.
 
 **Desktop GPU performance.** At 0.42 ms per inference, or 2,406 FPS, the SSL checkpoint is well below the real-time threshold on desktop hardware. The SSL checkpoint is only 0.01 ms slower than the supervised baseline in this benchmark, while improving held-out test accuracy by 8.84 percentage points.
 
-**Mobile performance.** The iPhone 12, running the model through Tauri's Rust backend, reached roughly 80 ms per inference (around 12 FPS) in local testing. That is within the usability threshold for a camera-based application where a farmer points a phone at a leaf and waits for a classification, though this measurement was taken on a single device and may vary across iOS versions and hardware revisions.
+**Mobile performance.** The iPhone 12, running the model through Tauri's Rust backend, reached approximately 80 ms per inference (around 12 FPS) in local testing. This falls within the usability threshold for a camera-based application where a farmer points a phone at a leaf and waits for a classification, though this measurement was taken on a single device and may vary across iOS versions and hardware revisions.
 
-**The Jetson result.** The Jetson Orin Nano, which is a dedicated edge AI device costing €350, performed worse than the iPhone 12 in this test, with 120 ms compared to 80 ms. That result shaped the project's deployment strategy. Consumer devices that many users already own can outperform dedicated low-end edge hardware for this specific model. Because of that, the project shifted to a BYOD (Bring Your Own Device) model, which removes extra hardware cost.
+**The Jetson result.** The Jetson Orin Nano, which is a dedicated edge AI device costing €350, performed worse than the iPhone 12 in this test, with 120 ms compared to 80 ms. This result shaped the project's deployment strategy. Consumer devices that many users already own can outperform dedicated low-end edge hardware for this specific model. Consequently, the project shifted to a BYOD (Bring Your Own Device) model, which removes extra hardware cost.
 
-**Deployment size advantage.** The compiled binary of roughly 26 MB can be distributed over Bluetooth, a USB drive or a short mobile data connection. A Python/PyTorch deployment requires a multi-gigabyte environment on the target device, which is not practical over those same channels and makes offline-first deployment harder.
+**Deployment size advantage.** The compiled binary of approximately 26 MB can be distributed over Bluetooth, a USB drive or a short mobile data connection. A Python/PyTorch deployment requires a multi-gigabyte environment on the target device, which is not practical over those same channels and makes offline-first deployment harder.
 
-**Startup time.** A PyTorch cold start takes about 3 seconds because of Python interpreter initialisation and library loading. The Burn binary starts in under 100 ms, which is the threshold below which users tend to perceive an application as "instant".
+**Startup time.** A PyTorch cold start takes approximately 3 seconds because of Python interpreter initialisation and library loading. The Burn binary starts in under 100 ms, which is the threshold below which users tend to perceive an application as "instant".
 
 ### 3.4.3 Deployment Targets
 
@@ -276,7 +276,7 @@ Three deployment targets were implemented:
 
 1. **Desktop GUI:** a native application with a Svelte 5 and TailwindCSS frontend and a Tauri backend running the Rust Burn model. The GUI offers real-time classification, confidence visualisation and model diagnostics.
 
-2. **Browser (PWA):** an export pipeline converts the Burn model weights to ONNX format (about 1.8 MB). The ONNX model can be loaded into an ONNX Runtime Web deployment via a Progressive Web App. The PWA can cache the model through a Service Worker, which would make offline operation possible after the first load. This path was prepared but not fully end-to-end tested on all target browsers.
+2. **Browser (PWA):** an export pipeline converts the Burn model weights to ONNX format (approximately 1.8 MB). The ONNX model can be loaded into an ONNX Runtime Web deployment via a Progressive Web App. The PWA can cache the model through a Service Worker, which would make offline operation possible after the first load. This path was prepared but not fully end-to-end tested on all target browsers.
 
 3. **iPhone 12 (Tauri Mobile):** the same Tauri application, compiled for iOS. The Rust inference backend runs natively on the A14 chip, and the web-based UI takes care of the camera interface. Deployment goes through Xcode or TestFlight.
 
@@ -298,7 +298,7 @@ The application supports:
 
 ## 3.6 Challenges Encountered
 
-A few technical problems showed up during development that are worth writing down for reproducibility.
+Several technical problems arose during development that are worth writing down for reproducibility.
 
 ### 3.6.1 Burn API Boundaries
 
@@ -308,7 +308,7 @@ Model weights cannot be transferred directly between these two workspaces. To sh
 
 ### 3.6.2 CUDA Memory Management
 
-During the pseudo-labeling simulation, the training loop creates and destroys thousands of tensors per epoch. Burn's CUDA backend allocates GPU memory through a caching allocator, but under sustained load, fragmentation can cause out-of-memory errors even when the total allocated memory is still below the device limit. The fix was to insert explicit synchronisation points at the end of each retraining cycle, so the allocator could compact its memory pools. On the 6 GB laptop RTX 3060 used for development, this reduced peak memory usage from roughly 5.8 GB to 4.2 GB.
+During the pseudo-labeling simulation, the training loop creates and destroys thousands of tensors per epoch. Burn's CUDA backend allocates GPU memory through a caching allocator, but under sustained load, fragmentation can cause out-of-memory errors even when the total allocated memory is still below the device limit. The fix was to insert explicit synchronisation points at the end of each retraining cycle, so the allocator could compact its memory pools. On the 6 GB laptop RTX 3060 used for development, this reduced peak memory usage from approximately 5.8 GB to 4.2 GB.
 
 ### 3.6.3 Cross-Platform Image Preprocessing
 
@@ -316,7 +316,7 @@ The Tauri mobile deployment brought up preprocessing inconsistencies. Desktop im
 
 ### 3.6.4 Compilation Times
 
-Full release builds of the `plantvillage_ssl` workspace take roughly 5 to 7 minutes on the development machine (AMD Ryzen 7, 32 GB RAM, NVMe SSD). This is a known characteristic of Rust's monomorphisation and optimisation passes, especially for generic code that is instantiated across multiple backends. During development, `cargo check` (type-checking without code generation) was used for fast iteration, and `--release` builds were reserved for benchmarking and deployment.
+Full release builds of the `plantvillage_ssl` workspace take approximately 5 to 7 minutes on the development machine (AMD Ryzen 7, 32 GB RAM, NVMe SSD). This is a known characteristic of Rust's monomorphisation and optimisation passes, especially for generic code that is instantiated across multiple backends. During development, `cargo check` (type-checking without code generation) was used for fast iteration, and `--release` builds were reserved for benchmarking and deployment.
 
 ## 3.7 Limitations of the Experimental Results
 

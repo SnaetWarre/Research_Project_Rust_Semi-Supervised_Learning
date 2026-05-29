@@ -1,7 +1,7 @@
 # Glossary
 
 **Backend (Burn)**
-In Burn, a backend is the engine that actually runs tensor operations. Burn supports several: CUDA for NVIDIA GPUs, ndarray for CPU-only work, and wgpu for cross-platform GPU access including WebGPU and WASM. The same model code compiles for any of these without modification.
+In Burn, a backend is the engine that runs tensor operations. Burn supports several: CUDA for NVIDIA GPUs, ndarray for CPU-only work, and wgpu for cross-platform GPU access including WebGPU and WASM. The same model code compiles for any of these without modification.
 
 **Burn**
 An open-source machine learning framework written in Rust and developed by Tracel AI. Burn offers a PyTorch-like API with a type-safe, backend-agnostic design. Models are defined through Rust's trait system and compiled against a target-specific backend at build time.
@@ -25,7 +25,7 @@ Updating a trained neural network so it can recognise new categories without ret
 An incremental learning technique that uses knowledge distillation to preserve a model's output on old tasks while it trains on new data. The outputs of the previous model version act as soft targets for existing classes, which serves as a regulariser against forgetting.
 
 **PlantVillage dataset**
-A publicly available dataset of roughly 87,000 plant leaf images, labeled across 38 categories that include both diseases and healthy variants, covering 14 crop species. The dataset is pre-balanced and comes split into a training set and a validation set. It is widely used as a benchmark for plant disease classification research.
+A publicly available dataset of approximately 87,000 plant leaf images, labeled across 38 categories that include both diseases and healthy variants, covering 14 crop species. The dataset is pre-balanced and comes split into a training set and a validation set. It is widely used as a benchmark for plant disease classification research.
 
 **Pseudo-labeling**
 A semi-supervised learning technique where a trained model generates predicted labels for unlabeled data. Predictions that exceed a confidence threshold are treated as ground-truth labels and added to the training set for the next retraining cycle. The quality of the resulting pseudo-labels is bounded by the accuracy of the model that generates them.

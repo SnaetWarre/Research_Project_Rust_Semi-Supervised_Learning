@@ -1,5 +1,5 @@
 --- Pandoc Lua filter: nicer .docx for thesis builds
---- - Page break before every level-1 heading except the first (title page block stays together).
+--- - Page break before every level-1 heading except the first front-matter heading.
 --- - Default figure width so SVGs/charts do not spill past margins (override per image with {width=...}).
 --- - Keep only numbered level-1 and level-2 headings in the generated table of contents.
 

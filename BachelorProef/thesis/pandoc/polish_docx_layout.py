@@ -346,24 +346,26 @@ def _move_toc_after_abstract(root: ET.Element) -> bool:
     body.remove(toc)
     children = list(body)
 
-    foreword_index = next(
+    list_of_figures_index = next(
         (
             index
             for index, child in enumerate(children)
-            if child.tag == _w("p") and _paragraph_text(child).strip() == "Foreword"
+            if child.tag == _w("p") and _paragraph_text(child).strip() == "List of Figures"
         ),
         None,
     )
-    if foreword_index is None:
+    if list_of_figures_index is None:
         return False
 
-    insert_index = foreword_index
-    if foreword_index > 0 and _is_page_break_paragraph(children[foreword_index - 1]):
-        insert_index = foreword_index - 1
-
-    body.insert(insert_index, _page_break_paragraph())
-    body.insert(insert_index + 1, toc)
-    body.insert(insert_index + 2, _page_break_paragraph())
+    insert_index = list_of_figures_index
+    if list_of_figures_index > 0 and _is_page_break_paragraph(children[list_of_figures_index - 1]):
+        insert_index = list_of_figures_index - 1
+        body.insert(insert_index, _page_break_paragraph())
+        body.insert(insert_index + 1, toc)
+    else:
+        body.insert(insert_index, _page_break_paragraph())
+        body.insert(insert_index + 1, toc)
+        body.insert(insert_index + 2, _page_break_paragraph())
     return True
 
 

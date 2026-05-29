@@ -1,12 +1,15 @@
 #!/usr/bin/env bash
 # Build the bachelor thesis as Word (.docx) from Markdown in this directory.
 #
-# Dependencies: pandoc, python3 (strip step). Example: sudo pacman -S pandoc
+# Dependencies: pandoc, python3, libreoffice, poppler (pdftoppm).
+# Example: sudo pacman -S pandoc libreoffice-fresh poppler
 #
 # Pipeline:
 #   • --reference-doc → Howest MCT template (Heading 1/2, Normal, …).
+#   • cover/Kaft_bachelorproef_2025_2026_EN.docx → prepared thesis cover.
 #   • pandoc/docx_polish.lua → page break before each main # heading; default figure width.
 #   • pandoc/polish_docx_layout.py → box code snippets and fit the long title line.
+#   • pandoc/prepend_cover_docx.py → render and prepend the prepared cover page.
 #   • pandoc/strip_word_heading_list_numbering.py → strips Word list numbering (w:numPr) from
 #     Heading 1/2/4–9 in the output only. The template binds those styles to a multilevel list,
 #     which would otherwise add 1., 2., … before headings that already include chapter numbers.
@@ -29,9 +32,13 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 TEMPLATE="${SCRIPT_DIR}/../template/Template_Bachelorproef_MCT.docx"
 OUT_DIR="${BUILD_DOCX_OUT_DIR:-/home/warre/ThesisConnectionv2}"
 OUT_FILE="${OUT_DIR}/Bachelorproef_Snaet_2026.docx"
+LOCAL_BUILD_DIR="${SCRIPT_DIR}/build"
+LOCAL_OUT_FILE="${LOCAL_BUILD_DIR}/Bachelorproef_Snaet_2026.docx"
+COVER_FILE="${SCRIPT_DIR}/cover/Kaft_bachelorproef_2025_2026_EN.docx"
 LUA_FILTER="${SCRIPT_DIR}/pandoc/docx_polish.lua"
 POLISH_LAYOUT="${SCRIPT_DIR}/pandoc/polish_docx_layout.py"
 STRIP_HEADING_NUM="${SCRIPT_DIR}/pandoc/strip_word_heading_list_numbering.py"
+PREPEND_COVER="${SCRIPT_DIR}/pandoc/prepend_cover_docx.py"
 
 # Repo root (plantvillage_ssl/... paths in Markdown resolve from BachelorProef/thesis)
 REPO_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
@@ -66,8 +73,16 @@ if [[ ! -f "${POLISH_LAYOUT}" ]]; then
   echo "DOCX layout polish script not found: ${POLISH_LAYOUT}" >&2
   exit 1
 fi
+if [[ ! -f "${PREPEND_COVER}" ]]; then
+  echo "DOCX cover prepend script not found: ${PREPEND_COVER}" >&2
+  exit 1
+fi
+if [[ ! -f "${COVER_FILE}" ]]; then
+  echo "Cover DOCX not found: ${COVER_FILE}" >&2
+  exit 1
+fi
 
-mkdir -p "${OUT_DIR}"
+mkdir -p "${OUT_DIR}" "${LOCAL_BUILD_DIR}"
 
 TOC_ARGS=()
 if [[ "${PANDOC_TOC:-1}" != "0" ]]; then
@@ -77,16 +92,22 @@ else
   log "Pandoc TOC disabled (PANDOC_TOC=0)"
 fi
 
-# Title page + abstract only. The table of contents is generated as a DOCX field by Pandoc.
-TITLE_FRONT="$(mktemp)"
-trap 'rm -f "${TITLE_FRONT}"' EXIT
-head -n 35 "${SCRIPT_DIR}/00_title_and_abstract.md" > "${TITLE_FRONT}"
-log "title front matter: first 35 lines of 00_title_and_abstract.md → ${TITLE_FRONT}"
+# Keep the abstract, but drop the old Markdown title/metadata page. The prepared
+# kaft DOCX is prepended after the body has been polished.
+ABSTRACT_FRONT="$(mktemp)"
+BODY_FILE="$(mktemp --suffix=.docx)"
+trap 'rm -f "${ABSTRACT_FRONT}" "${BODY_FILE}"' EXIT
+awk 'found || /^# Abstract$/ { found = 1; print }' "${SCRIPT_DIR}/00_title_and_abstract.md" > "${ABSTRACT_FRONT}"
+if [[ ! -s "${ABSTRACT_FRONT}" ]]; then
+  echo "Could not extract abstract from ${SCRIPT_DIR}/00_title_and_abstract.md" >&2
+  exit 1
+fi
+log "abstract front matter without Markdown title page → ${ABSTRACT_FRONT}"
 
-log "running pandoc → ${OUT_FILE}"
+log "running pandoc body build → ${BODY_FILE}"
 pandoc \
-  "${TITLE_FRONT}" \
   "${SCRIPT_DIR}/00a_foreword.md" \
+  "${ABSTRACT_FRONT}" \
   "${SCRIPT_DIR}/00b_list_of_figures.md" \
   "${SCRIPT_DIR}/00c_abbreviations.md" \
   "${SCRIPT_DIR}/00d_glossary.md" \
@@ -102,35 +123,41 @@ pandoc \
   "${SCRIPT_DIR}/appendices/C_helena_torres.md" \
   "${SCRIPT_DIR}/appendices/D_guest_session_nviso.md" \
   "${SCRIPT_DIR}/appendices/E_guest_session_2.md" \
-  --output="${OUT_FILE}" \
+  --output="${BODY_FILE}" \
   --from=markdown+pipe_tables+table_captions \
   --to=docx \
   --reference-doc="${TEMPLATE}" \
   --resource-path="${SCRIPT_DIR}:${REPO_ROOT}" \
   --lua-filter="${LUA_FILTER}" \
   --highlight-style=tango \
-  --metadata=author:"Warre Snaet" \
   "${TOC_ARGS[@]}"
 
-if [[ ! -f "${OUT_FILE}" ]]; then
-  log "error: pandoc did not create ${OUT_FILE}" >&2
+if [[ ! -f "${BODY_FILE}" ]]; then
+  log "error: pandoc did not create ${BODY_FILE}" >&2
   exit 1
 fi
-SZ="$(stat -c '%s' "${OUT_FILE}" 2>/dev/null || wc -c < "${OUT_FILE}")"
-log "pandoc finished: ${OUT_FILE} (${SZ} bytes)"
+SZ="$(stat -c '%s' "${BODY_FILE}" 2>/dev/null || wc -c < "${BODY_FILE}")"
+log "pandoc body finished: ${BODY_FILE} (${SZ} bytes)"
 
 log "stripping Word heading list numbering (template Heading1/2 multilevel conflict)"
 STRIP_FLAGS=()
 if [[ "${BUILD_DOCX_VERBOSE:-}" == "1" ]]; then
   STRIP_FLAGS=(-v)
 fi
-python3 "${STRIP_HEADING_NUM}" "${STRIP_FLAGS[@]}" "${OUT_FILE}"
+python3 "${STRIP_HEADING_NUM}" "${STRIP_FLAGS[@]}" "${BODY_FILE}"
 
 log "applying DOCX layout polish (code boxes, fitted title)"
-python3 "${POLISH_LAYOUT}" "${OUT_FILE}"
+python3 "${POLISH_LAYOUT}" "${BODY_FILE}"
+
+log "prepending cover ${COVER_FILE} → ${OUT_FILE}"
+python3 "${PREPEND_COVER}" "${COVER_FILE}" "${BODY_FILE}" "${OUT_FILE}"
 
 SZ2="$(stat -c '%s' "${OUT_FILE}" 2>/dev/null || wc -c < "${OUT_FILE}")"
 log "final: ${OUT_FILE} (${SZ2} bytes)"
+
+cp -f "${OUT_FILE}" "${LOCAL_OUT_FILE}"
+SZ3="$(stat -c '%s' "${LOCAL_OUT_FILE}" 2>/dev/null || wc -c < "${LOCAL_OUT_FILE}")"
+log "local build copy: ${LOCAL_OUT_FILE} (${SZ3} bytes)"
 
 
 
@@ -152,3 +179,4 @@ fi
 
 log "done."
 echo "Wrote: ${OUT_FILE}"
+echo "Wrote: ${LOCAL_OUT_FILE}"

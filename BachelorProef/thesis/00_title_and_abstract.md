@@ -18,9 +18,9 @@
 
 # Abstract
 
-Deploying machine learning models on edge devices without cloud connectivity remains difficult because the common Python/PyTorch stack brings large runtime dependencies, while expert-labeled datasets are expensive to create. This thesis investigates whether a semi-supervised neural network can be implemented efficiently in Rust with the Burn framework, so that partially labeled image datasets can be labeled locally on an edge device.
+Deploying machine learning models on edge devices without cloud connectivity remains difficult because the common Python/PyTorch stack brings large runtime dependencies, while expert-labeled datasets are expensive to create. This thesis investigates whether a semi-supervised neural network can be implemented efficiently in Rust with the Burn framework, enabling local labeling of partially labeled image datasets on an edge device.
 
-Plant disease classification on the PlantVillage dataset is used as the benchmark. The system combines a lightweight convolutional neural network with a pseudo-labeling pipeline written end to end in Rust. Starting from 20% labeled data, the model assigns pseudo-labels to unlabeled images above a 90% confidence threshold and retrains on the enlarged dataset.
+The benchmark is plant disease classification on the PlantVillage dataset. The system combines a lightweight convolutional neural network with a pseudo-labeling pipeline written end to end in Rust. Starting from 20% labeled data, the model assigns pseudo-labels to unlabeled images above a 90% confidence threshold and retrains on the enlarged dataset.
 
 The experiments evaluate label efficiency, catastrophic forgetting when new classes are added, and the effect of adding a new class to a small versus large taxonomy. The saved SSL checkpoint reaches 94.90% top-1 accuracy on the held-out test split. The trained weights are approximately 916 KB in Burn's native format and approximately 1.8 MB as ONNX, while the compiled release binary is approximately 26 MB. On an RTX 3060 laptop, inference reaches 0.42 ms per image, and an iPhone 12 through Tauri reaches approximately 80 ms per image.
 

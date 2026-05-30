@@ -1,0 +1,74 @@
+   Compiling libc v0.2.186
+   Compiling matrixmultiply v0.3.10
+   Compiling num_cpus v1.17.0
+   Compiling burn-ndarray v0.21.0
+   Compiling getrandom v0.2.17
+   Compiling const-random-macro v0.1.16
+   Compiling const-random v0.1.18
+   Compiling ndarray v0.17.2
+   Compiling ndarray v0.16.1
+   Compiling plantvillage_ssl v0.1.0 (/home/warre/Documents/howest/Semester_5/Research_Project/Fast_Research_Project/plantvillage_ssl)
+    Finished `release` profile [optimized] target(s) in 8m 50s
+     Running `target/release/plantvillage_ssl stats --data-dir data/plantvillage --show-splits`
+
+ ╔══════════════════════════════════════════════════════════════════╗
+ ║   🌱 PlantVillage Semi-Supervised Learning                           ║
+ ║   Plant Disease Classification with Burn + Rust                      ║
+ ║   Designed for GPU Training with CUDA                               ║
+ ╚════════════════════════════════════════════════════════════════╝
+  
+[2m2026-05-26T21:19:31.899167Z[0m [32m INFO[0m Computing dataset statistics for: data/plantvillage
+[2m2026-05-26T21:19:31.899223Z[0m [32m INFO[0m Loading PlantVillage dataset from: "data/plantvillage"
+[2m2026-05-26T21:19:31.899247Z[0m [32m INFO[0m Detected New Plant Diseases Dataset structure (train/ + valid/)
+[2m2026-05-26T21:19:31.899249Z[0m [32m INFO[0m Merging train and valid folders for SSL training...
+[2m2026-05-26T21:19:31.899350Z[0m [32m INFO[0m Found 38 classes
+[2m2026-05-26T21:19:32.060052Z[0m [32m INFO[0m Loaded 87867 total samples
+Dataset Statistics:
+  📊 Total samples: 87867
+  🏷️  Number of classes: 38
+
+Simulated Split Configuration:
+  🧪 Test set:        8786 (10.0%)
+  ✅ Validation set:  8786 (10.0%)
+  🏷️  Labeled pool:    14059 (16.0%)
+  📷 Stream pool:     56236 (64.0%)
+
+Class Distribution:
+  Apple___Apple_scab                        2520 (  2.9%)
+  Apple___Black_rot                         2484 (  2.8%)
+  Apple___Cedar_apple_rust                  2200 (  2.5%)
+  Apple___healthy                           2510 (  2.9%)
+  Blueberry___healthy                       2270 (  2.6%)
+  Cherry_(including_sour)___Powdery_mildew  2104 (  2.4%)
+  Cherry_(including_sour)___healthy         2282 (  2.6%)
+  Corn_(maize)___Cercospora_leaf_spot Gray_leaf_spot  2052 (  2.3%)
+  Corn_(maize)___Common_rust_               2384 (  2.7%)
+  Corn_(maize)___Northern_Leaf_Blight       2385 (  2.7%)
+  Corn_(maize)___healthy                    2324 (  2.6%)
+  Grape___Black_rot                         2360 (  2.7%)
+  Grape___Esca_(Black_Measles)              2400 (  2.7%)
+  Grape___Leaf_blight_(Isariopsis_Leaf_Spot)  2152 (  2.4%)
+  Grape___healthy                           2115 (  2.4%)
+  Orange___Haunglongbing_(Citrus_greening)  2513 (  2.9%)
+  Peach___Bacterial_spot                    2297 (  2.6%)
+  Peach___healthy                           2160 (  2.5%)
+  Pepper,_bell___Bacterial_spot             2391 (  2.7%)
+  Pepper,_bell___healthy                    2485 (  2.8%)
+  Potato___Early_blight                     2424 (  2.8%)
+  Potato___Late_blight                      2424 (  2.8%)
+  Potato___healthy                          2280 (  2.6%)
+  Raspberry___healthy                       2226 (  2.5%)
+  Soybean___healthy                         2527 (  2.9%)
+  Squash___Powdery_mildew                   2170 (  2.5%)
+  Strawberry___Leaf_scorch                  2218 (  2.5%)
+  Strawberry___healthy                      2280 (  2.6%)
+  Tomato___Bacterial_spot                   2127 (  2.4%)
+  Tomato___Early_blight                     2400 (  2.7%)
+  Tomato___Late_blight                      2314 (  2.6%)
+  Tomato___Leaf_Mold                        2352 (  2.7%)
+  Tomato___Septoria_leaf_spot               2181 (  2.5%)
+  Tomato___Spider_mites Two-spotted_spider_mite  2176 (  2.5%)
+  Tomato___Target_Spot                      2284 (  2.6%)
+  Tomato___Tomato_Yellow_Leaf_Curl_Virus    2451 (  2.8%)
+  Tomato___Tomato_mosaic_virus              2238 (  2.5%)
+  Tomato___healthy                          2407 (  2.7%)

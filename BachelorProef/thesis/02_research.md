@@ -1,12 +1,12 @@
 # 2. Research: Literature Study
 
-Deep learning-based plant disease classification typically requires large amounts of labeled training data. In practice, however, annotating agricultural images by plant pathologists is labor-intensive and expensive, which limits the scalability of fully supervised approaches [1]. This problem is compounded when deploying on edge devices, where compute, memory and storage impose additional constraints. This chapter situates the research within the existing literature and discusses the theoretical foundations needed to address these challenges: semi-supervised learning as a response to the shortage of labeled data, the Rust machine learning ecosystem as an alternative to the classical Python stack, incremental learning in light of catastrophic forgetting, and the specific boundary conditions of edge AI deployments. The topics discussed fall largely outside the standard MCT curriculum and are therefore explained in depth.
+Deep learning-based plant disease classification typically requires large amounts of labeled training data. In practice, however, annotating agricultural images by plant pathologists is labor-intensive and expensive, which limits the scalability of fully supervised approaches [1]. This problem is compounded when deploying on edge devices, where compute, memory and storage impose additional constraints. This chapter situates the research in the existing literature and discusses the theoretical foundations needed to address these challenges: semi-supervised learning as a response to the shortage of labeled data, the Rust machine learning ecosystem as an alternative to the classical Python stack, incremental learning in light of catastrophic forgetting, and the specific boundary conditions of edge AI deployments. The topics discussed fall largely outside the standard MCT curriculum and are therefore explained in depth.
 
 ## 2.1 Semi-Supervised Learning
 
 ### 2.1.1 Fundamentals
 
-The availability of labeled data constitutes a structural bottleneck in training deep learning models for specialised domains such as plant disease recognition. Semi-supervised learning (SSL) offers a solution to this problem by combining a small set of labeled examples with a larger pool of unlabeled data. Under certain assumptions, a model trained in this manner can achieve comparable performance to one trained on a fully labeled dataset [1]. The core idea is that the structure of the unlabeled data contains information about the optimal position of the decision boundary. This assumption is referred to in the literature as the **cluster assumption**: data points that lie close together in feature space are likely to share the same label [1].
+Labeled data is a structural bottleneck in training deep learning models for specialised domains such as plant disease recognition. Semi-supervised learning (SSL) offers a solution to this problem by combining a small set of labeled examples with a larger pool of unlabeled data. Under certain assumptions, a model trained in this manner can achieve comparable performance to one trained on a fully labeled dataset [1]. The core idea is that the structure of the unlabeled data contains information about the optimal position of the decision boundary. This assumption is called the **cluster assumption** in the literature: data points that lie close together in feature space are likely to share the same label [1].
 
 ### 2.1.2 Pseudo-Labeling
 
@@ -18,15 +18,15 @@ Pseudo-labeling is one of the simplest and most effective SSL techniques. The pr
 4. Retrain the model on the combined labeled and pseudo-labeled data.
 5. Repeat until convergence.
 
-The critical design choice here is the **confidence threshold**. If the threshold is too low, noisy pseudo-labels enter the training set and can make the model worse. This is usually called confirmation bias. If the threshold is too high, too many samples are rejected and the unlabeled data is not used enough. This is the **quantity to quality trade-off** described by Chen et al. in SoftMatch [2], where an adaptive weighting scheme is proposed to balance both concerns.
+The critical design choice here is the **confidence threshold**. If the threshold is too low, noisy pseudo-labels enter the training set and can make the model worse. This is called confirmation bias. If the threshold is too high, too many samples are rejected and the unlabeled data is not used enough. This is the **quantity to quality trade-off** described by Chen et al. in SoftMatch [2], who propose an adaptive weighting scheme to balance both concerns.
 
 ### 2.1.3 Related Work in Plant Disease Classification
 
-Several recent studies have applied SSL to plant disease detection with promising results:
+Several recent studies have applied SSL to plant disease detection:
 
 **Ambiguity-Aware Semi-Supervised Learning (AaSSL).** Pham et al. (2025) address the problem of ambiguous samples near the decision boundary. Their method explicitly filters these samples out rather than accepting them as pseudo-labels. With only 5% of the data labeled, accuracy improved from 90.74% to 94.09% [3]. This project therefore adopts confidence-threshold filtering.
 
-**Mean Teacher and Consistency Regularization.** Ilsever and Baz (2024) apply a student-teacher architecture to the PlantVillage dataset. The teacher's weights are an exponential moving average (EMA) of the student's weights, and a consistency loss is applied under different augmentations. That approach reached 88.50% accuracy with 5% labeled data [4]. It is effective, but Mean Teacher requires two models in memory at the same time. This constitutes a significant constraint on edge devices with limited VRAM.
+**Mean Teacher and Consistency Regularization.** Ilsever and Baz (2024) apply a student-teacher architecture to the PlantVillage dataset. The teacher's weights are an exponential moving average (EMA) of the student's weights, and a consistency loss is applied under different augmentations. That approach reached 88.50% accuracy with 5% labeled data [4]. It is effective, but Mean Teacher requires two models in memory at the same time. This is a significant constraint on edge devices with limited VRAM.
 
 **Semi-supervised jute leaf disease classification.** Jannat (2025) shows that a lightweight CNN combined with SSL on 10% labeled and 90% unlabeled data can reach 97.89% accuracy, specifically with mobile and edge deployment in mind [1]. These results demonstrate that simple architectures paired with effective SSL can outperform more complex models in constrained environments.
 
@@ -55,7 +55,7 @@ The standard ML stack (Python, PyTorch, CUDA) is optimised for research flexibil
 - **Cross-compilation.** Deploying Python ML models to iOS, Android or embedded ARM devices requires wrapper frameworks (CoreML, TFLite, ONNX Runtime) and format conversion steps.
 - **Memory safety.** Python's garbage collector and the C++ backend (LibTorch) can cause unpredictable memory behaviour, which is problematic for long-running processes on an edge device.
 
-Rust addresses these constraints in a different way. It compiles to a single binary with no interpreter. Its ownership model gives memory safety at compile time without a garbage collector. Its build system, Cargo, also supports cross-compilation to ARM, WASM, iOS and Android targets [8].
+Rust addresses these constraints differently. It compiles to a single binary with no interpreter. Its ownership model gives memory safety at compile time without a garbage collector. Its build system, Cargo, supports cross-compilation to ARM, WASM, iOS and Android targets [8].
 
 ### 2.2.2 Framework Comparison
 
@@ -77,7 +77,7 @@ Three Rust ML frameworks were evaluated for this project:
 
 **tch-rs** provides direct Rust bindings to LibTorch, which is PyTorch's C++ backend. This provides full PyTorch compatibility, but it also reintroduces the dependency on a large C++ shared library (around 1.5 GB), which undoes the deployment size advantage of Rust.
 
-Burn was therefore selected because it combines backend-agnostic deployment, a training API that is suitable for custom SSL loops, and the option to produce a self-contained binary for edge devices [9][10][11].
+Burn was therefore selected because it combines backend-agnostic deployment, a training API suitable for custom SSL loops, and the option to produce a self-contained binary for edge devices [9][10][11].
 
 ![Conceptual comparison of deployment models for Burn, Candle and tch-rs](figures/framework_deployment.svg)
 *Figure 2.2: Conceptual overview of the runtime dependencies for each Rust ML framework. Burn and Candle compile to a static binary, while tch-rs needs the LibTorch shared library on the target device.*
@@ -198,14 +198,14 @@ Edge deployment brings constraints that are different from cloud or data-centre 
 
 Several deployment paths exist for ML models on edge devices:
 
-- **ONNX (Open Neural Network Exchange):** a vendor-neutral model format supported by ONNX Runtime, with backends for CPU, GPU, CoreML (iOS), NNAPI (Android) and WebAssembly. It is widely used, but it always requires a conversion step from the training framework.
-- **TensorFlow Lite (TFLite):** Google's edge inference runtime, optimised for mobile devices. It requires models to be converted from TensorFlow format and has limited support for custom operations.
+- **ONNX (Open Neural Network Exchange):** a vendor-neutral model format supported by ONNX Runtime, with backends for CPU, GPU, CoreML (iOS), NNAPI (Android) and WebAssembly. It is widely used, but it always requires conversion from the training framework.
+- **TensorFlow Lite (TFLite):** Google's edge inference runtime, optimised for mobile devices. It requires conversion from TensorFlow format and has limited support for custom operations.
 - **WebAssembly (WASM):** allows ML models to run inside web browsers at near-native performance. It makes Progressive Web Apps (PWAs) possible and those can work fully offline after the first load.
 - **Native compilation (Rust/C++):** compiling the model and the inference runtime into a single binary removes all dependency management entirely. This is the approach used in this project via Burn.
 
 ### 2.4.3 Tauri for Cross-Platform Deployment
 
-Tauri [15] is a framework for building desktop and mobile applications with a Rust backend and a web-based frontend. Unlike Electron, which bundles a full Chromium browser, Tauri uses the operating system's native webview. Because of that, the resulting applications are much smaller.
+Tauri [15] is a framework for building desktop and mobile applications with a Rust backend and a web-based frontend. Unlike Electron, which bundles a full Chromium browser, Tauri uses the operating system's native webview. The resulting applications are much smaller.
 
 For this project, Tauri makes it possible to produce, from a single codebase:
 - A desktop application (Linux, macOS, Windows) with native GPU access.
@@ -216,7 +216,7 @@ The ML inference runs entirely in the Rust backend and is exposed to the Svelte 
 
 ### 2.4.4 MicroFlow and Rust-Based Inference Engines
 
-Zhang et al. (2024) present MicroFlow, an efficient Rust-based inference engine that is designed specifically for TinyML deployments [16]. MicroFlow shows that Rust's zero-cost abstractions and its lack of a garbage collector make it realistic for inference on microcontrollers with as little as 256 KB of RAM. This project targets more capable devices, such as smartphones and laptops, but MicroFlow supports the broader idea that Rust is a viable language for production ML inference at the edge.
+Zhang et al. (2024) present MicroFlow, an efficient Rust-based inference engine designed specifically for TinyML deployments [16]. MicroFlow shows that Rust's zero-cost abstractions and its lack of a garbage collector make it realistic for inference on microcontrollers with as little as 256 KB of RAM. This project targets more capable devices, such as smartphones and laptops, but MicroFlow supports the broader idea that Rust is a viable language for production ML inference at the edge.
 
 ## 2.5 The PlantVillage Dataset
 
@@ -235,7 +235,7 @@ The PlantVillage dataset is one of the most widely used benchmarks for plant dis
 
 The dataset includes both healthy and diseased classes across 38 categories, so the model can learn to distinguish between different disease states and healthy tissue. Note that not every crop has both a healthy and a diseased class. Classes follow the naming convention `Crop___Condition` (for example `Apple___Apple_scab`, `Tomato___healthy`).
 
-For this project, the existing train and valid split is merged and then re-split according to the four-pool strategy described in Chapter 3 (20% labeled, 60% stream, 10% validation, 10% test). This makes sure that the SSL pipeline has access to a large pool of unlabeled data while also keeping a held-out test set that is never seen during training.
+For this project, the existing train and valid split is merged and then re-split according to the four-pool strategy described in Chapter 3 (20% labeled, 60% stream, 10% validation, 10% test). This gives the SSL pipeline access to a large pool of unlabeled data while keeping a held-out test set that is never seen during training.
 
 Because the dataset is pre-balanced, with approximately 2,000 images per class, the experimental setup is simpler. Class imbalance should not distort the results of the label efficiency and class scaling experiments.
 

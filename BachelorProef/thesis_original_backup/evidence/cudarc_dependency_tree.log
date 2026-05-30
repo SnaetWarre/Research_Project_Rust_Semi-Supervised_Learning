@@ -1,0 +1,81 @@
+cudarc v0.19.7
+└── cubecl-cuda v0.10.0
+    └── cubecl v0.10.0
+        ├── burn-backend v0.21.0
+        │   ├── burn-autodiff v0.21.0
+        │   │   ├── burn v0.21.0
+        │   │   │   └── plantvillage_ssl v0.1.0 (/home/warre/Documents/howest/Semester_5/Research_Project/Fast_Research_Project/plantvillage_ssl)
+        │   │   └── burn-ndarray v0.21.0
+        │   │       └── plantvillage_ssl v0.1.0 (/home/warre/Documents/howest/Semester_5/Research_Project/Fast_Research_Project/plantvillage_ssl)
+        │   ├── burn-cubecl v0.21.0
+        │   │   └── burn-cuda v0.21.0
+        │   │       └── plantvillage_ssl v0.1.0 (/home/warre/Documents/howest/Semester_5/Research_Project/Fast_Research_Project/plantvillage_ssl)
+        │   ├── burn-cuda v0.21.0 (*)
+        │   ├── burn-flex v0.21.0
+        │   │   └── burn-train v0.21.0
+        │   │       └── burn v0.21.0 (*)
+        │   ├── burn-fusion v0.21.0
+        │   │   ├── burn-cubecl v0.21.0 (*)
+        │   │   ├── burn-cubecl-fusion v0.21.0
+        │   │   │   └── burn-cubecl v0.21.0 (*)
+        │   │   └── burn-cuda v0.21.0 (*)
+        │   ├── burn-ir v0.21.0
+        │   │   ├── burn-cubecl v0.21.0 (*)
+        │   │   ├── burn-cubecl-fusion v0.21.0 (*)
+        │   │   ├── burn-flex v0.21.0 (*)
+        │   │   ├── burn-fusion v0.21.0 (*)
+        │   │   └── burn-ndarray v0.21.0 (*)
+        │   ├── burn-ndarray v0.21.0 (*)
+        │   └── burn-tensor v0.21.0
+        │       └── burn-core v0.21.0
+        │           ├── burn v0.21.0 (*)
+        │           ├── burn-nn v0.21.0
+        │           │   └── burn v0.21.0 (*)
+        │           ├── burn-optim v0.21.0
+        │           │   ├── burn v0.21.0 (*)
+        │           │   ├── burn-rl v0.21.0
+        │           │   │   └── burn-train v0.21.0 (*)
+        │           │   └── burn-train v0.21.0 (*)
+        │           ├── burn-rl v0.21.0 (*)
+        │           └── burn-train v0.21.0 (*)
+        ├── burn-cubecl v0.21.0 (*)
+        ├── burn-cubecl-fusion v0.21.0 (*)
+        ├── burn-cuda v0.21.0 (*)
+        ├── burn-std v0.21.0
+        │   ├── burn v0.21.0 (*)
+        │   ├── burn-autodiff v0.21.0 (*)
+        │   ├── burn-backend v0.21.0 (*)
+        │   ├── burn-core v0.21.0 (*)
+        │   ├── burn-cubecl v0.21.0 (*)
+        │   ├── burn-cubecl-fusion v0.21.0 (*)
+        │   ├── burn-flex v0.21.0 (*)
+        │   ├── burn-fusion v0.21.0 (*)
+        │   ├── burn-ndarray v0.21.0 (*)
+        │   └── burn-tensor v0.21.0 (*)
+        ├── cubek v0.2.0
+        │   ├── burn-cubecl v0.21.0 (*)
+        │   └── burn-cubecl-fusion v0.21.0 (*)
+        ├── cubek-attention v0.2.0
+        │   └── cubek v0.2.0 (*)
+        ├── cubek-convolution v0.2.0
+        │   └── cubek v0.2.0 (*)
+        ├── cubek-fft v0.2.0
+        │   └── cubek v0.2.0 (*)
+        ├── cubek-matmul v0.2.0
+        │   ├── cubek v0.2.0 (*)
+        │   ├── cubek-attention v0.2.0 (*)
+        │   └── cubek-convolution v0.2.0 (*)
+        ├── cubek-quant v0.2.0
+        │   └── cubek v0.2.0 (*)
+        ├── cubek-random v0.2.0
+        │   └── cubek v0.2.0 (*)
+        ├── cubek-reduce v0.2.0
+        │   └── cubek v0.2.0 (*)
+        └── cubek-std v0.2.0
+            ├── cubek v0.2.0 (*)
+            ├── cubek-attention v0.2.0 (*)
+            ├── cubek-convolution v0.2.0 (*)
+            ├── cubek-matmul v0.2.0 (*)
+            └── cubek-reduce v0.2.0 (*)
+[build-dependencies]
+└── cubecl-cuda v0.10.0 (*)

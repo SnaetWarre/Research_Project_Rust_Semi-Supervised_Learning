@@ -1,6 +1,6 @@
 # 5. Recommendations
 
-This chapter presents practical recommendations derived from the experimental results in Chapter 3 and the reflections in Chapter 4. These recommendations are intended for researchers and practitioners who intend to implement semi-supervised neural networks in Rust for edge deployment. The guidance is grounded in empirical findings and is structured by topic rather than as a chronological procedure.
+This chapter presents practical recommendations derived from the experimental results in Chapter 3 and the reflections in Chapter 4. These recommendations are intended for researchers and practitioners who intend to implement semi-supervised neural networks in Rust for edge deployment. The guidance is grounded in empirical findings and structured by topic rather than as a chronological procedure.
 
 ## 5.1 Framework Selection
 
@@ -18,7 +18,7 @@ The choice of machine learning framework constrains the remainder of the develop
 
 For use cases involving SSL or iterative training loops, Burn is the recommended choice. Its `Module` derive macro and backend generics allow the same model code to compile for CUDA training and mobile inference without modification.
 
-A practical consideration is Rust's compilation time. A full release build of the `plantvillage_ssl` workspace requires five minutes or more. It is advisable to use `cargo check` during development and reserve `--release` builds for testing and deployment. Enabling the `sccache` compiler cache can reduce rebuild times.
+A practical consideration is Rust's compilation time. A full release build of the `plantvillage_ssl` workspace requires five minutes or more. Use `cargo check` during development and reserve `--release` builds for testing and deployment. Enabling the `sccache` compiler cache can reduce rebuild times.
 
 ## 5.2 Minimum Labeled Data Requirements
 
@@ -28,11 +28,11 @@ The label efficiency experiment (Table 3.2) provides the following empirical bas
 - **50 to 100 images per class:** the minimum viable range. At 100 images per class, accuracy reaches 85.53%, which is sufficient for the initial model in an SSL pipeline.
 - **200 or more images per class:** diminishing returns. Effort spent on labeling beyond 200 images per class is better invested in improving the pseudo-labeling pipeline or collecting field data.
 
-It is recommended to collect at least 100 labeled images per class before initiating SSL. If this is not feasible, the limited labeling budget should be allocated to class pairs that are most easily confused, such as diseases with similar visual symptoms. This strategy gives the initial model the most informative decision boundary in the regions where it matters most.
+Collect at least 100 labeled images per class before initiating SSL. If this is not feasible, allocate the limited labeling budget to class pairs that are most easily confused, such as diseases with similar visual symptoms. This strategy gives the initial model the most informative decision boundary in the regions where it matters most.
 
 ## 5.3 Pseudo-Labeling Pipeline Design
 
-Based on the experimental results and the literature review, the parameter settings in Table 5.2 are recommended as initial values.
+Based on the experimental results and literature review, the parameter settings in Table 5.2 are recommended as initial values.
 
 **Table 5.2:** Recommended pseudo-labeling parameters
 
@@ -52,13 +52,13 @@ The recommended pipeline proceeds as follows:
 4. After each retraining cycle, evaluate on the validation set. If accuracy does not improve for two consecutive cycles, terminate the pipeline.
 5. Evaluate the final model on the held-out test set, which must not be used during training or pseudo-label selection.
 
-A critical methodological constraint is that the test set must not be used for any decision during training, including pseudo-label threshold tuning. Using the test set for any optimisation during training is one of the most common causes of optimistic accuracy estimates in SSL research.
+A critical methodological constraint: the test set must not be used for any decision during training, including pseudo-label threshold tuning. Using the test set for any optimisation during training is one of the most common causes of optimistic accuracy estimates in SSL research.
 
 The global 0.9 threshold should not be treated as permanently fixed. It is a sensible starting point, but per-class acceptance rates, confidence histograms and validation accuracy should be logged after every retraining cycle. If one class receives far more pseudo-labels than the others, or if visually similar classes are repeatedly confused, switching to per-class thresholds or adding uncertainty estimation should be considered before continuing the SSL cycle.
 
 ## 5.4 Incremental Class Addition
 
-In deployment scenarios where new classes are added over time—which is expected in most real-world agricultural applications—the experimental results from Chapter 3 yield the following guidelines:
+In deployment scenarios where new classes are added over time, which is expected in most real-world agricultural applications, the experimental results from Chapter 3 yield the following guidelines:
 
 1. **Start with a broad base model.** The class scaling experiment (Table 3.3) shows that adding a class to a larger base causes more forgetting. A larger base, however, means that the model covers more diseases from the outset, which reduces the frequency of subsequent updates.
 
@@ -79,7 +79,7 @@ The supporting evidence is as follows:
 - The Tauri framework allows a single Rust codebase to target iOS, Android and desktop.
 - The deployment size of approximately 26 MB is small enough to install over Bluetooth or a brief mobile connection.
 
-The exception to this recommendation is headless deployments, such as camera traps or automated greenhouse systems. In those cases, a Raspberry Pi 4 or 5 with the CPU backend is usually more suitable than a GPU-based edge device.
+The exception is headless deployments, such as camera traps or automated greenhouse systems. In those cases, a Raspberry Pi 4 or 5 with the CPU backend is usually more suitable than a GPU-based edge device.
 
 ## 5.6 Early Device Testing
 
@@ -89,12 +89,12 @@ Early device testing reveals the following issues:
 
 - **Latency differences:** the CPU backend can be orders of magnitude slower than the GPU backend. The wgpu backend may behave differently on mobile GPUs than on desktop GPUs.
 - **Memory pressure:** mobile operating systems aggressively kill background applications that use excessive memory. A model that runs correctly in isolation may still fail when the device is also running a camera preview.
-- **Image preprocessing mismatches:** camera APIs return images in various formats (NV21, BGRA, JPEG). Ensuring that the preprocessing pipeline handles all of these correctly is non-trivial.
+- **Image preprocessing mismatches:** camera APIs return images in various formats (NV21, BGRA, JPEG). Ensuring that the preprocessing pipeline handles all of them correctly is non-trivial.
 - **Permissions and sandboxing:** iOS and Android restrict file system access, camera access and background processing. These restrictions affect how the model is loaded and where inference results can be stored.
 
-It is recommended to establish a minimal deployment on the target device within the first two weeks of development. A minimal Tauri application that loads the model and runs inference on a single image is sufficient to validate the deployment pipeline and surface integration issues while they are still inexpensive to fix.
+Establish a minimal deployment on the target device within the first two weeks of development. A minimal Tauri application that loads the model and runs inference on a single image is sufficient to validate the deployment pipeline and surface integration issues while they are still inexpensive to fix.
 
-For image preprocessing specifically, a small set of fixed reference images should be retained, and the model's numerical outputs should be compared across desktop, mobile and web runtimes. This catches errors in channel ordering, resizing and normalisation before they become silent deployment bugs.
+For image preprocessing specifically, retain a small set of fixed reference images and compare the model's numerical outputs across desktop, mobile and web runtimes. This catches errors in channel ordering, resizing and normalisation before they become silent deployment bugs.
 
 ## 5.7 Common Pitfalls and Mitigations
 

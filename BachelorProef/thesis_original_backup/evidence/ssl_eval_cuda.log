@@ -1,0 +1,32 @@
+    Finished `release` profile [optimized] target(s) in 0.29s
+     Running `target/release/plantvillage_ssl eval --model output/simulation/plant_classifier_ssl_20260412_002832.mpk --data-dir data/plantvillage --labeled-ratio 0.2 --batch-size 64 --cuda`
+
+ ╔══════════════════════════════════════════════════════════════════╗
+ ║   🌱 PlantVillage Semi-Supervised Learning                           ║
+ ║   Plant Disease Classification with Burn + Rust                      ║
+ ║   Designed for GPU Training with CUDA                               ║
+ ╚════════════════════════════════════════════════════════════════╝
+  
+[2m2026-05-26T21:19:42.102959Z[0m [32m INFO[0m Evaluating model
+[2m2026-05-26T21:19:42.102974Z[0m [32m INFO[0m   Data dir: data/plantvillage
+[2m2026-05-26T21:19:42.102979Z[0m [32m INFO[0m   Batch size: 64
+[2m2026-05-26T21:19:42.102981Z[0m [32m INFO[0m   Labeled ratio: 0.2
+Evaluation Configuration:
+  📁 Data directory: data/plantvillage
+  🧠 Model: output/simulation/plant_classifier_ssl_20260412_002832.mpk
+  📦 Batch size: 64
+  🏷️  Labeled ratio: 20%
+  🖥️  Backend: CUDA (GPU)
+
+[2m2026-05-26T21:19:42.103017Z[0m [32m INFO[0m Loading PlantVillage dataset from: "data/plantvillage"
+[2m2026-05-26T21:19:42.103023Z[0m [32m INFO[0m Detected New Plant Diseases Dataset structure (train/ + valid/)
+[2m2026-05-26T21:19:42.103025Z[0m [32m INFO[0m Merging train and valid folders for SSL training...
+[2m2026-05-26T21:19:42.103119Z[0m [32m INFO[0m Found 38 classes
+[2m2026-05-26T21:19:42.146245Z[0m [32m INFO[0m Loaded 87867 total samples
+Using 8786 samples from test split.
+  📦 Pre-loading 8786 images into memory (parallel)...
+  ✅ Loaded 8786 images into GPU-ready format
+
+Evaluation Results:
+  ✅ Accuracy (Top-1): 94.90%
+  ✅ Macro F1:          94.74%

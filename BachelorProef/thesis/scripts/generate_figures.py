@@ -293,9 +293,9 @@ def figure_pipeline_flowchart() -> None:
     arrow(ax, (4, 87), (56, 87), color=GRAY, dashed=True, mutation_scale=9)
     ax.text(10, 90, "No", fontsize=7, color=GRAY)
 
-    ax.plot([118, 132, 132], [28, 28, 87], color=GRAY, linewidth=1.3, linestyle="--")
-    arrow(ax, (132, 87), (124, 87), color=GRAY, dashed=True, mutation_scale=9)
-    ax.text(120, 32, "No", fontsize=7, color=GRAY)
+    ax.plot([118, 176, 176], [28, 28, 87], color=GRAY, linewidth=1.3, linestyle="--")
+    arrow(ax, (176, 87), (124, 87), color=GRAY, dashed=True, mutation_scale=9)
+    ax.text(140, 32, "No", fontsize=7, color=GRAY)
 
     arrow(ax, (122, 63), (134, 63), mutation_scale=9)
     ax.text(124, 66.5, "No", fontsize=7, color=GRAY)

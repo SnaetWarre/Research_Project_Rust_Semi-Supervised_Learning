@@ -207,10 +207,7 @@ where
     let mut pseudo_labeler = PseudoLabeler::new(pseudo_config);
 
     // Create batcher for inference
-    let batcher = PlantVillageBatcher::<B::InnerBackend>::with_image_size(
-        burn::tensor::Device::<B::InnerBackend>::default(),
-        128,
-    );
+    let batcher = PlantVillageBatcher::with_image_size(128);
 
     // Prepare validation data
     let val_samples: Vec<(PathBuf, usize)> = splits
@@ -250,7 +247,7 @@ where
         );
 
         // Run inference on daily images
-        let predictions = run_inference_batch(&model, &daily_images, &batcher, &device, 128);
+        let predictions = run_inference_batch(&model, &daily_images, &batcher, 128);
 
         // Process predictions for pseudo-labeling
         let new_pseudo_labels = pseudo_labeler.process_predictions(&predictions, &daily_images);
@@ -381,8 +378,7 @@ where
 fn run_inference_batch<B: AutodiffBackend>(
     model: &PlantClassifier<B>,
     images: &[HiddenLabelImage],
-    batcher: &PlantVillageBatcher<B::InnerBackend>,
-    _device: &B::Device,
+    batcher: &PlantVillageBatcher,
     image_size: usize,
 ) -> Vec<Prediction> {
     const INFERENCE_BATCH_SIZE: usize = 32;

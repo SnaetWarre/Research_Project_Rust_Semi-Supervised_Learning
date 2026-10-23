@@ -242,7 +242,7 @@ where
     let val_dataset = PlantVillageBurnDataset::new_cached(val_samples.clone(), image_size)
         .expect("Failed to load validation dataset");
 
-    let batcher = PlantVillageBatcher::<B>::with_image_size(device.clone(), image_size);
+    let batcher = PlantVillageBatcher::with_image_size(image_size);
     let aug_batcher = if use_augmentation {
         Some(AugmentingBatcher::<B>::new(
             device.clone(),

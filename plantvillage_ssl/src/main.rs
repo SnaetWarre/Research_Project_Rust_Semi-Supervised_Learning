@@ -11,15 +11,13 @@ use colored::Colorize;
 use tracing::info;
 
 use burn::backend::Autodiff;
-use burn::data::dataloader::batcher::Batcher;
-use burn::data::dataset::Dataset;
 use burn::module::Module;
 use burn::record::CompactRecorder;
 use burn::tensor::backend::{AutodiffBackend, Backend};
-use burn::tensor::{activation::softmax, Int, Tensor};
-use plantvillage_ssl::dataset::burn_dataset::{PlantVillageBatcher, PlantVillageBurnDataset};
+use plantvillage_ssl::dataset::burn_dataset::PlantVillageBurnDataset;
 use plantvillage_ssl::dataset::split::{DatasetSplits, SplitConfig};
 use plantvillage_ssl::model::cnn::{PlantClassifier, PlantClassifierConfig};
+use plantvillage_ssl::training::evaluation::evaluate_accuracy_and_macro_f1;
 use plantvillage_ssl::utils::logging::{init_logging, LogConfig};
 use plantvillage_ssl::PlantVillageDataset;
 
@@ -993,114 +991,6 @@ fn find_latest_checkpoint(dir: &Path) -> Result<PathBuf> {
         .ok_or_else(|| anyhow!("No .mpk checkpoint found in {}", dir.display()))
 }
 
-fn evaluate_with_metrics<B: Backend>(
-    model: &PlantClassifier<B>,
-    dataset: &PlantVillageBurnDataset,
-    batch_size: usize,
-    image_size: usize,
-    num_classes: usize,
-) -> (f64, f64) {
-    let device = burn::tensor::Device::<B>::default();
-    let batcher = PlantVillageBatcher::<B>::with_image_size(device.clone(), image_size);
-    let len = dataset.len();
-
-    if len == 0 || num_classes == 0 {
-        return (0.0, 0.0);
-    }
-
-    let mut correct = 0usize;
-    let mut total = 0usize;
-
-    let mut tp = vec![0usize; num_classes];
-    let mut fp = vec![0usize; num_classes];
-    let mut fn_ = vec![0usize; num_classes];
-
-    for start in (0..len).step_by(batch_size) {
-        let end = (start + batch_size).min(len);
-        let items: Vec<_> = (start..end).filter_map(|i| dataset.get(i)).collect();
-
-        if items.is_empty() {
-            continue;
-        }
-
-        let batch = batcher.batch(items, &device);
-        let output = model.forward(batch.images);
-        let probs = softmax(output, 1);
-        let preds = probs.argmax(1);
-        let [batch_dim, _] = preds.dims();
-
-        let preds_flat: Tensor<B, 1, Int> = preds.reshape([batch_dim]);
-        let pred_vec: Vec<i32> = preds_flat.into_data().to_vec::<i32>().unwrap_or_default();
-
-        let target_vec: Vec<i32> = batch
-            .targets
-            .into_data()
-            .to_vec::<i32>()
-            .unwrap_or_default();
-
-        for (&p_val, &t_val) in pred_vec.iter().zip(target_vec.iter()) {
-            let p = p_val as usize;
-            let t = t_val as usize;
-
-            if p == t {
-                correct += 1;
-                if t < num_classes {
-                    tp[t] += 1;
-                }
-            } else {
-                if p < num_classes {
-                    fp[p] += 1;
-                }
-                if t < num_classes {
-                    fn_[t] += 1;
-                }
-            }
-            total += 1;
-        }
-    }
-
-    let accuracy = if total > 0 {
-        100.0 * correct as f64 / total as f64
-    } else {
-        0.0
-    };
-
-    let mut f1_sum = 0.0f64;
-    let mut counted = 0usize;
-    for c in 0..num_classes {
-        let tp_c = tp[c] as f64;
-        let fp_c = fp[c] as f64;
-        let fn_c = fn_[c] as f64;
-
-        let precision = if (tp_c + fp_c) > 0.0 {
-            tp_c / (tp_c + fp_c)
-        } else {
-            0.0
-        };
-        let recall = if (tp_c + fn_c) > 0.0 {
-            tp_c / (tp_c + fn_c)
-        } else {
-            0.0
-        };
-        let f1 = if (precision + recall) > 0.0 {
-            2.0 * precision * recall / (precision + recall)
-        } else {
-            0.0
-        };
-
-        f1_sum += f1;
-        counted += 1;
-    }
-
-    let macro_f1 = if counted > 0 {
-        100.0 * (f1_sum / counted as f64)
-    } else {
-        0.0
-    };
-
-    (accuracy, macro_f1)
-}
-
 fn dispatch_eval(
     data_dir: &str,
     model: Option<&str>,
@@ -1237,7 +1127,7 @@ fn cmd_eval<B: Backend>(
         .map_err(|e| anyhow!("Failed to load model {}: {:?}", model_path.display(), e))?;
 
     let (accuracy, macro_f1) =
-        evaluate_with_metrics::<B>(&model_instance, &eval_dataset, batch_size, 128, 38);
+        evaluate_accuracy_and_macro_f1(&model_instance, &eval_dataset, batch_size, 128, 38);
 
     println!();
     println!("{}", "Evaluation Results:".green().bold());

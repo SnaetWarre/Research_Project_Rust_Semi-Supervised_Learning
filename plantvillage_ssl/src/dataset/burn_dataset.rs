@@ -193,10 +193,7 @@ pub struct PlantVillageBurnDataset {
     samples: Vec<(PathBuf, usize)>,
     /// Target image size
     image_size: usize,
-    /// Whether to cache loaded images in memory (reserved for future use)
-    #[allow(dead_code)]
-    cache_enabled: bool,
-    /// Cached items (only used if cache_enabled)
+    /// Pre-loaded items (set by `new_cached`)
     cached_items: Option<Vec<PlantVillageItem>>,
 }
 
@@ -206,7 +203,6 @@ impl PlantVillageBurnDataset {
         Self {
             samples,
             image_size,
-            cache_enabled: false,
             cached_items: None,
         }
     }
@@ -255,7 +251,6 @@ impl PlantVillageBurnDataset {
         Ok(Self {
             samples: loaded_samples,
             image_size,
-            cache_enabled: true,
             cached_items: Some(cached_items),
         })
     }
@@ -326,28 +321,29 @@ pub struct PlantVillageBatch<B: Backend> {
 
 /// Batcher for creating PlantVillage training batches
 #[derive(Clone, Debug)]
-pub struct PlantVillageBatcher<B: Backend> {
-    #[allow(dead_code)]
-    device: B::Device,
+pub struct PlantVillageBatcher {
     image_size: usize,
 }
 
-impl<B: Backend> PlantVillageBatcher<B> {
-    /// Create a new batcher for the given device
-    pub fn new(device: B::Device) -> Self {
-        Self {
-            device,
-            image_size: IMAGE_SIZE,
-        }
+impl PlantVillageBatcher {
+    /// Create a batcher for the default image size
+    pub fn new() -> Self {
+        Self::with_image_size(IMAGE_SIZE)
     }
 
     /// Create a batcher with custom image size
-    pub fn with_image_size(device: B::Device, image_size: usize) -> Self {
-        Self { device, image_size }
+    pub fn with_image_size(image_size: usize) -> Self {
+        Self { image_size }
     }
 }
 
-impl<B: Backend> Batcher<B, PlantVillageItem, PlantVillageBatch<B>> for PlantVillageBatcher<B> {
+impl Default for PlantVillageBatcher {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl<B: Backend> Batcher<B, PlantVillageItem, PlantVillageBatch<B>> for PlantVillageBatcher {
     fn batch(&self, items: Vec<PlantVillageItem>, device: &B::Device) -> PlantVillageBatch<B> {
         let batch_size = items.len();
         let channels = 3;
@@ -556,23 +552,26 @@ pub struct PseudoLabelBatch<B: Backend> {
 
 /// Batcher for pseudo-labeled data with confidence weights
 #[derive(Clone, Debug)]
-pub struct PseudoLabelBatcher<B: Backend> {
-    #[allow(dead_code)]
-    device: B::Device,
+pub struct PseudoLabelBatcher {
     image_size: usize,
 }
 
-impl<B: Backend> PseudoLabelBatcher<B> {
+impl PseudoLabelBatcher {
     /// Create a new pseudo-label batcher
-    pub fn new(device: B::Device) -> Self {
+    pub fn new() -> Self {
         Self {
-            device,
             image_size: IMAGE_SIZE,
         }
     }
 }
 
-impl<B: Backend> Batcher<B, PseudoLabeledItem, PseudoLabelBatch<B>> for PseudoLabelBatcher<B> {
+impl Default for PseudoLabelBatcher {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl<B: Backend> Batcher<B, PseudoLabeledItem, PseudoLabelBatch<B>> for PseudoLabelBatcher {
     fn batch(&self, items: Vec<PseudoLabeledItem>, device: &B::Device) -> PseudoLabelBatch<B> {
         let batch_size = items.len();
         let channels = 3;

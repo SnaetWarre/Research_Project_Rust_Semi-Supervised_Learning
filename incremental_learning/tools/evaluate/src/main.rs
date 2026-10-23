@@ -312,11 +312,11 @@ fn run_evaluation(
 }
 
 fn simulate_prediction(true_label: usize, num_classes: usize) -> usize {
-    // Simulate prediction with ~85% accuracy
-    use std::collections::hash_map::RandomState;
-    use std::hash::BuildHasher;
+    // Simulate prediction with ~85% accuracy. DefaultHasher::new() uses
+    // fixed keys, so the same label always gives the same prediction.
+    use std::hash::{BuildHasher, BuildHasherDefault, DefaultHasher};
 
-    let hash = RandomState::new().hash_one(true_label);
+    let hash = BuildHasherDefault::<DefaultHasher>::default().hash_one(true_label);
 
     if hash % 100 < 85 {
         true_label

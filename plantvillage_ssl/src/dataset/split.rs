@@ -282,7 +282,7 @@ impl DatasetSplits {
         let mut future_pool = Vec::new();
 
         // Split each class proportionally
-        for (_, class_images) in by_class.iter_mut() {
+        for class_images in by_class.values_mut() {
             let n = class_images.len();
             let n_test = (n as f64 * config.test_fraction).round() as usize;
             let n_val = (n as f64 * config.validation_fraction).round() as usize;

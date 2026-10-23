@@ -440,7 +440,7 @@ mod tests {
 
         // After warmup, should follow cosine decay
         let lr_10 = scheduler.get_lr(10);
-        let lr_50 = scheduler.get_lr(50);
+        let _lr_50 = scheduler.get_lr(50);
         let lr_99 = scheduler.get_lr(99);
 
         // Should be decreasing over time

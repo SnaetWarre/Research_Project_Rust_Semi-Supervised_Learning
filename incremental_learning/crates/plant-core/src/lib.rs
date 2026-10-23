@@ -20,21 +20,12 @@ pub use types::*;
 /// Re-export commonly used burn types
 pub mod prelude {
     pub use crate::backend::*;
+    // Prefer our backend `Device` enum over the one in burn's prelude
+    pub use crate::backend::Device;
     pub use crate::cli::*;
     pub use crate::config::*;
     pub use crate::error::{Error, Result};
     pub use crate::metrics::*;
     pub use crate::types::*;
     pub use burn::prelude::*;
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_crate_compiles() {
-        // Basic smoke test
-        assert!(true);
-    }
 }

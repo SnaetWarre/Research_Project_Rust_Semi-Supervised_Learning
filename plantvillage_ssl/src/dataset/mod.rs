@@ -118,7 +118,7 @@ mod tests {
     fn test_class_name() {
         assert_eq!(class_name(0), Some("Apple___Apple_scab"));
         assert_eq!(
-            class_name(37),
+            class_name(35),
             Some("Tomato___Tomato_Yellow_Leaf_Curl_Virus")
         );
         assert_eq!(class_name(100), None);
@@ -127,7 +127,7 @@ mod tests {
     #[test]
     fn test_class_index() {
         assert_eq!(class_index("Apple___Apple_scab"), Some(0));
-        assert_eq!(class_index("Tomato___healthy"), Some(30));
+        assert_eq!(class_index("Tomato___healthy"), Some(37));
         assert_eq!(class_index("Unknown___class"), None);
     }
 
@@ -135,7 +135,7 @@ mod tests {
     fn test_is_healthy_class() {
         assert!(!is_healthy_class(0)); // Apple___Apple_scab
         assert!(is_healthy_class(3)); // Apple___healthy
-        assert!(is_healthy_class(30)); // Tomato___healthy
+        assert!(is_healthy_class(37)); // Tomato___healthy
     }
 
     #[test]

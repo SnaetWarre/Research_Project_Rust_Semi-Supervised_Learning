@@ -90,7 +90,7 @@ impl<B: Backend> FineTuningLearner<B> {
     fn should_unfreeze(&self, epoch: usize) -> bool {
         self.config.gradual_unfreeze
             && epoch > 0
-            && epoch % self.config.unfreeze_every == 0
+            && epoch.is_multiple_of(self.config.unfreeze_every)
             && !self.frozen_layers.is_empty()
     }
 
@@ -279,8 +279,8 @@ mod tests {
             .train_incremental(&train_data, &val_data, &inc_config)
             .unwrap();
 
-        assert!(metrics.train_loss.len() > 0);
-        assert!(metrics.val_accuracy.len() > 0);
+        assert!(!metrics.train_loss.is_empty());
+        assert!(!metrics.val_accuracy.is_empty());
         assert!(metrics.training_time >= 0.0);
     }
 

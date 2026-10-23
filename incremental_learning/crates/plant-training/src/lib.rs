@@ -19,9 +19,6 @@ pub use lr_schedule::{LearningRateScheduler, SchedulerType};
 pub use model::{EfficientNetB0, ModelArchitecture, PlantClassifier, ResNet18};
 pub use trainer::{Trainer, TrainerConfig, TrainingState};
 
-use burn::tensor::backend::Backend;
-use plant_core::{Error, Result};
-
 /// Re-export commonly used types
 pub mod prelude {
     pub use super::checkpoint::{Checkpoint, CheckpointManager};
@@ -29,15 +26,4 @@ pub mod prelude {
     pub use super::lr_schedule::{LearningRateScheduler, SchedulerType};
     pub use super::model::{EfficientNetB0, PlantClassifier, ResNet18};
     pub use super::trainer::{Trainer, TrainerConfig};
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_module_structure() {
-        // Ensure modules are accessible
-        assert!(true);
-    }
 }

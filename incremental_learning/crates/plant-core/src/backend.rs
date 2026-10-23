@@ -35,18 +35,10 @@ impl std::fmt::Display for Device {
 }
 
 /// Backend configuration
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct BackendConfig {
     /// Preferred device (CPU or GPU)
     pub device: Device,
-}
-
-impl Default for BackendConfig {
-    fn default() -> Self {
-        Self {
-            device: Device::default(),
-        }
-    }
 }
 
 static BACKEND_INFO: OnceLock<String> = OnceLock::new();

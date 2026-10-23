@@ -417,7 +417,7 @@ fn train_model<B: AutodiffBackend>(
     for _epoch in 0..epochs {
         let mut indices: Vec<usize> = (0..dataset.len()).collect();
         indices.shuffle(&mut rng);
-        let num_batches = (indices.len() + batch_size - 1) / batch_size;
+        let num_batches = indices.len().div_ceil(batch_size);
 
         for batch_idx in 0..num_batches {
             let start = batch_idx * batch_size;

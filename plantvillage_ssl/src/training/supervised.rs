@@ -204,7 +204,7 @@ where
     let image_size = 128;
 
     // Determine augmentation settings
-    let early_stop_config = early_stopping.unwrap_or_else(EarlyStoppingConfig::default);
+    let early_stop_config = early_stopping.unwrap_or_default();
 
     println!();
     if use_augmentation {
@@ -332,7 +332,7 @@ where
         // Create shuffled indices for this epoch
         let mut shuffled_indices: Vec<usize> = (0..train_len).collect();
         shuffled_indices.shuffle(&mut epoch_rng);
-        let num_batches = (shuffled_indices.len() + batch_size - 1) / batch_size;
+        let num_batches = shuffled_indices.len().div_ceil(batch_size);
 
         for batch_idx in 0..num_batches {
             // Create batch on-demand (lazy batching to avoid GPU OOM)
@@ -591,15 +591,5 @@ fn evaluate<B: AutodiffBackend>(
         0.0
     } else {
         100.0 * correct as f64 / total as f64
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    #[test]
-    fn test_training_compiles() {
-        // This test just ensures the module compiles correctly
-        // Actual training tests require a dataset
-        assert!(true);
     }
 }

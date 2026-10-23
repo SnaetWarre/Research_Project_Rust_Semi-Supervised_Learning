@@ -89,17 +89,21 @@ impl LogLevel {
             LogLevel::Error => Level::ERROR,
         }
     }
+}
 
-    /// Create from string
-    pub fn from_str(s: &str) -> Self {
-        match s.to_lowercase().as_str() {
+impl std::str::FromStr for LogLevel {
+    type Err = std::convert::Infallible;
+
+    /// Parse a level name; unknown names fall back to `Info`
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        Ok(match s.to_lowercase().as_str() {
             "trace" => LogLevel::Trace,
             "debug" => LogLevel::Debug,
             "info" => LogLevel::Info,
             "warn" | "warning" => LogLevel::Warn,
             "error" => LogLevel::Error,
             _ => LogLevel::Info,
-        }
+        })
     }
 }
 
@@ -183,7 +187,7 @@ impl ProgressLogger {
     pub fn update(&mut self, count: usize) {
         self.current = count;
 
-        if self.current % self.log_interval == 0 || self.current == self.total {
+        if self.current.is_multiple_of(self.log_interval) || self.current == self.total {
             let percentage = 100.0 * self.current as f64 / self.total as f64;
             let elapsed = self.start_time.elapsed();
             let items_per_sec = self.current as f64 / elapsed.as_secs_f64();
@@ -312,10 +316,10 @@ mod tests {
 
     #[test]
     fn test_log_level_from_str() {
-        assert_eq!(LogLevel::from_str("debug"), LogLevel::Debug);
-        assert_eq!(LogLevel::from_str("INFO"), LogLevel::Info);
-        assert_eq!(LogLevel::from_str("Warning"), LogLevel::Warn);
-        assert_eq!(LogLevel::from_str("unknown"), LogLevel::Info);
+        assert_eq!("debug".parse::<LogLevel>(), Ok(LogLevel::Debug));
+        assert_eq!("INFO".parse::<LogLevel>(), Ok(LogLevel::Info));
+        assert_eq!("Warning".parse::<LogLevel>(), Ok(LogLevel::Warn));
+        assert_eq!("unknown".parse::<LogLevel>(), Ok(LogLevel::Info));
     }
 
     #[test]

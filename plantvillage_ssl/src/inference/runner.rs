@@ -140,7 +140,7 @@ pub fn run_benchmark<B: Backend>(
     }
 
     let times = timer.times();
-    let latency = LatencyStats::from_durations(&times);
+    let latency = LatencyStats::from_durations(times);
 
     // Calculate throughput
     let throughput = if latency.mean_ms > 0.0 {
@@ -189,10 +189,10 @@ pub fn run_benchmark<B: Backend>(
     println!("  Image size: {}x{}", output.image_size, output.image_size);
     println!();
     println!(
-        "  {} {} ± {} ms",
+        "  {} {} ± {:.2} ms",
         "Mean latency:".green(),
         format!("{:.2}", output.mean_ms).bold(),
-        format!("{:.2}", output.std_ms)
+        output.std_ms
     );
     println!(
         "  P50/P95/P99: {:.2}/{:.2}/{:.2} ms",

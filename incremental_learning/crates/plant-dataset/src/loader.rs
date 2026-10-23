@@ -93,8 +93,8 @@ impl ImageLoader {
 
         let mut images = Vec::new();
 
-        for entry in std::fs::read_dir(&full_dir).map_err(|e| Error::Io(e))? {
-            let entry = entry.map_err(|e| Error::Io(e))?;
+        for entry in std::fs::read_dir(&full_dir).map_err(Error::Io)? {
+            let entry = entry.map_err(Error::Io)?;
             let path = entry.path();
 
             if path.is_file() {
@@ -133,8 +133,8 @@ impl ImageLoader {
 
     /// Helper function for recursive directory scanning
     fn scan_recursive_helper(&self, dir: &Path, images: &mut Vec<PathBuf>) -> Result<()> {
-        for entry in std::fs::read_dir(dir).map_err(|e| Error::Io(e))? {
-            let entry = entry.map_err(|e| Error::Io(e))?;
+        for entry in std::fs::read_dir(dir).map_err(Error::Io)? {
+            let entry = entry.map_err(Error::Io)?;
             let path = entry.path();
 
             if path.is_file() {

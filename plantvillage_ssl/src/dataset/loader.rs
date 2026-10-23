@@ -248,8 +248,8 @@ impl PlantVillageDataset {
         for y in 0..height {
             for x in 0..width {
                 let pixel = rgb.get_pixel(x as u32, y as u32);
-                tensor[0 * height * width + y * width + x] = pixel[0] as f32 / 255.0; // R
-                tensor[1 * height * width + y * width + x] = pixel[1] as f32 / 255.0; // G
+                tensor[y * width + x] = pixel[0] as f32 / 255.0; // R
+                tensor[height * width + y * width + x] = pixel[1] as f32 / 255.0; // G
                 tensor[2 * height * width + y * width + x] = pixel[2] as f32 / 255.0;
                 // B
             }

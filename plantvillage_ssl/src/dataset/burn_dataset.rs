@@ -53,8 +53,8 @@ impl PlantVillageItem {
         for y in 0..height {
             for x in 0..width {
                 let pixel = img.get_pixel(x as u32, y as u32);
-                image[0 * height * width + y * width + x] = pixel[0] as f32 / 255.0;
-                image[1 * height * width + y * width + x] = pixel[1] as f32 / 255.0;
+                image[y * width + x] = pixel[0] as f32 / 255.0;
+                image[height * width + y * width + x] = pixel[1] as f32 / 255.0;
                 image[2 * height * width + y * width + x] = pixel[2] as f32 / 255.0;
             }
         }
@@ -147,7 +147,7 @@ impl RawPlantVillageDataset {
             .filter_map(|(path, label)| {
                 let result = RawPlantVillageItem::from_path(path, *label).ok();
                 let count = loaded.fetch_add(1, Ordering::Relaxed);
-                if count % 100 == 0 {
+                if count.is_multiple_of(100) {
                     pb.set_position(count as u64);
                 }
                 result
@@ -215,10 +215,7 @@ impl PlantVillageBurnDataset {
     /// Uses parallel loading with rayon for maximum speed
     pub fn new_cached(samples: Vec<(PathBuf, usize)>, image_size: usize) -> anyhow::Result<Self> {
         let total = samples.len();
-        println!(
-            "   Pre-loading {} images into memory (parallel)...",
-            total
-        );
+        println!("   Pre-loading {} images into memory (parallel)...", total);
 
         let pb = ProgressBar::new(total as u64);
         pb.set_style(
@@ -236,7 +233,7 @@ impl PlantVillageBurnDataset {
             .filter_map(|(path, label)| {
                 let result = PlantVillageItem::from_path(path, *label, image_size).ok();
                 let count = loaded.fetch_add(1, Ordering::Relaxed);
-                if count % 100 == 0 {
+                if count.is_multiple_of(100) {
                     pb.set_position(count as u64);
                 }
                 result

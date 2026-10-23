@@ -165,9 +165,8 @@ where
     let model_path = Path::new(&config.model_path);
     let model_path_mpk = PathBuf::from(format!("{}.mpk", config.model_path));
 
-    let actual_model_path = if model_path_mpk.exists() {
-        Some(model_path.to_path_buf()) // Use path without extension for load_file (Burn adds it)
-    } else if model_path.exists() {
+    // Use path without extension for load_file (Burn adds it)
+    let actual_model_path = if model_path_mpk.exists() || model_path.exists() {
         Some(model_path.to_path_buf())
     } else {
         None

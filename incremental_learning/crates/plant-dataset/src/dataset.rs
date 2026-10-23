@@ -1,6 +1,6 @@
 //! Dataset implementation for plant images.
 
-use plant_core::{ImageSample, Result};
+use plant_core::ImageSample;
 
 /// A single item from the plant dataset
 pub struct PlantItem {

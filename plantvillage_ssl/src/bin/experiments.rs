@@ -767,7 +767,7 @@ fn run_incremental_with_limited_labels<B: AutodiffBackend>(
     for epoch in 0..epochs {
         let mut indices: Vec<usize> = (0..train_dataset.len()).collect();
         indices.shuffle(&mut epoch_rng);
-        let num_batches = (indices.len() + batch_size - 1) / batch_size;
+        let num_batches = indices.len().div_ceil(batch_size);
 
         let mut epoch_loss = 0.0f64;
         let mut train_batches = 0usize;
@@ -880,7 +880,7 @@ fn run_incremental_with_limited_labels<B: AutodiffBackend>(
     for epoch in 0..epochs {
         let mut indices: Vec<usize> = (0..combined_train_dataset.len()).collect();
         indices.shuffle(&mut epoch_rng);
-        let num_batches = (indices.len() + batch_size - 1) / batch_size;
+        let num_batches = indices.len().div_ceil(batch_size);
 
         let mut epoch_loss = 0.0f64;
         let mut train_batches = 0usize;
@@ -1122,7 +1122,7 @@ fn train_with_n_images_per_class<B: AutodiffBackend>(
     for epoch in 0..epochs {
         let mut indices: Vec<usize> = (0..train_dataset.len()).collect();
         indices.shuffle(&mut epoch_rng);
-        let num_batches = (indices.len() + batch_size - 1) / batch_size;
+        let num_batches = indices.len().div_ceil(batch_size);
 
         let mut epoch_loss = 0.0f64;
         let mut train_batches = 0usize;
@@ -1267,7 +1267,7 @@ fn run_incremental_experiment<B: AutodiffBackend>(
     for epoch in 0..epochs {
         let mut indices: Vec<usize> = (0..train_dataset.len()).collect();
         indices.shuffle(&mut epoch_rng);
-        let num_batches = (indices.len() + batch_size - 1) / batch_size;
+        let num_batches = indices.len().div_ceil(batch_size);
 
         let mut epoch_loss = 0.0f64;
         let mut train_batches = 0usize;
@@ -1374,7 +1374,7 @@ fn run_incremental_experiment<B: AutodiffBackend>(
     for epoch in 0..epochs {
         let mut indices: Vec<usize> = (0..combined_train_dataset.len()).collect();
         indices.shuffle(&mut epoch_rng);
-        let num_batches = (indices.len() + batch_size - 1) / batch_size;
+        let num_batches = indices.len().div_ceil(batch_size);
 
         let mut epoch_loss = 0.0f64;
         let mut train_batches = 0usize;
@@ -1547,16 +1547,10 @@ fn generate_label_efficiency_conclusions(results: &LabelEfficiencyResults) -> St
     let timestamp = Local::now().format("%Y-%m-%d %H:%M:%S");
 
     let mut text = String::new();
-    text.push_str(&format!(
-        "========================================================================\n"
-    ));
-    text.push_str(&format!(
-        "EXPERIMENT 1: Label Efficiency Curve - Conclusions\n"
-    ));
+    text.push_str("========================================================================\n");
+    text.push_str("EXPERIMENT 1: Label Efficiency Curve - Conclusions\n");
     text.push_str(&format!("Generated: {}\n", timestamp));
-    text.push_str(&format!(
-        "========================================================================\n\n"
-    ));
+    text.push_str("========================================================================\n\n");
 
     text.push_str("RESEARCH QUESTION:\n");
     text.push_str("How many labeled images per class are needed for acceptable accuracy?\n\n");
@@ -1645,16 +1639,10 @@ fn generate_class_scaling_conclusions(results: &ClassScalingResults) -> String {
     let timestamp = Local::now().format("%Y-%m-%d %H:%M:%S");
 
     let mut text = String::new();
-    text.push_str(&format!(
-        "========================================================================\n"
-    ));
-    text.push_str(&format!(
-        "EXPERIMENT 2: Class Scaling Effect - Conclusions\n"
-    ));
+    text.push_str("========================================================================\n");
+    text.push_str("EXPERIMENT 2: Class Scaling Effect - Conclusions\n");
     text.push_str(&format!("Generated: {}\n", timestamp));
-    text.push_str(&format!(
-        "========================================================================\n\n"
-    ));
+    text.push_str("========================================================================\n\n");
 
     text.push_str("RESEARCH QUESTION:\n");
     text.push_str("Is adding a class to 5 classes harder than adding to 30 classes?\n");
@@ -1684,7 +1672,7 @@ fn generate_class_scaling_conclusions(results: &ClassScalingResults) -> String {
         "  Forgetting:         {:.2}% points\n",
         results.small_base.forgetting
     ));
-    text.push_str("\n");
+    text.push('\n');
 
     text.push_str(&format!(
         "Scenario B: {} → {} classes\n",
@@ -1706,7 +1694,7 @@ fn generate_class_scaling_conclusions(results: &ClassScalingResults) -> String {
         "  Forgetting:         {:.2}% points\n",
         results.large_base.forgetting
     ));
-    text.push_str("\n");
+    text.push('\n');
 
     text.push_str("COMPARATIVE ANALYSIS:\n");
     text.push_str(&format!(
@@ -1784,16 +1772,10 @@ fn generate_new_class_position_conclusions(results: &NewClassPositionResults) ->
     let timestamp = Local::now().format("%Y-%m-%d %H:%M:%S");
 
     let mut text = String::new();
-    text.push_str(&format!(
-        "========================================================================\n"
-    ));
-    text.push_str(&format!(
-        "EXPERIMENT 4: New Class Position Effect - Conclusions\n"
-    ));
+    text.push_str("========================================================================\n");
+    text.push_str("EXPERIMENT 4: New Class Position Effect - Conclusions\n");
     text.push_str(&format!("Generated: {}\n", timestamp));
-    text.push_str(&format!(
-        "========================================================================\n\n"
-    ));
+    text.push_str("========================================================================\n\n");
 
     text.push_str("RESEARCH QUESTION:\n");
     text.push_str(
@@ -1870,9 +1852,7 @@ fn generate_new_class_position_conclusions(results: &NewClassPositionResults) ->
 
     // Finding 2: Is it harder?
     if results.summary.harder_as_31st {
-        text.push_str(&format!(
-            "2. Learning a new class is HARDER as the 31st class\n"
-        ));
+        text.push_str("2. Learning a new class is HARDER as the 31st class\n");
         text.push_str(&format!(
             "   Samples ratio: {:.2}x more samples needed for equivalent accuracy\n",
             results.summary.samples_ratio
@@ -2187,7 +2167,7 @@ fn generate_position_comparison_chart(
     let plot_width = CHART_WIDTH - MARGIN_LEFT - MARGIN_RIGHT;
     let plot_height = CHART_HEIGHT - MARGIN_TOP - MARGIN_BOTTOM;
 
-    let metrics = vec![
+    let metrics = [
         (
             "New Class Acc",
             small.new_class_accuracy,
@@ -2701,7 +2681,7 @@ fn generate_benchmark_summary(result: &plantvillage_ssl::inference::BenchmarkOut
     summary.push_str(&format!("Device: {}\n", result.device));
     summary.push_str(&format!("Timestamp: {}\n", result.timestamp));
     summary.push_str("Platform: CUDA GPU\n");
-    summary.push_str("\n");
+    summary.push('\n');
 
     summary.push_str("CONFIGURATION:\n");
     summary.push_str(&format!(
@@ -2717,7 +2697,7 @@ fn generate_benchmark_summary(result: &plantvillage_ssl::inference::BenchmarkOut
         "  Benchmark Iterations: {}\n",
         result.num_iterations
     ));
-    summary.push_str("\n");
+    summary.push('\n');
 
     summary.push_str("LATENCY METRICS:\n");
     summary.push_str(&format!("  Mean:   {:8.2} ms\n", result.mean_ms));
@@ -2727,16 +2707,16 @@ fn generate_benchmark_summary(result: &plantvillage_ssl::inference::BenchmarkOut
     summary.push_str(&format!("  P50:    {:8.2} ms\n", result.p50_ms));
     summary.push_str(&format!("  P95:    {:8.2} ms\n", result.p95_ms));
     summary.push_str(&format!("  P99:    {:8.2} ms\n", result.p99_ms));
-    summary.push_str("\n");
+    summary.push('\n');
 
     summary.push_str("THROUGHPUT:\n");
     summary.push_str(&format!("  {:8.1} images/second\n", result.throughput_fps));
-    summary.push_str("\n");
+    summary.push('\n');
 
     if result.model_size_mb > 0.0 {
         summary.push_str("MODEL:\n");
         summary.push_str(&format!("  Size: {:.2} MB\n", result.model_size_mb));
-        summary.push_str("\n");
+        summary.push('\n');
     }
 
     // Check against targets

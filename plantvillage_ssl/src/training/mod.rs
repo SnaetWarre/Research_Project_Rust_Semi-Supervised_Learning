@@ -15,6 +15,7 @@
 //! 4. Retrain model with augmented dataset
 //! 5. Repeat until convergence or data exhaustion
 
+pub mod evaluation;
 pub mod pseudo_label;
 pub mod scheduler;
 pub mod simulation;
@@ -23,6 +24,7 @@ pub mod supervised;
 pub mod trainer;
 
 // Re-export main types for convenience
+pub use evaluation::evaluate_accuracy;
 pub use pseudo_label::{PseudoLabelConfig, PseudoLabeler};
 pub use scheduler::LRScheduler as LearningRateScheduler;
 pub use scheduler::LRScheduler as SchedulerType;

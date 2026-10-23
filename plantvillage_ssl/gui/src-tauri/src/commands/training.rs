@@ -147,6 +147,7 @@ where
 
     use plantvillage_ssl::dataset::burn_dataset::PlantVillageBurnDataset;
     use plantvillage_ssl::model::cnn::{PlantClassifier, PlantClassifierConfig};
+    use plantvillage_ssl::training::evaluate_accuracy;
     use plantvillage_ssl::{PlantVillageBatcher, PlantVillageDataset};
 
     let device = Device::<B>::default();
@@ -315,45 +316,8 @@ where
         loss_history.push(avg_loss);
 
         // Validation
-        let val_batcher = PlantVillageBatcher::<B::InnerBackend>::with_image_size(
-            Device::<B::InnerBackend>::default(),
-            128,
-        );
-        let inner_device = Device::<B::InnerBackend>::default();
-        let model_valid = model.clone().valid();
-
-        let mut correct = 0usize;
-        let mut total = 0usize;
-
-        for start in (0..val_dataset.len()).step_by(params.batch_size) {
-            let end = (start + params.batch_size).min(val_dataset.len());
-            let items: Vec<_> = (start..end).filter_map(|i| val_dataset.get(i)).collect();
-
-            if items.is_empty() {
-                continue;
-            }
-
-            let batch = val_batcher.batch(items, &inner_device);
-            let output = model_valid.forward(batch.images);
-            let predictions = output.argmax(1).squeeze::<1>();
-
-            use burn::tensor::ElementConversion;
-            let batch_correct: i64 = predictions
-                .equal(batch.targets)
-                .int()
-                .sum()
-                .into_scalar()
-                .elem();
-
-            correct += batch_correct as usize;
-            total += end - start;
-        }
-
-        let val_accuracy = if total > 0 {
-            correct as f64 / total as f64
-        } else {
-            0.0
-        };
+        let val_accuracy =
+            evaluate_accuracy(&model.valid(), &val_dataset, params.batch_size, 128) / 100.0;
         accuracy_history.push(val_accuracy);
 
         // Calculate learning rate (cosine annealing)

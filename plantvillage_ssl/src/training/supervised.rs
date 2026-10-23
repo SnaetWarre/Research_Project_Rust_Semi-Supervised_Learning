@@ -28,6 +28,7 @@ use rand_chacha::ChaCha8Rng;
 use crate::dataset::burn_dataset::{AugmentingBatcher, RawPlantVillageDataset};
 use crate::dataset::split::{DatasetSplits, SplitConfig};
 use crate::model::cnn::PlantClassifierConfig;
+use crate::training::evaluation::evaluate_accuracy;
 use crate::{PlantClassifier, PlantVillageBatcher, PlantVillageBurnDataset, PlantVillageDataset};
 
 /// Configuration for early stopping based on validation accuracy
@@ -442,7 +443,7 @@ where
         let train_acc = 100.0 * correct as f64 / total_samples_count.max(1) as f64;
 
         // Validation phase
-        let val_acc = evaluate(&model, &val_dataset, &batcher, batch_size, image_size);
+        let val_acc = evaluate_accuracy(&model.valid(), &val_dataset, batch_size, image_size);
 
         // Track best model
         let is_best = val_acc > best_val_acc;
@@ -540,56 +541,4 @@ where
     );
 
     Ok(())
-}
-
-/// Evaluate the model on a dataset
-fn evaluate<B: AutodiffBackend>(
-    model: &PlantClassifier<B>,
-    dataset: &PlantVillageBurnDataset,
-    _batcher: &PlantVillageBatcher<B>,
-    batch_size: usize,
-    image_size: usize,
-) -> f64 {
-    use burn::data::dataset::Dataset;
-
-    // Get the inner backend's device
-    let device = burn::tensor::Device::<B::InnerBackend>::default();
-
-    // Create a batcher for the inner backend with correct image size
-    let inner_batcher =
-        PlantVillageBatcher::<B::InnerBackend>::with_image_size(device.clone(), image_size);
-
-    let inner_model = model.clone().valid();
-    let len = dataset.len();
-    let mut correct = 0usize;
-    let mut total = 0usize;
-
-    for start in (0..len).step_by(batch_size) {
-        let end = (start + batch_size).min(len);
-        let items: Vec<_> = (start..end).filter_map(|i| dataset.get(i)).collect();
-
-        if items.is_empty() {
-            continue;
-        }
-
-        let batch = inner_batcher.batch(items, &device);
-        let output = inner_model.forward(batch.images);
-        let predictions = output.argmax(1).squeeze::<1>();
-
-        let batch_correct: i64 = predictions
-            .equal(batch.targets)
-            .int()
-            .sum()
-            .into_scalar()
-            .elem();
-
-        correct += batch_correct as usize;
-        total += end - start;
-    }
-
-    if total == 0 {
-        0.0
-    } else {
-        100.0 * correct as f64 / total as f64
-    }
 }

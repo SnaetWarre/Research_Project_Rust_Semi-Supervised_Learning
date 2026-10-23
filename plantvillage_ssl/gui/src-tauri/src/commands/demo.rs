@@ -32,6 +32,7 @@ use plantvillage_ssl::{
         split::{DatasetSplits, HiddenLabelImage, SplitConfig},
     },
     model::cnn::PlantClassifierConfig,
+    training::evaluate_accuracy,
     training::pseudo_label::{Prediction, PseudoLabelConfig, PseudoLabeler, StreamSimulator},
     PlantClassifier, PlantVillageBatcher, PlantVillageDataset,
 };
@@ -610,7 +611,7 @@ pub async fn manual_retrain_demo(
     );
 
     // Evaluate after retraining
-    let new_acc = evaluate_model(&session.model, &session.val_dataset, &session.batcher, 32);
+    let new_acc = evaluate_accuracy(&session.model.valid(), &session.val_dataset, 32, 128);
 
     session.state.current_accuracy = new_acc;
     session.state.retraining_count += 1;
@@ -773,7 +774,7 @@ where
         .map_err(|e| format!("Failed to load validation dataset: {:?}", e))?;
 
     // Initial validation accuracy
-    let initial_accuracy = evaluate_model(&model, &val_dataset, &batcher, 32);
+    let initial_accuracy = evaluate_accuracy(&model.valid(), &val_dataset, 32, 128);
 
     let state = DemoSessionState {
         current_day: 0,
@@ -1005,7 +1006,7 @@ fn process_demo_day<B: AutodiffBackend>(session: &mut DemoSession<B>) -> Result<
         let eval_start = Instant::now();
 
         // Evaluate after retraining
-        let new_acc = evaluate_model(&session.model, &session.val_dataset, &session.batcher, 32);
+        let new_acc = evaluate_accuracy(&session.model.valid(), &session.val_dataset, 32, 128);
         tracing::info!(
             "  [process_demo_day] Evaluation completed in {:?}",
             eval_start.elapsed()
@@ -1216,48 +1217,5 @@ fn retrain_model_with_augmentation<B: AutodiffBackend>(
             epochs,
             avg_loss
         );
-    }
-}
-
-/// Evaluate model on validation set
-fn evaluate_model<B: AutodiffBackend>(
-    model: &PlantClassifier<B>,
-    dataset: &PlantVillageBurnDataset,
-    batcher: &PlantVillageBatcher<B::InnerBackend>,
-    batch_size: usize,
-) -> f64 {
-    let inner_model = model.clone().valid();
-    let inner_device = Device::<B::InnerBackend>::default();
-    let len = dataset.len();
-    let mut correct = 0usize;
-    let mut total = 0usize;
-
-    for start in (0..len).step_by(batch_size) {
-        let end = (start + batch_size).min(len);
-        let items: Vec<_> = (start..end).filter_map(|i| dataset.get(i)).collect();
-
-        if items.is_empty() {
-            continue;
-        }
-
-        let batch = batcher.batch(items, &inner_device);
-        let output = inner_model.forward(batch.images);
-        let predictions = output.argmax(1).squeeze::<1>();
-
-        let batch_correct: i64 = predictions
-            .equal(batch.targets)
-            .int()
-            .sum()
-            .into_scalar()
-            .elem();
-
-        correct += batch_correct as usize;
-        total += end - start;
-    }
-
-    if total == 0 {
-        0.0
-    } else {
-        100.0 * correct as f64 / total as f64
     }
 }

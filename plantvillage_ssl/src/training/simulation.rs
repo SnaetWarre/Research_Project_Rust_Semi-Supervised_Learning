@@ -32,6 +32,7 @@ use crate::dataset::burn_dataset::{
 };
 use crate::dataset::split::{DatasetSplits, HiddenLabelImage, SplitConfig};
 use crate::model::cnn::PlantClassifierConfig;
+use crate::training::evaluation::evaluate_accuracy;
 use crate::training::pseudo_label::{
     Prediction, PseudoLabelConfig, PseudoLabeler, StreamSimulator,
 };
@@ -224,7 +225,7 @@ where
     let mut results = SimulationResults::new();
 
     // Initial validation accuracy
-    let initial_acc = evaluate_model(&model, &val_dataset, &batcher, config.batch_size);
+    let initial_acc = evaluate_accuracy(&model.valid(), &val_dataset, config.batch_size, 128);
     println!();
     println!("{}", "Initial Model Performance:".yellow().bold());
     println!("  Validation accuracy: {:.2}%", initial_acc);
@@ -320,7 +321,7 @@ where
             );
 
             // Evaluate after retraining
-            let new_acc = evaluate_model(&model, &val_dataset, &batcher, config.batch_size);
+            let new_acc = evaluate_accuracy(&model.valid(), &val_dataset, config.batch_size, 128);
             println!("  → New validation accuracy: {:.2}%", new_acc);
             results.accuracy_history.push((day, new_acc));
 
@@ -338,7 +339,7 @@ where
     println!("{}", "Simulation Complete!".green().bold());
     println!();
 
-    let final_acc = evaluate_model(&model, &val_dataset, &batcher, config.batch_size);
+    let final_acc = evaluate_accuracy(&model.valid(), &val_dataset, config.batch_size, 128);
     let stats = pseudo_labeler.stats();
 
     println!("{}", "Final Results:".cyan().bold());
@@ -451,51 +452,6 @@ fn run_inference_batch<B: AutodiffBackend>(
     }
 
     predictions
-}
-
-/// Evaluate model on validation set
-fn evaluate_model<B: AutodiffBackend>(
-    model: &PlantClassifier<B>,
-    dataset: &PlantVillageBurnDataset,
-    batcher: &PlantVillageBatcher<B::InnerBackend>,
-    batch_size: usize,
-) -> f64 {
-    use burn::data::dataset::Dataset;
-
-    let inner_model = model.clone().valid();
-    let inner_device = burn::tensor::Device::<B::InnerBackend>::default();
-    let len = dataset.len();
-    let mut correct = 0usize;
-    let mut total = 0usize;
-
-    for start in (0..len).step_by(batch_size) {
-        let end = (start + batch_size).min(len);
-        let items: Vec<_> = (start..end).filter_map(|i| dataset.get(i)).collect();
-
-        if items.is_empty() {
-            continue;
-        }
-
-        let batch = batcher.batch(items, &inner_device);
-        let output = inner_model.forward(batch.images);
-        let predictions = output.argmax(1).squeeze::<1>();
-
-        let batch_correct: i64 = predictions
-            .equal(batch.targets)
-            .int()
-            .sum()
-            .into_scalar()
-            .elem();
-
-        correct += batch_correct as usize;
-        total += end - start;
-    }
-
-    if total == 0 {
-        0.0
-    } else {
-        100.0 * correct as f64 / total as f64
-    }
 }
 
 /// Retrain model with augmentation on combined labeled and pseudo-labeled data

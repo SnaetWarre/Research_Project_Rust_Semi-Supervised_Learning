@@ -34,13 +34,13 @@ use burn::module::AutodiffModule;
 use burn::nn::loss::CrossEntropyLossConfig;
 use burn::optim::{AdamConfig, GradientsParams, Optimizer};
 use burn::tensor::backend::AutodiffBackend;
-use burn::tensor::ElementConversion;
 use rand::prelude::*;
 use rand_chacha::ChaCha8Rng;
 use serde::{Deserialize, Serialize};
 
 use crate::dataset::burn_dataset::{PlantVillageBatcher, PlantVillageBurnDataset};
 use crate::model::cnn::{PlantClassifier, PlantClassifierConfig};
+use crate::training::evaluation::evaluate_accuracy;
 
 /// Configuration for SSL-enhanced incremental learning
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -176,7 +176,6 @@ pub fn run_ssl_incremental_experiment<B: AutodiffBackend>(
     tracing::info!("Training base model on {} classes...", config.base_classes);
     let base_dataset = PlantVillageBurnDataset::new_cached(base_train.clone(), image_size)?;
     let base_val_dataset = PlantVillageBurnDataset::new_cached(base_val.clone(), image_size)?;
-    let _batcher = PlantVillageBatcher::<B>::with_image_size(device.clone(), image_size);
 
     let model_config = PlantClassifierConfig {
         num_classes: config.base_classes,
@@ -195,8 +194,8 @@ pub fn run_ssl_incremental_experiment<B: AutodiffBackend>(
         &device,
     )?;
 
-    let base_accuracy = evaluate_model::<B>(
-        &base_model,
+    let base_accuracy = evaluate_accuracy(
+        &base_model.valid(),
         &base_val_dataset,
         config.batch_size,
         image_size,
@@ -263,18 +262,17 @@ pub fn run_ssl_incremental_experiment<B: AutodiffBackend>(
     let time_without_ssl = start_a.elapsed().as_secs_f64();
 
     // Evaluate without SSL
-    let old_acc_without = evaluate_model::<B>(
-        &model_without_ssl,
+    let old_acc_without = evaluate_accuracy(
+        &model_without_ssl.valid(),
         &base_val_dataset,
         config.batch_size,
         image_size,
     );
 
     let new_val_dataset = PlantVillageBurnDataset::new_cached(new_class_val.clone(), image_size)?;
-    let new_acc_without = evaluate_model_on_new_class::<B>(
-        &model_without_ssl,
+    let new_acc_without = evaluate_accuracy(
+        &model_without_ssl.valid(),
         &new_val_dataset,
-        config.base_classes,
         config.batch_size,
         image_size,
     );
@@ -283,8 +281,8 @@ pub fn run_ssl_incremental_experiment<B: AutodiffBackend>(
     combined_val.extend(new_class_val.clone());
     let combined_val_dataset =
         PlantVillageBurnDataset::new_cached(combined_val.clone(), image_size)?;
-    let overall_without = evaluate_model::<B>(
-        &model_without_ssl,
+    let overall_without = evaluate_accuracy(
+        &model_without_ssl.valid(),
         &combined_val_dataset,
         config.batch_size,
         image_size,
@@ -348,21 +346,20 @@ pub fn run_ssl_incremental_experiment<B: AutodiffBackend>(
     let time_with_ssl = start_b.elapsed().as_secs_f64();
 
     // Evaluate with SSL
-    let old_acc_with = evaluate_model::<B>(
-        &model_with_ssl,
+    let old_acc_with = evaluate_accuracy(
+        &model_with_ssl.valid(),
         &base_val_dataset,
         config.batch_size,
         image_size,
     );
-    let new_acc_with = evaluate_model_on_new_class::<B>(
-        &model_with_ssl,
+    let new_acc_with = evaluate_accuracy(
+        &model_with_ssl.valid(),
         &new_val_dataset,
-        config.base_classes,
         config.batch_size,
         image_size,
     );
-    let overall_with = evaluate_model::<B>(
-        &model_with_ssl,
+    let overall_with = evaluate_accuracy(
+        &model_with_ssl.valid(),
         &combined_val_dataset,
         config.batch_size,
         image_size,
@@ -446,75 +443,6 @@ fn train_model<B: AutodiffBackend>(
     }
 
     Ok(model)
-}
-
-/// Evaluate model on dataset
-fn evaluate_model<B: AutodiffBackend>(
-    model: &PlantClassifier<B>,
-    dataset: &PlantVillageBurnDataset,
-    batch_size: usize,
-    image_size: usize,
-) -> f64 {
-    use burn::tensor::Tensor;
-
-    let device = burn::tensor::Device::<B::InnerBackend>::default();
-    let batcher =
-        PlantVillageBatcher::<B::InnerBackend>::with_image_size(device.clone(), image_size);
-
-    let inner_model = model.clone().valid();
-    let len = dataset.len();
-
-    if len == 0 {
-        return 0.0;
-    }
-
-    let mut correct = 0usize;
-    let mut total = 0usize;
-
-    for start in (0..len).step_by(batch_size) {
-        let end = (start + batch_size).min(len);
-        let items: Vec<_> = (start..end).filter_map(|i| dataset.get(i)).collect();
-
-        if items.is_empty() {
-            continue;
-        }
-
-        let batch = batcher.batch(items, &device);
-        let output = inner_model.forward(batch.images);
-        let predictions = output.argmax(1);
-        let [batch_dim, _] = predictions.dims();
-        let predictions_flat: Tensor<B::InnerBackend, 1, burn::tensor::Int> =
-            predictions.reshape([batch_dim]);
-
-        let batch_correct: i64 = predictions_flat
-            .equal(batch.targets)
-            .int()
-            .sum()
-            .into_scalar()
-            .elem();
-
-        correct += batch_correct as usize;
-        total += end - start;
-    }
-
-    if total == 0 {
-        0.0
-    } else {
-        100.0 * correct as f64 / total as f64
-    }
-}
-
-/// Evaluate model specifically on new class samples
-fn evaluate_model_on_new_class<B: AutodiffBackend>(
-    model: &PlantClassifier<B>,
-    dataset: &PlantVillageBurnDataset,
-    _new_class_label: usize,
-    batch_size: usize,
-    image_size: usize,
-) -> f64 {
-    // Same as evaluate_model, but filter for new class
-    // Since the dataset should only contain new class samples, we just call evaluate_model
-    evaluate_model::<B>(model, dataset, batch_size, image_size)
 }
 
 /// Generate pseudo-labels for unlabeled samples

@@ -748,7 +748,7 @@ fn run_incremental_with_limited_labels<B: AutodiffBackend>(
     let train_dataset = PlantVillageBurnDataset::new(base_train.clone(), image_size);
     let val_dataset = PlantVillageBurnDataset::new(base_val.clone(), image_size);
 
-    let batcher = PlantVillageBatcher::<B>::with_image_size(device.clone(), image_size);
+    let batcher = PlantVillageBatcher::with_image_size(image_size);
 
     let model_config = PlantClassifierConfig {
         num_classes: base_classes,
@@ -875,7 +875,7 @@ fn run_incremental_with_limited_labels<B: AutodiffBackend>(
 
     let combined_train_dataset = PlantVillageBurnDataset::new(combined_train, image_size);
     let combined_val_dataset = PlantVillageBurnDataset::new(combined_val.clone(), image_size);
-    let new_batcher = PlantVillageBatcher::<B>::with_image_size(device.clone(), image_size);
+    let new_batcher = PlantVillageBatcher::with_image_size(image_size);
 
     // Train on combined data
     for epoch in 0..epochs {
@@ -1101,7 +1101,7 @@ fn train_with_n_images_per_class<B: AutodiffBackend>(
     let train_dataset = PlantVillageBurnDataset::new(train_samples, image_size);
     let val_dataset = PlantVillageBurnDataset::new(val_samples, image_size);
 
-    let batcher = PlantVillageBatcher::<B>::with_image_size(device.clone(), image_size);
+    let batcher = PlantVillageBatcher::with_image_size(image_size);
 
     let model_config = PlantClassifierConfig {
         num_classes: 38,
@@ -1245,7 +1245,7 @@ fn run_incremental_experiment<B: AutodiffBackend>(
     let train_dataset = PlantVillageBurnDataset::new(base_train.clone(), image_size);
     let val_dataset = PlantVillageBurnDataset::new(base_val.clone(), image_size);
 
-    let batcher = PlantVillageBatcher::<B>::with_image_size(device.clone(), image_size);
+    let batcher = PlantVillageBatcher::with_image_size(image_size);
 
     let model_config = PlantClassifierConfig {
         num_classes: base_classes,
@@ -1366,7 +1366,7 @@ fn run_incremental_experiment<B: AutodiffBackend>(
 
     let combined_train_dataset = PlantVillageBurnDataset::new(combined_train, image_size);
     let combined_val_dataset = PlantVillageBurnDataset::new(combined_val.clone(), image_size);
-    let new_batcher = PlantVillageBatcher::<B>::with_image_size(device.clone(), image_size);
+    let new_batcher = PlantVillageBatcher::with_image_size(image_size);
 
     // Train on combined data (simple fine-tuning approach)
     for epoch in 0..epochs {

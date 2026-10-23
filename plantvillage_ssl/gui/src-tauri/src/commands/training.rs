@@ -225,7 +225,7 @@ where
         .with_weight_decay(Some(burn::optim::decay::WeightDecayConfig::new(1e-4f32)))
         .init();
 
-    let batcher = PlantVillageBatcher::<B>::with_image_size(device.clone(), 128);
+    let batcher = PlantVillageBatcher::with_image_size(128);
 
     let mut loss_history = Vec::new();
     let mut accuracy_history = Vec::new();

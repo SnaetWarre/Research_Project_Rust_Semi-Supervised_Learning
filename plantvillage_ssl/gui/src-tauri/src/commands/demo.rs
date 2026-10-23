@@ -146,9 +146,8 @@ pub struct DemoSession<B: AutodiffBackend> {
     pseudo_labeler: PseudoLabeler,
     splits: DatasetSplits,
     val_dataset: PlantVillageBurnDataset,
-    batcher: PlantVillageBatcher<B::InnerBackend>,
+    batcher: PlantVillageBatcher,
     state: DemoSessionState,
-    device: Device<B>,
 }
 
 /// Global demo session state
@@ -414,7 +413,6 @@ pub async fn process_farmer_images(
         &session.model,
         &farmer_images,
         &session.batcher,
-        &session.device,
     );
     tracing::info!(
         "Farmer inference completed in {:?}, got {} predictions",
@@ -759,10 +757,7 @@ where
     let pseudo_labeler = PseudoLabeler::new(pseudo_config);
 
     // Create batcher
-    let batcher = PlantVillageBatcher::<B::InnerBackend>::with_image_size(
-        Device::<B::InnerBackend>::default(),
-        128,
-    );
+    let batcher = PlantVillageBatcher::with_image_size(128);
 
     // Prepare validation dataset
     let val_samples: Vec<(PathBuf, usize)> = splits
@@ -800,7 +795,6 @@ where
         val_dataset,
         batcher,
         state,
-        device,
     })
 }
 
@@ -862,12 +856,7 @@ fn process_demo_day<B: AutodiffBackend>(session: &mut DemoSession<B>) -> Result<
         daily_images.len()
     );
     let inference_start = Instant::now();
-    let predictions = run_inference_on_images(
-        &session.model,
-        &daily_images,
-        &session.batcher,
-        &session.device,
-    );
+    let predictions = run_inference_on_images(&session.model, &daily_images, &session.batcher);
     tracing::info!(
         "  [process_demo_day] Inference completed in {:?}, got {} predictions",
         inference_start.elapsed(),
@@ -1058,8 +1047,7 @@ fn process_demo_day<B: AutodiffBackend>(session: &mut DemoSession<B>) -> Result<
 fn run_inference_on_images<B: AutodiffBackend>(
     model: &PlantClassifier<B>,
     images: &[HiddenLabelImage],
-    batcher: &PlantVillageBatcher<B::InnerBackend>,
-    _device: &Device<B>,
+    batcher: &PlantVillageBatcher,
 ) -> Vec<Prediction> {
     const INFERENCE_BATCH_SIZE: usize = 32;
     let inner_model = model.clone().valid();

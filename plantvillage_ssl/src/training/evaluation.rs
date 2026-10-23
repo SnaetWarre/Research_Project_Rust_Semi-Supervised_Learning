@@ -1,7 +1,9 @@
-//! Accuracy evaluation shared by training, simulation and experiments.
+//! Model evaluation shared by training, simulation, experiments and the CLI.
 //!
 //! This module provides:
-//! - `evaluate_accuracy`: top-1 accuracy of a classifier on a dataset
+//! - `predict_dataset`: top-1 predictions and labels for every loadable item
+//! - `evaluate_accuracy`: top-1 accuracy in percent
+//! - `evaluate_accuracy_and_macro_f1`: accuracy and macro-F1 in percent
 
 use burn::data::dataloader::batcher::Batcher;
 use burn::data::dataset::Dataset;
@@ -9,24 +11,25 @@ use burn::prelude::*;
 
 use crate::dataset::burn_dataset::{PlantVillageBatcher, PlantVillageItem};
 use crate::model::cnn::PlantClassifier;
+use crate::utils::metrics::{ClassMetrics, ConfusionMatrix};
 
-/// Top-1 accuracy (in percent) of `model` on `dataset`.
+/// Run `model` over `dataset` and return `(predictions, labels)`.
 ///
 /// Pass an inference model, e.g. `&model.valid()` for an autodiff model.
-/// Items that fail to load are skipped and do not count towards the total.
-/// Returns 0.0 when no item could be loaded.
-pub fn evaluate_accuracy<B: Backend>(
+/// Items that fail to load are skipped, so both vectors only cover the
+/// items that were actually evaluated.
+pub fn predict_dataset<B: Backend>(
     model: &PlantClassifier<B>,
     dataset: &impl Dataset<PlantVillageItem>,
     batch_size: usize,
     image_size: usize,
-) -> f64 {
+) -> (Vec<usize>, Vec<usize>) {
     let device = Device::<B>::default();
-    let batcher = PlantVillageBatcher::<B>::with_image_size(device.clone(), image_size);
+    let batcher = PlantVillageBatcher::with_image_size(image_size);
     let len = dataset.len();
 
-    let mut correct = 0usize;
-    let mut total = 0usize;
+    let mut predictions = Vec::with_capacity(len);
+    let mut labels = Vec::with_capacity(len);
 
     for start in (0..len).step_by(batch_size) {
         let end = (start + batch_size).min(len);
@@ -37,25 +40,74 @@ pub fn evaluate_accuracy<B: Backend>(
         }
 
         let batch_len = items.len();
+        labels.extend(items.iter().map(|item| item.label));
+
         let batch = batcher.batch(items, &device);
-        let predictions: Tensor<B, 1, Int> =
+        let batch_predictions: Tensor<B, 1, Int> =
             model.forward(batch.images).argmax(1).reshape([batch_len]);
-
-        let batch_correct: i64 = predictions
-            .equal(batch.targets)
-            .int()
-            .sum()
-            .into_scalar()
-            .elem();
-
-        correct += batch_correct as usize;
-        total += batch_len;
+        predictions.extend(
+            batch_predictions
+                .into_data()
+                .iter::<i64>()
+                .map(|p| p as usize),
+        );
     }
 
-    if total == 0 {
+    (predictions, labels)
+}
+
+/// Top-1 accuracy (in percent) of `model` on `dataset`.
+///
+/// Items that fail to load are skipped and do not count towards the total.
+/// Returns 0.0 when no item could be loaded.
+pub fn evaluate_accuracy<B: Backend>(
+    model: &PlantClassifier<B>,
+    dataset: &impl Dataset<PlantVillageItem>,
+    batch_size: usize,
+    image_size: usize,
+) -> f64 {
+    let (predictions, labels) = predict_dataset(model, dataset, batch_size, image_size);
+    accuracy_percent(&predictions, &labels)
+}
+
+/// Top-1 accuracy and macro-F1 (both in percent) of `model` on `dataset`.
+///
+/// Macro-F1 averages over all `num_classes`, so a class with no samples
+/// counts as an F1 of 0.
+pub fn evaluate_accuracy_and_macro_f1<B: Backend>(
+    model: &PlantClassifier<B>,
+    dataset: &impl Dataset<PlantVillageItem>,
+    batch_size: usize,
+    image_size: usize,
+    num_classes: usize,
+) -> (f64, f64) {
+    if num_classes == 0 {
+        return (0.0, 0.0);
+    }
+
+    let (predictions, labels) = predict_dataset(model, dataset, batch_size, image_size);
+    let confusion = ConfusionMatrix::from_predictions(&predictions, &labels, num_classes);
+    let f1_sum: f64 = (0..num_classes)
+        .map(|class_idx| ClassMetrics::from_confusion_matrix(&confusion, class_idx).f1)
+        .sum();
+
+    (
+        accuracy_percent(&predictions, &labels),
+        100.0 * (f1_sum / num_classes as f64),
+    )
+}
+
+fn accuracy_percent(predictions: &[usize], labels: &[usize]) -> f64 {
+    let correct = predictions
+        .iter()
+        .zip(labels)
+        .filter(|(prediction, label)| prediction == label)
+        .count();
+
+    if labels.is_empty() {
         0.0
     } else {
-        100.0 * correct as f64 / total as f64
+        100.0 * correct as f64 / labels.len() as f64
     }
 }
 
@@ -124,5 +176,25 @@ mod tests {
             IMAGE_SIZE,
         );
         assert_eq!(evaluate_accuracy(&model, &missing, 4, IMAGE_SIZE), 0.0);
+    }
+
+    #[test]
+    fn test_macro_f1_counts_every_class() {
+        let model = single_class_model();
+        // Two images of class 0 (always predicted) and one of class 1
+        let paths = write_test_images("pv_eval_macro_f1", 3);
+        let samples = vec![
+            (paths[0].clone(), 0),
+            (paths[1].clone(), 0),
+            (paths[2].clone(), 1),
+        ];
+        let dataset = PlantVillageBurnDataset::new(samples, IMAGE_SIZE);
+
+        // Class 0: precision 2/3, recall 1, F1 0.8. Class 1: F1 0.
+        // Class 2 has no samples and also counts as 0.
+        let (accuracy, macro_f1) =
+            evaluate_accuracy_and_macro_f1(&model, &dataset, 2, IMAGE_SIZE, 3);
+        assert!((accuracy - 200.0 / 3.0).abs() < 1e-9);
+        assert!((macro_f1 - 80.0 / 3.0).abs() < 1e-9);
     }
 }

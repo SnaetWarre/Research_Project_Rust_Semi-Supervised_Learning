@@ -24,7 +24,7 @@ pub mod supervised;
 pub mod trainer;
 
 // Re-export main types for convenience
-pub use evaluation::evaluate_accuracy;
+pub use evaluation::{evaluate_accuracy, evaluate_accuracy_and_macro_f1, predict_dataset};
 pub use pseudo_label::{PseudoLabelConfig, PseudoLabeler};
 pub use scheduler::LRScheduler as LearningRateScheduler;
 pub use scheduler::LRScheduler as SchedulerType;

@@ -314,10 +314,8 @@ pub fn run_ssl_incremental_experiment<B: AutodiffBackend>(
         &base_model,
         &unlabeled_new,
         config.base_classes, // Expected new class label
-        config.confidence_threshold,
         config.max_pseudo_labels_per_class,
         image_size,
-        &device,
     )?;
 
     tracing::info!(
@@ -408,7 +406,7 @@ fn train_model<B: AutodiffBackend>(
         .with_weight_decay(Some(burn::optim::decay::WeightDecayConfig::new(1e-4f32)))
         .init();
 
-    let batcher = PlantVillageBatcher::<B>::with_image_size(device.clone(), config.input_size);
+    let batcher = PlantVillageBatcher::with_image_size(config.input_size);
     let mut rng = ChaCha8Rng::seed_from_u64(seed);
 
     for _epoch in 0..epochs {
@@ -450,10 +448,8 @@ fn generate_pseudo_labels<B: AutodiffBackend>(
     model: &PlantClassifier<B>,
     unlabeled: &[(PathBuf, usize)],
     expected_label: usize,
-    _confidence_threshold: f64,
     max_labels: usize,
     image_size: usize,
-    _device: &B::Device,
 ) -> Result<(Vec<(PathBuf, usize)>, f64)> {
     use burn::tensor::activation::softmax;
     // Note: We're using the base model to find samples that look "novel"
@@ -462,8 +458,7 @@ fn generate_pseudo_labels<B: AutodiffBackend>(
     // (indicating they might be a new class)
 
     let inner_device = burn::tensor::Device::<B::InnerBackend>::default();
-    let batcher =
-        PlantVillageBatcher::<B::InnerBackend>::with_image_size(inner_device.clone(), image_size);
+    let batcher = PlantVillageBatcher::with_image_size(image_size);
     let inner_model = model.clone().valid();
 
     let dataset = PlantVillageBurnDataset::new_cached(unlabeled.to_vec(), image_size)?;

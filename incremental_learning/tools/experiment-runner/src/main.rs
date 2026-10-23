@@ -410,7 +410,7 @@ fn run_single_experiment(
             simulate_training(step, current_classes, config.training.epochs_per_task);
 
         // Simulate evaluation on all tasks
-        let task_accuracies = simulate_task_evaluation(step, current_classes);
+        let task_accuracies = simulate_task_evaluation(step);
 
         let avg_accuracy = task_accuracies.iter().sum::<f32>() / task_accuracies.len() as f32;
 
@@ -481,7 +481,7 @@ fn simulate_training(step: usize, num_classes: usize, epochs: usize) -> Training
     metrics
 }
 
-fn simulate_task_evaluation(step: usize, _total_classes: usize) -> Vec<f32> {
+fn simulate_task_evaluation(step: usize) -> Vec<f32> {
     let num_tasks = step + 1;
     let mut accuracies = Vec::new();
 
@@ -621,7 +621,7 @@ mod tests {
 
     #[test]
     fn test_simulate_task_evaluation() {
-        let accs = simulate_task_evaluation(2, 15);
+        let accs = simulate_task_evaluation(2);
         assert_eq!(accs.len(), 3); // 3 tasks at step 2
         assert!(accs.iter().all(|&a| (0.0..=1.0).contains(&a)));
     }

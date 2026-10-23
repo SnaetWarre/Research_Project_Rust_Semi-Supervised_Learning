@@ -1531,40 +1531,6 @@ fn generate_label_efficiency_conclusions(results: &LabelEfficiencyResults) -> St
         ));
     }
 
-    text.push_str("\nCONCLUSIONS:\n");
-
-    if let Some(min) = results.min_acceptable_images {
-        if min <= 25 {
-            text.push_str(
-                "• The model achieves acceptable accuracy with very few labeled samples.\n",
-            );
-            text.push_str(
-                "• This indicates good potential for semi-supervised learning scenarios.\n",
-            );
-        } else if min <= 50 {
-            text.push_str(
-                "• A moderate number of labeled samples is needed for acceptable accuracy.\n",
-            );
-            text.push_str("• Semi-supervised learning can help reduce this requirement.\n");
-        } else {
-            text.push_str("• Many labeled samples are needed for acceptable accuracy.\n");
-            text.push_str(
-                "• SSL methods like pseudo-labeling are crucial for practical deployment.\n",
-            );
-        }
-    }
-
-    text.push_str("\nPRACTICAL RECOMMENDATION:\n");
-    if let Some(min) = results.min_acceptable_images {
-        text.push_str(&format!(
-            "For production deployment, collect at least {} labeled images per disease class.\n",
-            min
-        ));
-    }
-    text.push_str(
-        "Use semi-supervised learning to leverage unlabeled data for improved accuracy.\n",
-    );
-
     text
 }
 
@@ -1645,58 +1611,32 @@ fn generate_class_scaling_conclusions(results: &ClassScalingResults) -> String {
 
     text.push_str("\nKEY FINDINGS:\n");
 
-    // Analyze forgetting
-    if results.large_base.forgetting > results.small_base.forgetting {
-        text.push_str(&format!(
-            "1. Larger base (30 classes) shows MORE forgetting ({:.2}% vs {:.2}%)\n",
-            results.large_base.forgetting, results.small_base.forgetting
-        ));
-        text.push_str(
-            "   → The model is more biased toward existing classes with a larger base.\n",
-        );
-    } else if results.large_base.forgetting < results.small_base.forgetting {
-        text.push_str(&format!(
-            "1. Larger base (30 classes) shows LESS forgetting ({:.2}% vs {:.2}%)\n",
-            results.large_base.forgetting, results.small_base.forgetting
-        ));
-        text.push_str("   → More diverse training may create more robust representations.\n");
+    let small = &results.small_base;
+    let large = &results.large_base;
+
+    let forgetting_cmp = if large.forgetting > small.forgetting {
+        "MORE"
+    } else if large.forgetting < small.forgetting {
+        "LESS"
     } else {
-        text.push_str("1. Forgetting is similar regardless of base size.\n");
-    }
+        "the SAME"
+    };
+    text.push_str(&format!(
+        "1. Adding a class to {} classes caused {} forgetting than adding one to {} ({:.2}% vs {:.2}% points)\n",
+        large.base_classes, forgetting_cmp, small.base_classes, large.forgetting, small.forgetting
+    ));
 
-    // Analyze new class learning
-    if results.large_base.new_class_accuracy > results.small_base.new_class_accuracy {
-        text.push_str(&format!(
-            "2. New class learning is EASIER with larger base ({:.2}% vs {:.2}%)\n",
-            results.large_base.new_class_accuracy, results.small_base.new_class_accuracy
-        ));
-        text.push_str("   → Transfer learning benefits from diverse prior knowledge.\n");
+    let new_class_cmp = if large.new_class_accuracy > small.new_class_accuracy {
+        "HIGHER"
+    } else if large.new_class_accuracy < small.new_class_accuracy {
+        "LOWER"
     } else {
-        text.push_str(&format!(
-            "2. New class learning is HARDER with larger base ({:.2}% vs {:.2}%)\n",
-            results.large_base.new_class_accuracy, results.small_base.new_class_accuracy
-        ));
-        text.push_str("   → Class competition increases with more existing classes.\n");
-    }
-
-    text.push_str("\nCONCLUSIONS:\n");
-
-    if results.relative_difficulty > 1.5 {
-        text.push_str("• Adding classes to larger models requires careful management.\n");
-        text.push_str("• Consider using incremental learning methods (LwF, EWC, Rehearsal).\n");
-    } else if results.relative_difficulty < 0.7 {
-        text.push_str("• Larger models may actually be more stable when adding classes.\n");
-        text.push_str("• The diverse feature space helps accommodate new classes.\n");
-    } else {
-        text.push_str("• Class scaling has moderate impact on forgetting.\n");
-        text.push_str("• Standard fine-tuning may be sufficient for incremental updates.\n");
-    }
-
-    text.push_str("\nPRACTICAL RECOMMENDATIONS:\n");
-    text.push_str("• For production systems, start with a comprehensive base model.\n");
-    text.push_str("• Use incremental learning methods when adding new disease classes.\n");
-    text.push_str("• Monitor accuracy on existing classes after each update.\n");
-    text.push_str("• Consider rehearsal-based methods to maintain performance on old classes.\n");
+        "the SAME"
+    };
+    text.push_str(&format!(
+        "2. New class accuracy was {} with the {}-class base ({:.2}% vs {:.2}%)\n",
+        new_class_cmp, large.base_classes, large.new_class_accuracy, small.new_class_accuracy
+    ));
 
     text
 }
@@ -1765,91 +1705,39 @@ fn generate_new_class_position_conclusions(results: &NewClassPositionResults) ->
 
     text.push_str("\nKEY FINDINGS:\n");
 
-    // Finding 1: Minimum samples needed
-    if let Some(min_small) = results.summary.min_samples_small_70pct {
-        text.push_str(&format!(
+    let summary = &results.summary;
+    match summary.min_samples_small_70pct {
+        Some(min) => text.push_str(&format!(
             "1. Minimum samples for 70% accuracy (6th class): {} images\n",
-            min_small
-        ));
-    } else {
-        text.push_str("1. 70% accuracy not achieved for 6th class with tested sample counts\n");
+            min
+        )),
+        None => text.push_str(
+            "1. 70% accuracy not reached for the 6th class with the tested sample counts\n",
+        ),
     }
-
-    if let Some(min_large) = results.summary.min_samples_large_70pct {
-        text.push_str(&format!(
+    match summary.min_samples_large_70pct {
+        Some(min) => text.push_str(&format!(
             "   Minimum samples for 70% accuracy (31st class): {} images\n",
-            min_large
-        ));
-    } else {
-        text.push_str("   70% accuracy not achieved for 31st class with tested sample counts\n");
+            min
+        )),
+        None => text.push_str(
+            "   70% accuracy not reached for the 31st class with the tested sample counts\n",
+        ),
     }
-
-    // Finding 2: Is it harder?
-    if results.summary.harder_as_31st {
-        text.push_str("2. Learning a new class is HARDER as the 31st class\n");
+    if let (Some(small), Some(large)) = (
+        summary.min_samples_small_70pct,
+        summary.min_samples_large_70pct,
+    ) {
         text.push_str(&format!(
-            "   Samples ratio: {:.2}x more samples needed for equivalent accuracy\n",
-            results.summary.samples_ratio
-        ));
-    } else {
-        text.push_str("2. Learning a new class is NOT harder as the 31st class\n");
-        text.push_str("   The larger feature space may actually help generalization\n");
-    }
-
-    // Finding 3: Forgetting
-    if results.summary.avg_forgetting_difference > 1.0 {
-        text.push_str(&format!(
-            "3. Larger base shows MORE forgetting ({:+.2}% difference on average)\n",
-            results.summary.avg_forgetting_difference
-        ));
-        text.push_str("   This confirms class competition increases with more classes\n");
-    } else if results.summary.avg_forgetting_difference < -1.0 {
-        text.push_str(&format!(
-            "3. Larger base shows LESS forgetting ({:+.2}% difference on average)\n",
-            results.summary.avg_forgetting_difference
-        ));
-        text.push_str("   More diverse representations may be more stable\n");
-    } else {
-        text.push_str("3. Forgetting is similar regardless of base size\n");
-    }
-
-    text.push_str("\nCONCLUSIONS:\n");
-
-    if results.summary.harder_as_31st && results.summary.samples_ratio > 1.5 {
-        text.push_str("• As models accumulate more classes, new class learning becomes harder\n");
-        text.push_str("• Consider collecting MORE labeled samples when adding to large models\n");
-        text.push_str(&format!(
-            "• Recommendation: Collect ~{:.0}x more samples for mature models\n",
-            results.summary.samples_ratio.ceil()
-        ));
-    } else {
-        text.push_str("• Class position has limited impact on learning difficulty\n");
-        text.push_str("• The same labeling effort works for both early and late classes\n");
-    }
-
-    if results.summary.avg_forgetting_difference > 2.0 {
-        text.push_str("• Use incremental learning methods (LwF, EWC) for larger models\n");
-        text.push_str("• Rehearsal is especially important when base > 20 classes\n");
-    }
-
-    text.push_str("\nPRACTICAL RECOMMENDATIONS:\n");
-
-    if let Some(min_70) = results.summary.min_samples_small_70pct {
-        text.push_str(&format!(
-            "• For new deployments (few classes): Collect at least {} labeled samples\n",
-            min_70
+            "   The 31st class needed {:.2}x the samples of the 6th class ({} vs {})\n",
+            summary.samples_ratio, large, small
         ));
     }
 
-    if let Some(min_70) = results.summary.min_samples_large_70pct {
-        text.push_str(&format!(
-            "• For mature systems (many classes): Collect at least {} labeled samples\n",
-            min_70
-        ));
-    }
-
-    text.push_str("• Use SSL pseudo-labeling to augment limited labeled data\n");
-    text.push_str("• Monitor forgetting on existing classes after each update\n");
+    text.push_str(&format!(
+        "2. Average forgetting, 30→31 minus 5→6: {:+.2}% points\n",
+        summary.avg_forgetting_difference
+    ));
 
     text
 }
@@ -2815,4 +2703,89 @@ fn generate_latency_chart(
     svg.push_str("</svg>");
 
     fs::write(output_path, svg)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn scaling(base_classes: usize, new_class_accuracy: f64, forgetting: f64) -> ScalingResult {
+        ScalingResult {
+            base_classes,
+            total_classes: base_classes + 1,
+            base_accuracy_before: 90.0,
+            base_accuracy_after: 90.0 - forgetting,
+            new_class_accuracy,
+            overall_accuracy: 85.0,
+            forgetting,
+            training_time: 1.0,
+        }
+    }
+
+    fn position(base_classes: usize, labeled_samples: usize, acc: f64) -> PositionLabelResult {
+        PositionLabelResult {
+            base_classes,
+            labeled_samples,
+            new_class_accuracy: acc,
+            base_accuracy_after: 90.0,
+            forgetting: 1.0,
+            overall_accuracy: 85.0,
+            training_time: 1.0,
+        }
+    }
+
+    #[test]
+    fn test_label_efficiency_text_has_no_canned_advice() {
+        let results = LabelEfficiencyResults {
+            images_per_class: vec![10, 50],
+            accuracies: vec![40.0, 60.0],
+            training_times: vec![1.0, 2.0],
+            best_accuracy: 60.0,
+            best_images_per_class: 50,
+            min_acceptable_images: None,
+        };
+        let text = generate_label_efficiency_conclusions(&results);
+        assert!(text.contains("No configuration achieved >80% accuracy"));
+        assert!(!text.contains("semi-supervised"));
+        assert!(!text.contains("SSL"));
+    }
+
+    #[test]
+    fn test_class_scaling_text_follows_numbers() {
+        let more = ClassScalingResults {
+            small_base: scaling(5, 90.0, 1.0),
+            large_base: scaling(30, 80.0, 3.0),
+            relative_difficulty: 3.0,
+        };
+        let text = generate_class_scaling_conclusions(&more);
+        assert!(text.contains("caused MORE forgetting"));
+        assert!(text.contains("New class accuracy was LOWER"));
+
+        let less = ClassScalingResults {
+            small_base: scaling(5, 80.0, 3.0),
+            large_base: scaling(30, 90.0, 1.0),
+            relative_difficulty: 1.0 / 3.0,
+        };
+        let text = generate_class_scaling_conclusions(&less);
+        assert!(text.contains("caused LESS forgetting"));
+        assert!(text.contains("New class accuracy was HIGHER"));
+        assert!(!text.contains("RECOMMENDATION"));
+    }
+
+    #[test]
+    fn test_new_class_position_text_follows_numbers() {
+        let small = vec![position(5, 10, 60.0), position(5, 50, 75.0)];
+        let large = vec![position(30, 10, 50.0), position(30, 50, 65.0)];
+        let summary = calculate_position_summary(&small, &large);
+        let results = NewClassPositionResults {
+            small_base_results: small,
+            large_base_results: large,
+            summary,
+        };
+        let text = generate_new_class_position_conclusions(&results);
+        assert!(text.contains("Minimum samples for 70% accuracy (6th class): 50 images"));
+        assert!(text.contains("70% accuracy not reached for the 31st class"));
+        assert!(!text.contains("x the samples"));
+        assert!(!text.contains("SSL"));
+    }
 }

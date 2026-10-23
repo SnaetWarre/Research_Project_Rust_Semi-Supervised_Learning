@@ -31,6 +31,7 @@ use serde::{Deserialize, Serialize};
 use plantvillage_ssl::backend::TrainingBackend;
 use plantvillage_ssl::dataset::burn_dataset::{PlantVillageBatcher, PlantVillageBurnDataset};
 use plantvillage_ssl::model::cnn::{PlantClassifier, PlantClassifierConfig};
+use plantvillage_ssl::training::evaluate_accuracy;
 use plantvillage_ssl::PlantVillageDataset;
 
 type Backend = TrainingBackend;
@@ -820,7 +821,7 @@ fn run_incremental_with_limited_labels<B: AutodiffBackend>(
 
     // Evaluate base model on base classes
     let base_accuracy_before =
-        evaluate::<B>(&model, &val_dataset, &batcher, batch_size, image_size);
+        evaluate_accuracy(&model.valid(), &val_dataset, batch_size, image_size);
     if experiment_verbose() {
         println!(
             "      [base model] validation accuracy: {:.2}%",
@@ -933,10 +934,9 @@ fn run_incremental_with_limited_labels<B: AutodiffBackend>(
 
     // Evaluate on base classes only (to measure forgetting)
     let base_val_dataset = PlantVillageBurnDataset::new(base_val, image_size);
-    let base_accuracy_after = evaluate::<B>(
-        &new_model,
+    let base_accuracy_after = evaluate_accuracy(
+        &new_model.valid(),
         &base_val_dataset,
-        &new_batcher,
         batch_size,
         image_size,
     );
@@ -944,10 +944,9 @@ fn run_incremental_with_limited_labels<B: AutodiffBackend>(
     // Evaluate on new class only
     let new_class_accuracy = if !new_class_val.is_empty() {
         let new_class_val_dataset = PlantVillageBurnDataset::new(new_class_val, image_size);
-        evaluate::<B>(
-            &new_model,
+        evaluate_accuracy(
+            &new_model.valid(),
             &new_class_val_dataset,
-            &new_batcher,
             batch_size,
             image_size,
         )
@@ -956,10 +955,9 @@ fn run_incremental_with_limited_labels<B: AutodiffBackend>(
     };
 
     // Overall accuracy
-    let overall_accuracy = evaluate::<B>(
-        &new_model,
+    let overall_accuracy = evaluate_accuracy(
+        &new_model.valid(),
         &combined_val_dataset,
-        &new_batcher,
         batch_size,
         image_size,
     );
@@ -1174,7 +1172,7 @@ fn train_with_n_images_per_class<B: AutodiffBackend>(
         }
     }
 
-    let val_acc = evaluate::<B>(&model, &val_dataset, &batcher, batch_size, image_size);
+    let val_acc = evaluate_accuracy(&model.valid(), &val_dataset, batch_size, image_size);
     if experiment_verbose() {
         println!(
             "      [label efficiency, {} img/class] validation accuracy: {:.2}%",
@@ -1320,7 +1318,7 @@ fn run_incremental_experiment<B: AutodiffBackend>(
 
     // Evaluate base model on base classes
     let base_accuracy_before =
-        evaluate::<B>(&model, &val_dataset, &batcher, batch_size, image_size);
+        evaluate_accuracy(&model.valid(), &val_dataset, batch_size, image_size);
     if experiment_verbose() {
         println!(
             "      [base model] validation accuracy: {:.2}%",
@@ -1427,29 +1425,26 @@ fn run_incremental_experiment<B: AutodiffBackend>(
 
     // Evaluate on base classes only (to measure forgetting)
     let base_val_dataset = PlantVillageBurnDataset::new(base_val, image_size);
-    let base_accuracy_after = evaluate::<B>(
-        &new_model,
+    let base_accuracy_after = evaluate_accuracy(
+        &new_model.valid(),
         &base_val_dataset,
-        &new_batcher,
         batch_size,
         image_size,
     );
 
     // Evaluate on new class only
     let new_class_val_dataset = PlantVillageBurnDataset::new(new_class_val, image_size);
-    let new_class_accuracy = evaluate::<B>(
-        &new_model,
+    let new_class_accuracy = evaluate_accuracy(
+        &new_model.valid(),
         &new_class_val_dataset,
-        &new_batcher,
         batch_size,
         image_size,
     );
 
     // Overall accuracy
-    let overall_accuracy = evaluate::<B>(
-        &new_model,
+    let overall_accuracy = evaluate_accuracy(
+        &new_model.valid(),
         &combined_val_dataset,
-        &new_batcher,
         batch_size,
         image_size,
     );
@@ -1479,67 +1474,6 @@ fn run_incremental_experiment<B: AutodiffBackend>(
         forgetting,
         training_time,
     })
-}
-
-/// Evaluate model on dataset
-fn evaluate<B: AutodiffBackend>(
-    model: &PlantClassifier<B>,
-    dataset: &PlantVillageBurnDataset,
-    _batcher: &PlantVillageBatcher<B>,
-    batch_size: usize,
-    image_size: usize,
-) -> f64 {
-    use burn::tensor::Tensor;
-
-    let device = burn::tensor::Device::<B::InnerBackend>::default();
-    let inner_batcher =
-        PlantVillageBatcher::<B::InnerBackend>::with_image_size(device.clone(), image_size);
-
-    let inner_model = model.clone().valid();
-    let len = dataset.len();
-
-    if len == 0 {
-        return 0.0;
-    }
-
-    let mut correct = 0usize;
-    let mut total = 0usize;
-
-    for start in (0..len).step_by(batch_size) {
-        let end = (start + batch_size).min(len);
-        let items: Vec<_> = (start..end).filter_map(|i| dataset.get(i)).collect();
-
-        if items.is_empty() {
-            continue;
-        }
-
-        let batch = inner_batcher.batch(items, &device);
-        let output = inner_model.forward(batch.images);
-
-        // Get predictions - handle both single sample and batch cases
-        let predictions = output.argmax(1);
-        let [batch_dim, _] = predictions.dims();
-
-        // Flatten predictions to 1D
-        let predictions_flat: Tensor<B::InnerBackend, 1, burn::tensor::Int> =
-            predictions.reshape([batch_dim]);
-
-        let batch_correct: i64 = predictions_flat
-            .equal(batch.targets)
-            .int()
-            .sum()
-            .into_scalar()
-            .elem();
-
-        correct += batch_correct as usize;
-        total += end - start;
-    }
-
-    if total == 0 {
-        0.0
-    } else {
-        100.0 * correct as f64 / total as f64
-    }
 }
 
 /// Generate conclusions for label efficiency experiment

@@ -77,10 +77,9 @@ impl PseudoLabelConfig {
 
         // Linear interpolation from initial to final threshold
         let progress = current_epoch as f64 / self.curriculum_epochs as f64;
-        let threshold = self.curriculum_initial_threshold
-            - progress * (self.curriculum_initial_threshold - self.curriculum_final_threshold);
 
-        threshold
+        self.curriculum_initial_threshold
+            - progress * (self.curriculum_initial_threshold - self.curriculum_final_threshold)
     }
 }
 
@@ -284,7 +283,10 @@ impl PseudoLabeler {
         prediction: &Prediction,
         hidden: &HiddenLabelImage,
     ) -> Option<PseudoLabeledImage> {
-        let results = self.process_predictions(&[prediction.clone()], &[hidden.clone()]);
+        let results = self.process_predictions(
+            std::slice::from_ref(prediction),
+            std::slice::from_ref(hidden),
+        );
         results.into_iter().next()
     }
 

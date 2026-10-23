@@ -742,11 +742,7 @@ fn cmd_infer<B: Backend>(input: &str, model: &str, backend_name: &str) -> Result
         println!(
             "  Predicted: {} {}",
             predicted_class,
-            if is_correct {
-                "".green()
-            } else {
-                "".red()
-            }
+            if is_correct { "".green() } else { "".red() }
         );
         println!("  Confidence: {:.1}%", indexed[0].1 * 100.0);
         println!("  Time: {:.2}ms", inference_time.as_secs_f64() * 1000.0);
@@ -988,7 +984,7 @@ fn find_latest_checkpoint(dir: &Path) -> Result<PathBuf> {
         })
         .collect();
 
-    candidates.sort_by(|a, b| b.0.cmp(&a.0));
+    candidates.sort_by_key(|c| std::cmp::Reverse(c.0));
 
     candidates
         .into_iter()

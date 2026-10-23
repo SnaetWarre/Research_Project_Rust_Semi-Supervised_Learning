@@ -179,7 +179,8 @@ pub fn generate_line_chart(
     }
 
     // X-axis tick labels
-    for series_data in series {
+    // Only need labels from first series
+    if let Some(series_data) = series.first() {
         for point in &series_data.points {
             let x = MARGIN_LEFT + ((point.x - x_min) / (x_max - x_min)) * plot_width;
             svg.push_str(&format!(
@@ -187,7 +188,6 @@ pub fn generate_line_chart(
                 x, MARGIN_TOP + plot_height + 20.0, COLOR_TEXT, point.x
             ));
         }
-        break; // Only need labels from first series
     }
 
     // Legend
@@ -315,10 +315,13 @@ pub fn generate_bar_chart(
     fs::write(output_path, svg)
 }
 
+/// One group in a comparison chart: (group_label, [(bar_label, value, color)])
+pub type BarGroup<'a> = (&'a str, Vec<(&'a str, f64, &'a str)>);
+
 /// Generate a grouped bar chart for comparison (e.g., 5→6 vs 30→31)
 pub fn generate_comparison_chart(
     title: &str,
-    groups: &[(&str, Vec<(&str, f64, &str)>)], // (group_label, [(bar_label, value, color)])
+    groups: &[BarGroup],
     output_path: &Path,
 ) -> std::io::Result<()> {
     let plot_width = CHART_WIDTH - MARGIN_LEFT - MARGIN_RIGHT;
@@ -331,7 +334,7 @@ pub fn generate_comparison_chart(
         .max(100.0);
 
     let group_width = plot_width / groups.len() as f64;
-    let bars_per_group = groups.get(0).map(|(_, b)| b.len()).unwrap_or(0);
+    let bars_per_group = groups.first().map(|(_, b)| b.len()).unwrap_or(0);
     let bar_width = (group_width * 0.8) / bars_per_group as f64;
     let group_padding = group_width * 0.1;
 

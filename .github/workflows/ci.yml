@@ -8,13 +8,32 @@ permissions:
   contents: read
 
 jobs:
-  rust-check:
+  rust:
+    name: ${{ matrix.workspace }}
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # CI has no GPU, so build the CPU backend only
+          - workspace: plantvillage_ssl
+            features: --no-default-features --features cpu
+          - workspace: incremental_learning
+            features: ""
+    defaults:
+      run:
+        working-directory: ${{ matrix.workspace }}
     steps:
       - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@stable
+      # Pinned so a new Rust release cannot add clippy lints that fail CI
+      - uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: 1.99.1
+          components: clippy
       - uses: Swatinem/rust-cache@v2
         with:
-          workspaces: plantvillage_ssl
-      - name: Check CPU build
-        run: cargo check --manifest-path plantvillage_ssl/Cargo.toml --no-default-features --features cpu
+          workspaces: ${{ matrix.workspace }}
+      - name: Clippy
+        run: cargo clippy --all-targets ${{ matrix.features }} -- -D warnings
+      - name: Test
+        run: cargo test ${{ matrix.features }}

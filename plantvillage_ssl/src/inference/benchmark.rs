@@ -145,8 +145,7 @@ impl BenchmarkResult {
 
     /// Save results to a JSON file
     pub fn save(&self, path: &std::path::Path) -> std::io::Result<()> {
-        let json = serde_json::to_string_pretty(self)
-            .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e))?;
+        let json = serde_json::to_string_pretty(self).map_err(std::io::Error::other)?;
 
         if let Some(parent) = path.parent() {
             std::fs::create_dir_all(parent)?;
@@ -158,7 +157,7 @@ impl BenchmarkResult {
     /// Load results from a JSON file
     pub fn load(path: &std::path::Path) -> std::io::Result<Self> {
         let json = std::fs::read_to_string(path)?;
-        serde_json::from_str(&json).map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e))
+        serde_json::from_str(&json).map_err(std::io::Error::other)
     }
 
     /// Check if latency meets the target (in milliseconds)

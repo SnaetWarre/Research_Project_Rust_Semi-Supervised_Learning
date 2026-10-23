@@ -60,6 +60,10 @@ download = ["tokio", "reqwest"]                          # Dataset download feat
 name = "plantvillage_ssl"
 path = "src/main.rs"
 
+[lints.clippy]
+# CLI entry points and training loops take one parameter per flag
+too_many_arguments = "allow"
+
 [profile.release]
 opt-level = 3
 lto = true

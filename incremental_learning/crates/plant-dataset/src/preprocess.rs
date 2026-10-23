@@ -3,7 +3,7 @@
 //! This module provides image preprocessing operations including resizing,
 //! normalization, and format conversions.
 
-use image::{DynamicImage, GenericImageView, ImageBuffer, Rgb};
+use image::{DynamicImage, ImageBuffer, Rgb};
 use plant_core::{Error, ImageDimensions, Result};
 use serde::{Deserialize, Serialize};
 
@@ -40,17 +40,17 @@ pub struct ImagePreprocessor {
     config: PreprocessConfig,
 }
 
+impl Default for ImagePreprocessor {
+    /// Creates a preprocessor with default configuration
+    fn default() -> Self {
+        Self::new(PreprocessConfig::default())
+    }
+}
+
 impl ImagePreprocessor {
     /// Creates a new image preprocessor with the given configuration
     pub fn new(config: PreprocessConfig) -> Self {
         Self { config }
-    }
-
-    /// Creates a preprocessor with default configuration
-    pub fn default() -> Self {
-        Self {
-            config: PreprocessConfig::default(),
-        }
     }
 
     /// Preprocesses an image for model input

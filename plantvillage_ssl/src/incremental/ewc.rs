@@ -437,8 +437,8 @@ mod tests {
             .train_incremental(&train_data, &val_data, &inc_config)
             .unwrap();
 
-        assert!(metrics.train_loss.len() > 0);
-        assert!(metrics.val_accuracy.len() > 0);
+        assert!(!metrics.train_loss.is_empty());
+        assert!(!metrics.val_accuracy.is_empty());
         assert!(metrics.extra.contains_key("ewc_lambda"));
         assert!(metrics.extra.contains_key("fisher_samples"));
     }
@@ -471,6 +471,6 @@ mod tests {
         learner.finalize_step(1).unwrap();
 
         assert_eq!(learner.current_step(), 1);
-        assert!(learner.parameter_importance.len() > 0);
+        assert!(!learner.parameter_importance.is_empty());
     }
 }

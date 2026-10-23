@@ -15,7 +15,7 @@ use burn::{
     },
     tensor::{backend::Backend, Device, Tensor},
 };
-use plant_core::{Error, ModelArchitecture as ArchType, Result};
+use plant_core::ModelArchitecture as ArchType;
 
 /// Unified plant classifier interface
 #[derive(Module, Debug)]
@@ -63,6 +63,7 @@ impl<B: Backend> PlantClassifier<B> {
 
 /// Model architecture enum
 #[derive(Module, Debug)]
+#[allow(clippy::large_enum_variant)] // Burn modules are not boxed
 pub enum ModelArchitecture<B: Backend> {
     EfficientNet(EfficientNetB0<B>),
     ResNet(ResNet18<B>),
@@ -455,15 +456,13 @@ mod tests {
     #[test]
     fn test_efficientnet_creation() {
         let device = Default::default();
-        let model = EfficientNetB0::<TestBackend>::new(10, &device);
-        assert!(true); // If we get here, model was created successfully
+        let _model = EfficientNetB0::<TestBackend>::new(10, &device);
     }
 
     #[test]
     fn test_resnet_creation() {
         let device = Default::default();
-        let model = ResNet18::<TestBackend>::new(10, &device);
-        assert!(true);
+        let _model = ResNet18::<TestBackend>::new(10, &device);
     }
 
     #[test]

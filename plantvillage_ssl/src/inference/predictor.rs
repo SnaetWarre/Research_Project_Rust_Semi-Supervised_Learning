@@ -395,7 +395,7 @@ mod tests {
     fn test_predictor_default() {
         let predictor = Predictor::new();
         assert_eq!(predictor.image_size, 256);
-        assert_eq!(predictor.num_classes, 39);
+        assert_eq!(predictor.num_classes, 38);
         assert!(!predictor.use_gpu);
     }
 

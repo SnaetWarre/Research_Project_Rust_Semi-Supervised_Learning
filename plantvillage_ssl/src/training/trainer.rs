@@ -695,7 +695,7 @@ mod tests {
 
     #[test]
     fn test_ramp_up_weight() {
-        let ssl_config = SemiSupervisedConfig {
+        let _ssl_config = SemiSupervisedConfig {
             ramp_up_epochs: 10,
             ..Default::default()
         };

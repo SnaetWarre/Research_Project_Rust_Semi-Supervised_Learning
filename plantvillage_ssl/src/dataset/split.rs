@@ -27,6 +27,15 @@ use crate::utils::error::PlantVillageError;
 /// Result type alias for this module
 pub type Result<T> = std::result::Result<T, PlantVillageError>;
 
+/// The five pools from a split: (test, validation, labeled, stream, future)
+type SplitPools = (
+    Vec<LabeledImage>,
+    Vec<LabeledImage>,
+    Vec<LabeledImage>,
+    Vec<HiddenLabelImage>,
+    Vec<HiddenLabelImage>,
+);
+
 /// Configuration for dataset splitting
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SplitConfig {
@@ -72,19 +81,19 @@ impl SplitConfig {
             ));
         }
 
-        if test_fraction < 0.0 || test_fraction > 1.0 {
+        if !(0.0..=1.0).contains(&test_fraction) {
             return Err(PlantVillageError::Config(
                 "Test fraction must be between 0.0 and 1.0".to_string(),
             ));
         }
 
-        if validation_fraction < 0.0 || validation_fraction > 1.0 {
+        if !(0.0..=1.0).contains(&validation_fraction) {
             return Err(PlantVillageError::Config(
                 "Validation fraction must be between 0.0 and 1.0".to_string(),
             ));
         }
 
-        if labeled_fraction < 0.0 || labeled_fraction > 1.0 {
+        if !(0.0..=1.0).contains(&labeled_fraction) {
             return Err(PlantVillageError::Config(
                 "Labeled fraction must be between 0.0 and 1.0".to_string(),
             ));
@@ -259,13 +268,7 @@ impl DatasetSplits {
         images: &[(PathBuf, usize, String, u64)],
         config: &SplitConfig,
         rng: &mut ChaCha8Rng,
-    ) -> Result<(
-        Vec<LabeledImage>,
-        Vec<LabeledImage>,
-        Vec<LabeledImage>,
-        Vec<HiddenLabelImage>,
-        Vec<HiddenLabelImage>,
-    )> {
+    ) -> Result<SplitPools> {
         // Group images by class
         let mut by_class: HashMap<usize, Vec<&(PathBuf, usize, String, u64)>> = HashMap::new();
         for img in images {
@@ -279,7 +282,7 @@ impl DatasetSplits {
         let mut future_pool = Vec::new();
 
         // Split each class proportionally
-        for (_, class_images) in by_class.iter_mut() {
+        for class_images in by_class.values_mut() {
             let n = class_images.len();
             let n_test = (n as f64 * config.test_fraction).round() as usize;
             let n_val = (n as f64 * config.validation_fraction).round() as usize;
@@ -366,13 +369,7 @@ impl DatasetSplits {
     fn random_split(
         images: &[(PathBuf, usize, String, u64)],
         config: &SplitConfig,
-    ) -> Result<(
-        Vec<LabeledImage>,
-        Vec<LabeledImage>,
-        Vec<LabeledImage>,
-        Vec<HiddenLabelImage>,
-        Vec<HiddenLabelImage>,
-    )> {
+    ) -> Result<SplitPools> {
         let n = images.len();
         let n_test = (n as f64 * config.test_fraction).round() as usize;
         let n_val = (n as f64 * config.validation_fraction).round() as usize;
@@ -489,12 +486,8 @@ impl DatasetSplits {
 
     /// Save splits to a JSON file for reproducibility
     pub fn save(&self, path: &std::path::Path) -> Result<()> {
-        let json = serde_json::to_string_pretty(self).map_err(|e| {
-            PlantVillageError::Io(std::io::Error::new(
-                std::io::ErrorKind::Other,
-                e.to_string(),
-            ))
-        })?;
+        let json = serde_json::to_string_pretty(self)
+            .map_err(|e| PlantVillageError::Io(std::io::Error::other(e.to_string())))?;
         std::fs::write(path, json)?;
         Ok(())
     }
@@ -502,12 +495,8 @@ impl DatasetSplits {
     /// Load splits from a JSON file
     pub fn load(path: &std::path::Path) -> Result<Self> {
         let json = std::fs::read_to_string(path)?;
-        let splits: Self = serde_json::from_str(&json).map_err(|e| {
-            PlantVillageError::Io(std::io::Error::new(
-                std::io::ErrorKind::Other,
-                e.to_string(),
-            ))
-        })?;
+        let splits: Self = serde_json::from_str(&json)
+            .map_err(|e| PlantVillageError::Io(std::io::Error::other(e.to_string())))?;
         Ok(splits)
     }
 }

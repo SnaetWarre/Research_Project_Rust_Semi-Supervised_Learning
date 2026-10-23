@@ -1,6 +1,5 @@
 //! Dataset statistics computation.
 
-use plant_core::Result;
 use std::collections::HashMap;
 
 /// Dataset statistics

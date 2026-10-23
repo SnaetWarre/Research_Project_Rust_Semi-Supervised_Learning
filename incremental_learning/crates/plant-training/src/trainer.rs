@@ -7,7 +7,7 @@
 //! - Checkpointing and model saving
 //! - Early stopping support
 
-use plant_core::{Error, Result, TrainingConfig, TrainingMetrics};
+use plant_core::{TrainingConfig, TrainingMetrics};
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 use tracing::{info, warn};
@@ -176,7 +176,7 @@ impl Trainer {
 
     /// Check if checkpoint should be saved
     pub fn should_save_checkpoint(&self) -> bool {
-        self.state.epoch % self.config.save_frequency == 0
+        self.state.epoch.is_multiple_of(self.config.save_frequency)
     }
 
     /// Get training history
@@ -242,8 +242,10 @@ mod tests {
 
     #[test]
     fn test_early_stopping() {
-        let mut config = TrainerConfig::default();
-        config.early_stopping_patience = Some(3);
+        let config = TrainerConfig {
+            early_stopping_patience: Some(3),
+            ..TrainerConfig::default()
+        };
         let mut trainer = Trainer::new(config);
 
         // No stopping initially
@@ -265,8 +267,10 @@ mod tests {
 
     #[test]
     fn test_checkpoint_saving() {
-        let mut config = TrainerConfig::default();
-        config.save_frequency = 5;
+        let config = TrainerConfig {
+            save_frequency: 5,
+            ..TrainerConfig::default()
+        };
         let mut trainer = Trainer::new(config);
 
         trainer.update_epoch(1.0, 0.7, 0.9, 0.75);

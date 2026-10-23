@@ -186,7 +186,7 @@ fn load_test_samples(test_dir: &PathBuf) -> Result<Vec<(PathBuf, usize)>> {
                 if img_path
                     .extension()
                     .and_then(|e| e.to_str())
-                    .map_or(false, |e| matches!(e, "jpg" | "jpeg" | "png"))
+                    .is_some_and(|e| matches!(e, "jpg" | "jpeg" | "png"))
                 {
                     samples.push((img_path, class_idx));
                 }
@@ -312,13 +312,11 @@ fn run_evaluation(
 }
 
 fn simulate_prediction(true_label: usize, num_classes: usize) -> usize {
-    // Simulate prediction with ~85% accuracy
-    use std::collections::hash_map::RandomState;
-    use std::hash::{BuildHasher, Hash, Hasher};
+    // Simulate prediction with ~85% accuracy. DefaultHasher::new() uses
+    // fixed keys, so the same label always gives the same prediction.
+    use std::hash::{BuildHasher, BuildHasherDefault, DefaultHasher};
 
-    let mut hasher = RandomState::new().build_hasher();
-    true_label.hash(&mut hasher);
-    let hash = hasher.finish();
+    let hash = BuildHasherDefault::<DefaultHasher>::default().hash_one(true_label);
 
     if hash % 100 < 85 {
         true_label

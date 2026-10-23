@@ -176,9 +176,8 @@ impl<B: Backend> PlantClassifier<B> {
         let x = self.fc1.forward(x);
         let x = Relu::new().forward(x);
         let x = self.dropout.forward(x);
-        let x = self.fc2.forward(x);
 
-        x
+        self.fc2.forward(x)
     }
 
     /// Forward pass with softmax for inference

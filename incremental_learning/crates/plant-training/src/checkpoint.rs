@@ -262,7 +262,7 @@ pub fn extract_epoch_from_filename(filename: &str) -> Option<usize> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::fs;
+
     use tempfile::TempDir;
 
     #[test]

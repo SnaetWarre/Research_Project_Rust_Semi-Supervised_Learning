@@ -11,9 +11,10 @@ use serde::{Deserialize, Serialize};
 use std::f64::consts::PI;
 
 /// Learning rate scheduler type
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub enum SchedulerType {
     /// Constant learning rate (no scheduling)
+    #[default]
     Constant,
 
     /// Step decay: multiply LR by gamma every step_size epochs
@@ -39,12 +40,6 @@ pub enum SchedulerType {
         total_epochs: usize,
         eta_min: f64,
     },
-}
-
-impl Default for SchedulerType {
-    fn default() -> Self {
-        Self::Constant
-    }
 }
 
 /// Learning rate scheduler
@@ -87,7 +82,7 @@ impl LearningRateScheduler {
             }
 
             SchedulerType::StepLR { step_size, gamma } => {
-                if self.current_epoch % step_size == 0 {
+                if self.current_epoch.is_multiple_of(*step_size) {
                     self.current_lr *= gamma;
                 }
             }

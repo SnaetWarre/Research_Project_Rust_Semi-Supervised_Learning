@@ -3,8 +3,8 @@
 //! This module provides various image augmentation techniques to improve
 //! model generalization and handle limited training data.
 
-use image::{DynamicImage, GenericImageView, ImageBuffer, Rgb, RgbImage};
-use plant_core::{AugmentationConfig, Error, Result};
+use image::{DynamicImage, GenericImageView, ImageBuffer, Rgb};
+use plant_core::{AugmentationConfig, Result};
 use rand::Rng;
 
 /// Augmentation pipeline for plant images
@@ -12,15 +12,17 @@ pub struct AugmentationPipeline {
     config: AugmentationConfig,
 }
 
+impl Default for AugmentationPipeline {
+    /// Creates a pipeline with default configuration
+    fn default() -> Self {
+        Self::new(AugmentationConfig::default())
+    }
+}
+
 impl AugmentationPipeline {
     /// Creates a new augmentation pipeline with the given configuration
     pub fn new(config: AugmentationConfig) -> Self {
         Self { config }
-    }
-
-    /// Creates a pipeline with default configuration
-    pub fn default() -> Self {
-        Self::new(AugmentationConfig::default())
     }
 
     /// Applies augmentation to an image
@@ -300,7 +302,6 @@ mod tests {
     fn test_pipeline_creation() {
         let config = AugmentationConfig::default();
         let _pipeline = AugmentationPipeline::new(config);
-        assert!(true); // Just test creation
     }
 
     #[test]

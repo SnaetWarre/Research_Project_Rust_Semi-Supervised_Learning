@@ -7,19 +7,14 @@ use anyhow::{Context, Result};
 use clap::Parser;
 use indicatif::{MultiProgress, ProgressBar, ProgressStyle};
 use plant_core::load_toml_config;
-use plant_dataset::loader::ImageLoader;
 use plant_incremental::{
-    ewc::{EWCConfig, EWCLearner},
-    finetuning::{FineTuningConfig, FineTuningLearner},
-    lwf::{LwFConfig, LwFLearner},
     metrics::{IncrementalAnalysis, MethodComparison},
-    rehearsal::{RehearsalConfig, RehearsalLearner},
-    ExemplarSelection, ExperimentMetadata, IncrementalConfig, IncrementalLearner,
-    IncrementalMethod, IncrementalResult, StepMetrics, TrainingMetrics,
+    ExperimentMetadata, IncrementalConfig, IncrementalMethod, IncrementalResult, StepMetrics,
+    TrainingMetrics,
 };
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use tracing::{info, warn};
 
 /// Experiment configuration
@@ -236,7 +231,7 @@ fn main() -> Result<()> {
     Ok(())
 }
 
-fn setup_logging(verbose: bool, experiment_name: &str, output_base: &PathBuf) -> Result<()> {
+fn setup_logging(verbose: bool, experiment_name: &str, output_base: &Path) -> Result<()> {
     use tracing_subscriber::{fmt, prelude::*, EnvFilter};
 
     let filter = if verbose {
@@ -628,7 +623,7 @@ mod tests {
     fn test_simulate_task_evaluation() {
         let accs = simulate_task_evaluation(2, 15);
         assert_eq!(accs.len(), 3); // 3 tasks at step 2
-        assert!(accs.iter().all(|&a| a >= 0.0 && a <= 1.0));
+        assert!(accs.iter().all(|&a| (0.0..=1.0).contains(&a)));
     }
 
     #[test]

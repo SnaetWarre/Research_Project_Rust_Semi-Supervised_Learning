@@ -197,7 +197,7 @@ impl<B: Backend> IncrementalLearner<B> for LwFLearner<B> {
         &mut self,
         train_data: &[(Vec<f32>, usize)],
         val_data: &[(Vec<f32>, usize)],
-        config: &IncrementalConfig,
+        _config: &IncrementalConfig,
     ) -> Result<TrainingMetrics> {
         if train_data.is_empty() {
             return Err(anyhow!("Training data is empty"));
@@ -435,8 +435,8 @@ mod tests {
             .train_incremental(&train_data, &val_data, &inc_config)
             .unwrap();
 
-        assert!(metrics.train_loss.len() > 0);
-        assert!(metrics.val_accuracy.len() > 0);
+        assert!(!metrics.train_loss.is_empty());
+        assert!(!metrics.val_accuracy.is_empty());
         assert!(metrics.extra.contains_key("distillation_lambda"));
         assert!(metrics.extra.contains_key("temperature"));
     }

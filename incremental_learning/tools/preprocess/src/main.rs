@@ -9,7 +9,7 @@
 use anyhow::{Context, Result};
 use clap::{Parser, Subcommand};
 use indicatif::{ProgressBar, ProgressStyle};
-use plant_core::{AugmentationConfig, ImageDimensions, SplitRatios};
+use plant_core::ImageDimensions;
 use plant_dataset::{AugmentationPipeline, ImageLoader, ImagePreprocessor, PreprocessConfig};
 use rayon::prelude::*;
 use std::collections::HashMap;
@@ -180,7 +180,7 @@ fn process_images(
         force_rgb: true,
     };
 
-    let preprocessor = ImagePreprocessor::new(config);
+    let _preprocessor = ImagePreprocessor::new(config);
 
     // Set up thread pool
     if let Some(n) = workers {
@@ -287,7 +287,7 @@ fn split_dataset(
 
     // Validate ratios
     let test_ratio = 1.0 - train_ratio - val_ratio;
-    if test_ratio < 0.0 || test_ratio > 1.0 {
+    if !(0.0..=1.0).contains(&test_ratio) {
         anyhow::bail!("Invalid split ratios: must sum to <= 1.0");
     }
 
@@ -557,11 +557,7 @@ fn analyze_dataset(data_dir: &Path, output: Option<&Path>) -> Result<()> {
 
     // Summary statistics
     let num_classes = stats.len();
-    let avg_per_class = if num_classes > 0 {
-        total_images / num_classes
-    } else {
-        0
-    };
+    let avg_per_class = total_images.checked_div(num_classes).unwrap_or(0);
 
     println!("\n Summary:");
     println!("  Total classes:       {}", num_classes);

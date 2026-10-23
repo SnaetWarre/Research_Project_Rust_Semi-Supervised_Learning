@@ -9,11 +9,12 @@
 
 use burn::{
     module::Module,
-    tensor::{backend::Backend, Device, Int, Tensor},
+    tensor::{backend::Backend, Int, Tensor},
 };
-use plant_core::{Error, EvaluationMetrics, Result};
+use plant_core::{EvaluationMetrics, Result};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
+use std::marker::PhantomData;
 use std::time::Instant;
 use tracing::info;
 
@@ -47,16 +48,16 @@ pub struct EvalBatch<B: Backend> {
 pub struct Evaluator<B: Backend, M: Module<B>> {
     model: M,
     num_classes: usize,
-    device: Device<B>,
+    _backend: PhantomData<B>,
 }
 
 impl<B: Backend, M: Module<B>> Evaluator<B, M> {
     /// Create a new evaluator
-    pub fn new(model: M, num_classes: usize, device: Device<B>) -> Self {
+    pub fn new(model: M, num_classes: usize) -> Self {
         Self {
             model,
             num_classes,
-            device,
+            _backend: PhantomData,
         }
     }
 
@@ -172,6 +173,7 @@ impl<B: Backend, M: Module<B>> Evaluator<B, M> {
     }
 
     /// Compute per-class metrics from confusion matrix
+    #[allow(clippy::needless_range_loop)] // index form mirrors the confusion-matrix maths
     fn compute_per_class_metrics(
         &self,
         confusion_matrix: &[Vec<usize>],
@@ -309,6 +311,7 @@ impl<B: Backend, M: Module<B>> Evaluator<B, M> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use burn::tensor::Device;
     use burn_ndarray::NdArray;
 
     #[test]
@@ -340,12 +343,7 @@ mod tests {
             }
         }
 
-        let device = Default::default();
-        let evaluator = Evaluator::<NdArray, _> {
-            model: DummyModel,
-            num_classes: 3,
-            device,
-        };
+        let evaluator = Evaluator::<NdArray, _>::new(DummyModel, 3);
 
         let matrix = evaluator.compute_confusion_matrix(&predictions, &labels);
 
@@ -381,12 +379,7 @@ mod tests {
             }
         }
 
-        let device = Default::default();
-        let evaluator = Evaluator::<NdArray, _> {
-            model: DummyModel,
-            num_classes: 3,
-            device,
-        };
+        let evaluator = Evaluator::<NdArray, _>::new(DummyModel, 3);
 
         let accuracy = evaluator.compute_accuracy(&predictions, &labels);
         assert_eq!(accuracy, 1.0);

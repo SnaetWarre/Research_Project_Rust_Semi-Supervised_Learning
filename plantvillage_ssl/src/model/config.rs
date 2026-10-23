@@ -98,7 +98,7 @@ impl ModelConfig {
             return Err("num_classes must be greater than 0".to_string());
         }
 
-        if self.input_size == 0 || self.input_size % 32 != 0 {
+        if self.input_size == 0 || !self.input_size.is_multiple_of(32) {
             return Err("input_size must be a positive multiple of 32".to_string());
         }
 
@@ -110,7 +110,7 @@ impl ModelConfig {
             return Err("conv_filters must have at least one layer".to_string());
         }
 
-        if self.kernel_size < 1 || self.kernel_size % 2 == 0 {
+        if self.kernel_size < 1 || self.kernel_size.is_multiple_of(2) {
             return Err("kernel_size must be a positive odd number".to_string());
         }
 
@@ -123,7 +123,7 @@ impl ModelConfig {
 
         // Each conv block: conv -> bn -> relu -> maxpool(2x2)
         for _ in &self.conv_filters {
-            size = size / 2; // MaxPool2d with kernel_size=2, stride=2
+            size /= 2; // MaxPool2d with kernel_size=2, stride=2
         }
 
         // Final feature map size
@@ -133,31 +133,25 @@ impl ModelConfig {
 
     /// Save configuration to a JSON file
     pub fn save(&self, path: &std::path::Path) -> std::io::Result<()> {
-        let json = serde_json::to_string_pretty(self)
-            .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e))?;
+        let json = serde_json::to_string_pretty(self).map_err(std::io::Error::other)?;
         std::fs::write(path, json)
     }
 
     /// Load configuration from a JSON file
     pub fn load(path: &std::path::Path) -> std::io::Result<Self> {
         let json = std::fs::read_to_string(path)?;
-        serde_json::from_str(&json).map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e))
+        serde_json::from_str(&json).map_err(std::io::Error::other)
     }
 }
 
 /// Supported activation functions
-#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, Default)]
 pub enum ActivationType {
+    #[default]
     ReLU,
     LeakyReLU,
     GELU,
     Swish,
-}
-
-impl Default for ActivationType {
-    fn default() -> Self {
-        Self::ReLU
-    }
 }
 
 /// Training configuration
@@ -264,7 +258,7 @@ impl TrainingConfig {
 }
 
 /// Learning rate scheduler types
-#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, Default)]
 pub enum LRSchedulerType {
     /// Constant learning rate
     Constant,
@@ -273,15 +267,10 @@ pub enum LRSchedulerType {
     /// Exponential decay
     Exponential,
     /// Cosine annealing
+    #[default]
     CosineAnnealing,
     /// Reduce on plateau
     ReduceOnPlateau,
-}
-
-impl Default for LRSchedulerType {
-    fn default() -> Self {
-        Self::CosineAnnealing
-    }
 }
 
 /// Semi-supervised learning configuration
@@ -371,16 +360,22 @@ mod tests {
 
     #[test]
     fn test_model_config_validation() {
-        let mut config = ModelConfig::default();
-        config.num_classes = 0;
+        let config = ModelConfig {
+            num_classes: 0,
+            ..ModelConfig::default()
+        };
         assert!(config.validate().is_err());
 
-        config = ModelConfig::default();
-        config.input_size = 100; // Not a multiple of 32
+        let config = ModelConfig {
+            input_size: 100, // Not a multiple of 32
+            ..ModelConfig::default()
+        };
         assert!(config.validate().is_err());
 
-        config = ModelConfig::default();
-        config.dropout_rate = 1.5; // Out of range
+        let config = ModelConfig {
+            dropout_rate: 1.5, // Out of range
+            ..ModelConfig::default()
+        };
         assert!(config.validate().is_err());
     }
 

@@ -27,11 +27,11 @@ pub fn backward_transfer(accuracy_matrix: &[Vec<f32>]) -> f32 {
     let num_tasks = accuracy_matrix.len();
     let mut sum = 0.0;
 
-    for i in 0..(num_tasks - 1) {
+    for (i, row) in accuracy_matrix[..num_tasks - 1].iter().enumerate() {
         // Final accuracy on task i (after all training)
         let final_acc = accuracy_matrix[num_tasks - 1][i];
         // Accuracy on task i right after training on it
-        let initial_acc = accuracy_matrix[i][i];
+        let initial_acc = row[i];
         sum += final_acc - initial_acc;
     }
 
@@ -79,8 +79,8 @@ pub fn forgetting_measure(accuracy_matrix: &[Vec<f32>]) -> f32 {
         let final_acc = accuracy_matrix[num_tasks - 1][i];
 
         // Find maximum accuracy achieved on task i during training
-        for j in i..num_tasks {
-            let acc_at_j = accuracy_matrix[j][i];
+        for row in &accuracy_matrix[i..] {
+            let acc_at_j = row[i];
             let diff = acc_at_j - final_acc;
             max_diff = max_diff.max(diff);
         }
@@ -100,9 +100,9 @@ pub fn intransigence(accuracy_matrix: &[Vec<f32>], random_baseline: f32) -> f32 
     let num_tasks = accuracy_matrix.len();
     let mut sum = 0.0;
 
-    for i in 0..num_tasks {
-        if accuracy_matrix[i].len() > i {
-            sum += accuracy_matrix[i][i] - random_baseline;
+    for (i, row) in accuracy_matrix.iter().enumerate() {
+        if let Some(&acc) = row.get(i) {
+            sum += acc - random_baseline;
         }
     }
 
@@ -229,7 +229,7 @@ impl ClassIncrementalMetrics {
             0.0
         };
 
-        let overall_acc = if predictions.len() > 0 {
+        let overall_acc = if !predictions.is_empty() {
             (old_correct + new_correct) as f32 / predictions.len() as f32
         } else {
             0.0

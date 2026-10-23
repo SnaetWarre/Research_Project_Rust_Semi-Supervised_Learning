@@ -7,15 +7,10 @@ use anyhow::{Context, Result};
 use clap::{Parser, ValueEnum};
 use indicatif::{ProgressBar, ProgressStyle};
 use plant_core::{load_toml_config, setup_cli_logging};
-use plant_training::{
-    checkpoint::{Checkpoint, CheckpointManager},
-    evaluator::Evaluator,
-    model::{EfficientNetB0, PlantClassifier, ResNet18},
-    trainer::{Trainer, TrainerConfig},
-};
+use plant_training::checkpoint::{Checkpoint, CheckpointManager};
 use serde::{Deserialize, Serialize};
-use std::path::PathBuf;
-use tracing::{info, warn};
+use std::path::{Path, PathBuf};
+use tracing::info;
 
 /// Training configuration from file
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -241,7 +236,7 @@ fn validate_config(config: &TrainConfig) -> Result<()> {
     }
 
     // Validate architecture
-    let valid_archs = vec!["efficientnet-b0", "resnet18"];
+    let valid_archs = ["efficientnet-b0", "resnet18"];
     if !valid_archs.contains(&config.model.architecture.as_str()) {
         anyhow::bail!(
             "Invalid architecture: {}. Valid options: {}",
@@ -501,7 +496,7 @@ fn load_dataset_samples(data_dir: &PathBuf) -> Result<Vec<(PathBuf, usize)>> {
                 if img_path
                     .extension()
                     .and_then(|e| e.to_str())
-                    .map_or(false, |e| matches!(e, "jpg" | "jpeg" | "png"))
+                    .is_some_and(|e| matches!(e, "jpg" | "jpeg" | "png"))
                 {
                     samples.push((img_path, class_idx));
                 }
@@ -512,10 +507,7 @@ fn load_dataset_samples(data_dir: &PathBuf) -> Result<Vec<(PathBuf, usize)>> {
     Ok(samples)
 }
 
-fn export_metrics(
-    history: &[(usize, f32, f32, f32, f32, f64)],
-    output_dir: &PathBuf,
-) -> Result<()> {
+fn export_metrics(history: &[(usize, f32, f32, f32, f32, f64)], output_dir: &Path) -> Result<()> {
     let csv_path = output_dir.join("training_metrics.csv");
 
     let mut csv = String::from("epoch,train_loss,train_acc,val_loss,val_acc,learning_rate\n");

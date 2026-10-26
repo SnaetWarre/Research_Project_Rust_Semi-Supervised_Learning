@@ -1,0 +1,20 @@
+@import "tailwindcss";
+
+/* Dark surfaces and the first categorical series step from the dataviz reference palette */
+@theme {
+  --color-surface: #121211;
+  --color-panel: #1a1a19;
+  --color-line: #2c2c2a;
+  --color-ink: #f0efec;
+  --color-ink-2: #c3c2b7;
+  --color-ink-3: #8e8d84;
+  --color-series: #3987e5;
+  --color-leaf: #4fae6a;
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+}
+
+:root {
+  color-scheme: dark;
+  background: var(--color-surface);
+  color: var(--color-ink);
+}

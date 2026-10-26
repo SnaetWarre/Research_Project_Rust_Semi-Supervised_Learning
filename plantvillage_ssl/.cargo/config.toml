@@ -1,3 +1,0 @@
-[env]
-# CUDA path for linking
-CUDA_PATH = { value = "/usr/local/cuda", force = false }

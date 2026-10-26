@@ -1,0 +1,32 @@
+[package]
+name = "plantssl-app"
+version = "0.2.0"
+description = "Desktop app for classifying leaf photos and browsing training runs"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[lib]
+name = "plantssl_app"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2.7", features = [] }
+
+[dependencies]
+anyhow.workspace = true
+image.workspace = true
+# Inference runs on the CPU so the app works on machines without a GPU
+plantssl = { path = "../../plantssl", default-features = false }
+serde.workspace = true
+serde_json.workspace = true
+tauri = { version = "2.12", features = [] }
+tauri-plugin-dialog = "2.8"
+
+[features]
+# Set by the Tauri CLI for production builds
+custom-protocol = ["tauri/custom-protocol"]
+
+[lints]
+workspace = true

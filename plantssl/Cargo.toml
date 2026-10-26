@@ -1,0 +1,33 @@
+[package]
+name = "plantssl"
+version = "0.2.0"
+description = "Semi-supervised plant disease classification with pseudo-labeling, built on Burn"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[dependencies]
+anyhow.workspace = true
+burn.workspace = true
+clap = { version = "4.6", features = ["derive"] }
+image.workspace = true
+indicatif = "0.18"
+rand = "0.10"
+rand_chacha = "0.10"
+rayon = "1.12"
+serde.workspace = true
+serde_json.workspace = true
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+
+[dev-dependencies]
+tempfile = "3"
+
+[features]
+default = ["cuda"]
+cuda = ["burn/cuda"]
+wgpu = ["burn/wgpu"]
+
+[lints]
+workspace = true

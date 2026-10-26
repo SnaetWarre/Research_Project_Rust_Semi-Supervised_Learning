@@ -13,15 +13,17 @@ in model selection. Validation picked every setting and checkpoint; the test poo
 | Labels | Model | Test accuracy | Macro F1 |
 | --- | --- | ---: | ---: |
 | 5% (4,380 images) | Supervised only | 92.33% | 92.33% |
-| 5% | + pseudo-labels, fine-tuning each round | 93.08% | 93.23% |
-| 5% | + pseudo-labels, new student (default) | **95.20%** | **95.20%** |
+| 5% | + pseudo-labels, fine-tuning, 10 rounds | 93.08% | 93.23% |
+| 5% | + pseudo-labels, new student, 1 round | 95.20% | 95.20% |
+| 5% | + pseudo-labels, new student, 3 rounds (default) | **95.41%** | **95.41%** |
 | 80% (stream labels revealed) | Upper bound | 99.47% | 99.46% |
 | 20% (17,568 images) | Supervised only | 97.85% | 97.83% |
-| 20% | + pseudo-labels, fine-tuning each round | 97.85% | 97.83% |
+| 20% | + pseudo-labels, fine-tuning, 10 rounds | 97.85% | 97.83% |
 
-With 5% of the labels, pseudo-labels lift test accuracy by 2.9 points and close about 40% of the
-gap to a model that sees every label. 99.4% of the 32,952 pseudo-labels the student trained on were
-correct. With 20% labels the supervised model is already at 97.85%, and SSL kept its starting
+With 5% of the labels, pseudo-labels lift test accuracy by 3.1 points and close about 43% of the
+gap to a model that sees every label. Validation accuracy climbs every round: 93.00% for the
+supervised start, then 95.15%, 95.75% and 96.11%. 99.6% of the 32,944 pseudo-labels in the last
+round were correct. With 20% labels the supervised model is already at 97.85%, and SSL kept its starting
 model: there is too little left to fix.
 
 The thesis reports 86.06% and 94.90% for the older code. Those came from a split that leaked
@@ -61,11 +63,11 @@ that file.
 3. A new model (the student) trains from scratch on the labeled pool plus the kept
    pseudo-labels, with the same 30-epoch schedule as `train`. It becomes the next round's
    teacher (teacher-student self-training, as in Noisy Student). The teacher is done once its
-   predictions are in, so only one model is ever in memory.
+   predictions are in, so only one model trains at a time and every run here fit in 6 GB of VRAM.
 
-The round with the best validation accuracy is saved. `--mode fine-tune` keeps training the
-current model for 3 epochs per round instead. It is about ten times faster and gained 0.3
-points on validation, against 2.7 for a student.
+The default is 3 rounds. The round with the best validation accuracy is saved. `--mode fine-tune`
+keeps training the current model for 3 epochs per round instead. Each round is about ten times
+faster, but fine-tuning gained 0.3 points on validation against 3.1 for students.
 
 Why 5%: with 20% labels and a leak-free split, the supervised model already reaches about 98%
 and pseudo-labels have nothing left to fix (see the 20% row in the results). The SSL papers

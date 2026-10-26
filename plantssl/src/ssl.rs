@@ -13,11 +13,11 @@
 //! 4. train a new model from scratch on the labeled pool plus the kept pseudo-labels
 //!    (teacher-student self-training, as in Noisy Student). The student becomes the teacher of
 //!    the next round. [`Mode::FineTune`] keeps training the current model for a few epochs
-//!    instead, which is faster but gained about 0.3 points against 2.7 for a student with 5%
+//!    instead, which is faster but gained 0.3 validation points against 3.1 for students with 5%
 //!    labels.
 //!
-//! The teacher is only needed for its predictions, so one model is in memory at a time and
-//! peak VRAM stays at the level of plain supervised training. The best round by validation
+//! The teacher is only needed for its predictions, so one model trains at a time and peak VRAM
+//! stays at the level of plain supervised training. The best round by validation
 //! accuracy is kept.
 
 use anyhow::{Result, ensure};

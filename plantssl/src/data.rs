@@ -94,7 +94,7 @@ pub struct SplitConfig {
 impl Default for SplitConfig {
     fn default() -> Self {
         Self {
-            labeled: 0.2,
+            labeled: 0.05,
             validation: 0.1,
             test: 0.1,
             seed: 42,
@@ -295,7 +295,11 @@ mod tests {
 
     #[test]
     fn split_keeps_copies_of_a_leaf_in_one_pool() {
-        let split = Split::new(&fake_dataset(), SplitConfig::default()).unwrap();
+        let config = SplitConfig {
+            labeled: 0.2,
+            ..SplitConfig::default()
+        };
+        let split = Split::new(&fake_dataset(), config).unwrap();
         let pools = [
             &split.labeled,
             &split.stream,

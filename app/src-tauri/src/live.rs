@@ -10,7 +10,7 @@ use plantssl::data::Split;
 use plantssl::model::PlantCnn;
 use plantssl::progress::{Observer, Stopped};
 use plantssl::ssl::{self, RoundLog, SslConfig};
-use plantssl::train::{EpochLog, TrainConfig};
+use plantssl::train::EpochLog;
 use serde::{Deserialize, Serialize};
 use tauri::{AppHandle, Emitter, Manager, Runtime, State};
 
@@ -57,12 +57,17 @@ pub fn start_ssl<R: Runtime>(
     *running = Some(stop.clone());
 
     std::thread::spawn(move || {
+        // Clears the running flag even if the run panics, so Start works again afterwards
+        let guard = ClearOnDrop(app.clone());
         let mut emitter = EventEmitter {
             app: app.clone(),
             stop,
+            pass_images: 0,
             last_progress: Instant::now(),
         };
-        let event = match run(&request, &mut emitter) {
+        let outcome =
+            std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| run(&request, &mut emitter)));
+        let event = match outcome.unwrap_or_else(|_| Err(anyhow::anyhow!("the run crashed"))) {
             Ok(best_round) => SslEvent::Finished {
                 best_round,
                 out: request.out.clone(),
@@ -72,12 +77,21 @@ pub fn start_ssl<R: Runtime>(
                 message: format!("{e:#}"),
             },
         };
+        // Clear before telling the UI, so a Start right after this event is accepted
+        drop(guard);
         emitter.send(event);
-        if let Ok(mut running) = app.state::<LiveState>().0.lock() {
-            *running = None;
-        }
     });
     Ok(())
+}
+
+struct ClearOnDrop<R: Runtime>(AppHandle<R>);
+
+impl<R: Runtime> Drop for ClearOnDrop<R> {
+    fn drop(&mut self) {
+        if let Ok(mut running) = self.0.state::<LiveState>().0.lock() {
+            *running = None;
+        }
+    }
 }
 
 #[tauri::command]
@@ -88,7 +102,8 @@ pub fn stop_ssl(state: State<'_, LiveState>) -> CmdResult<()> {
     Ok(())
 }
 
-/// Same settings as `plantssl ssl`, saved the same way so the Runs screen can show the result.
+/// Same settings as `plantssl ssl` (both use `SslConfig::new`), saved the same way so the Runs
+/// screen can show the result.
 fn run(request: &SslRequest, observer: &mut dyn Observer) -> Result<usize> {
     let split = Split::load(&request.split)?;
     // Training needs the GPU; the CPU backend is far too slow for this
@@ -98,18 +113,13 @@ fn run(request: &SslRequest, observer: &mut dyn Observer) -> Result<usize> {
         meta.classes == split.classes,
         "the model was trained on other classes than this split has"
     );
-    let config = SslConfig {
-        rounds: request.rounds,
-        keep: request.keep,
-        fresh_student: request.fresh_student,
-        train: TrainConfig {
-            epochs: request.epochs_per_round,
-            learning_rate: if request.fresh_student { 1e-3 } else { 3e-4 },
-            warmup_epochs: usize::from(request.fresh_student),
-            image_size: meta.image_size,
-            ..TrainConfig::default()
-        },
-    };
+    let config = SslConfig::new(
+        request.rounds,
+        request.keep,
+        request.epochs_per_round,
+        request.fresh_student,
+        meta.image_size,
+    );
     let result = ssl::run(model, &meta, &split, &config, &device, observer)?;
     result.model.save(&request.out, &meta)?;
     plantssl::write_json(
@@ -122,6 +132,7 @@ fn run(request: &SslRequest, observer: &mut dyn Observer) -> Result<usize> {
 struct EventEmitter<R: Runtime> {
     app: AppHandle<R>,
     stop: Arc<AtomicBool>,
+    pass_images: usize,
     last_progress: Instant,
 }
 
@@ -134,6 +145,7 @@ impl<R: Runtime> EventEmitter<R> {
 
 impl<R: Runtime> Observer for EventEmitter<R> {
     fn pass(&mut self, label: &str, images: usize) {
+        self.pass_images = images;
         self.send(SslEvent::Pass {
             label: label.to_string(),
             images,
@@ -141,8 +153,8 @@ impl<R: Runtime> Observer for EventEmitter<R> {
     }
 
     fn images_done(&mut self, done: usize) {
-        // A few updates per second are enough for a progress bar
-        if self.last_progress.elapsed() >= Duration::from_millis(200) {
+        // A few updates per second are enough for a progress bar, plus the final one
+        if done >= self.pass_images || self.last_progress.elapsed() >= Duration::from_millis(200) {
             self.last_progress = Instant::now();
             self.send(SslEvent::Progress { done });
         }

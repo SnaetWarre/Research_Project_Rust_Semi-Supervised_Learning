@@ -40,19 +40,35 @@ pub struct SslConfig {
     pub train: TrainConfig,
 }
 
-impl Default for SslConfig {
-    fn default() -> Self {
+impl SslConfig {
+    /// The settings shared by `plantssl ssl` and the app. A fresh student trains from scratch, so
+    /// it gets the supervised learning rate and warmup; fine-tuning a trained model uses a lower
+    /// rate and no warmup.
+    pub fn new(
+        rounds: usize,
+        keep: f32,
+        epochs_per_round: usize,
+        fresh_student: bool,
+        image_size: u32,
+    ) -> Self {
         Self {
-            rounds: 10,
-            keep: 0.5,
-            fresh_student: false,
+            rounds,
+            keep,
+            fresh_student,
             train: TrainConfig {
-                epochs: 3,
-                learning_rate: 3e-4,
-                warmup_epochs: 0,
+                epochs: epochs_per_round,
+                learning_rate: if fresh_student { 1e-3 } else { 3e-4 },
+                warmup_epochs: usize::from(fresh_student),
+                image_size,
                 ..TrainConfig::default()
             },
         }
+    }
+}
+
+impl Default for SslConfig {
+    fn default() -> Self {
+        Self::new(10, 0.5, 3, false, TrainConfig::default().image_size)
     }
 }
 
@@ -82,7 +98,10 @@ pub fn run(
     device: &Device,
     observer: &mut dyn Observer,
 ) -> Result<SslRun> {
-    ensure!(config.rounds > 0, "need at least one round");
+    ensure!(
+        config.rounds > 0 && config.train.epochs > 0,
+        "need at least one round and one epoch per round"
+    );
     let tc = &config.train;
     let labeled = split.resolve(&split.labeled);
     let validation = split.resolve(&split.validation);
@@ -144,6 +163,8 @@ pub fn run(
             ..tc.clone()
         };
         let student = if config.fresh_student {
+            // The teacher's predictions are in, so free it before the student trains
+            drop(model);
             PlantCnn::new(meta, device)
         } else {
             model

@@ -12,7 +12,7 @@ plantssl/           Library and `plantssl` CLI
   src/images.rs     Decoding, augmentation, prefetching batch loader
   src/model.rs      PlantCnn and its save/load (model.bpk + model.json)
   src/train.rs      Supervised loop (AdamW, warmup + cosine, best epoch on validation)
-  src/ssl.rs        Self-training rounds with confidence-thresholded pseudo-labels
+  src/ssl.rs        Self-training rounds with class-balanced pseudo-labels
   src/eval.rs       Batch prediction, accuracy, macro F1, confusion matrix
   src/predict.rs    Single-image classification, used by the app
 app/                Tauri 2 desktop app (Svelte 5, Tailwind 4, Vite)

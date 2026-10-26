@@ -106,8 +106,9 @@ struct SslArgs {
     keep: f32,
     #[arg(long, default_value_t = 3)]
     epochs_per_round: usize,
-    #[arg(long, default_value_t = 3e-4)]
-    lr: f64,
+    /// Learning rate per round. Defaults to 3e-4 for fine-tuning and 1e-3 with --fresh-student.
+    #[arg(long)]
+    lr: Option<f64>,
     /// Train a new model from scratch each round instead of fine-tuning the current one.
     #[arg(long)]
     fresh_student: bool,
@@ -234,21 +235,18 @@ fn ssl(args: SslArgs) -> Result<()> {
     let device = plantssl::device(&c.device)?;
     let (model, meta) = PlantCnn::load(&args.init, &device)?;
     ensure_same_classes(&meta, &split)?;
-    let config = SslConfig {
-        rounds: args.rounds,
-        keep: args.keep,
-        fresh_student: args.fresh_student,
-        train: TrainConfig {
-            epochs: args.epochs_per_round,
-            batch_size: c.batch_size,
-            learning_rate: args.lr,
-            // A model trained from scratch needs the same warmup as `train`
-            warmup_epochs: usize::from(args.fresh_student),
-            image_size: meta.image_size,
-            seed: c.seed,
-            ..TrainConfig::default()
-        },
-    };
+    let mut config = SslConfig::new(
+        args.rounds,
+        args.keep,
+        args.epochs_per_round,
+        args.fresh_student,
+        meta.image_size,
+    );
+    config.train.batch_size = c.batch_size;
+    config.train.seed = c.seed;
+    if let Some(lr) = args.lr {
+        config.train.learning_rate = lr;
+    }
     let run = ssl::run(model, &meta, &split, &config, &device, &mut Bar::default())?;
     run.model.save(&args.out, &meta)?;
     plantssl::write_json(

@@ -3,7 +3,7 @@
 use std::path::PathBuf;
 use std::time::Instant;
 
-use anyhow::Result;
+use anyhow::{Result, ensure};
 use burn::nn::loss::CrossEntropyLossConfig;
 use burn::optim::{AdamWConfig, GradientsParams};
 use burn::prelude::*;
@@ -68,6 +68,10 @@ pub fn fit(
     config: &TrainConfig,
     device: &Device,
 ) -> Result<Fit> {
+    ensure!(
+        config.epochs > 0 && config.batch_size > 0,
+        "epochs and batch size must be positive"
+    );
     let train_device = device.clone().autodiff();
     // `Option` so the closure below can move the model into `optimizer.step`
     let mut model = Some(model.to_device(&train_device).train());
@@ -99,7 +103,8 @@ pub fn fit(
         };
 
         let progress = crate::progress(order.len(), &format!("epoch {epoch}/{}", config.epochs));
-        let mut loss_sum = 0.0;
+        // Summed on the device: reading the loss every step would stall the GPU
+        let mut loss_sum: Option<Tensor<1>> = None;
         loader.for_each(&order, &train_device, |batch| {
             let targets = batch.targets(&train_device);
             let count = batch.labels.len();
@@ -108,7 +113,11 @@ pub fn fit(
             let grads = GradientsParams::from_grads(loss.backward(), &current);
             model = Some(optimizer.step(schedule.at(step), current, grads));
             step += 1;
-            loss_sum += loss.into_scalar::<f64>() * count as f64;
+            let weighted = loss.detach().mul_scalar(count as f64);
+            loss_sum = Some(match loss_sum.take() {
+                Some(sum) => sum + weighted,
+                None => weighted,
+            });
             progress.inc(count as u64);
             Ok(())
         })?;
@@ -124,7 +133,7 @@ pub fn fit(
         )?;
         let log = EpochLog {
             epoch,
-            train_loss: loss_sum / order.len().max(1) as f64,
+            train_loss: loss_sum.map_or(0.0, |sum| sum.into_scalar::<f64>()) / order.len() as f64,
             val_accuracy: eval::accuracy(&predictions, validation),
             seconds: started.elapsed().as_secs_f64(),
         };

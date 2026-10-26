@@ -34,6 +34,9 @@ pub struct Dataset {
 impl Dataset {
     /// Scans `root/<class>/*` or, for the Kaggle layout, `root/{train,valid}/<class>/*`.
     pub fn scan(root: &Path) -> Result<Self> {
+        // Absolute, so the saved split works from any working directory
+        let root = &fs::canonicalize(root)
+            .with_context(|| format!("dataset folder {} not found", root.display()))?;
         let parts: Vec<PathBuf> = ["train", "valid"]
             .iter()
             .map(|part| root.join(part))

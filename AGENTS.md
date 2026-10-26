@@ -24,14 +24,14 @@ research/           Literature notes
 ## Commands
 
 ```bash
-scripts/download-dataset.sh               # data/plantvillage/{train,valid}
-cargo run --release -p plantssl -- split              # runs/split.json
-cargo run --release -p plantssl -- train              # runs/supervised
-cargo run --release -p plantssl -- ssl                # runs/ssl
+scripts/download-dataset.sh                       # data/plantvillage/{train,valid}
+cargo run --release -p plantssl -- split          # runs/split.json
+cargo run --release -p plantssl -- train          # runs/supervised
+cargo run --release -p plantssl -- ssl            # runs/ssl
 cargo run --release -p plantssl -- eval --model runs/ssl
-scripts/reproduce.sh                      # all of the above plus the upper bound
+scripts/reproduce.sh                              # all of the above plus the upper bound
 
-cargo test                                # unit tests (CPU)
+cargo test                                        # unit tests (CPU)
 cargo clippy --workspace --all-targets -- -D warnings
 cargo fmt --all
 

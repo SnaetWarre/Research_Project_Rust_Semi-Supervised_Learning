@@ -12,7 +12,9 @@ if [[ -d "$target/train" && -d "$target/valid" ]]; then
 fi
 command -v unzip >/dev/null || { echo "unzip is required" >&2; exit 1; }
 
-work="$(mktemp -d)"
+# Next to the target rather than in /tmp, which is often RAM-backed and too small for ~6 GB
+mkdir -p "$(dirname "$target")"
+work="$(mktemp -d "$(dirname "$target")/.download.XXXXXX")"
 trap 'rm -rf "$work"' EXIT
 
 echo "Downloading about 2.7 GB to $work"

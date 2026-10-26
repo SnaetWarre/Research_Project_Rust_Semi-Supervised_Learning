@@ -37,8 +37,16 @@ pub fn load(path: &Path, size: u32) -> Result<RgbImage> {
     Ok(resize(&image, size))
 }
 
+/// Center-crops to a square, so photos that are not square keep their proportions, then resizes.
 pub fn resize(image: &DynamicImage, size: u32) -> RgbImage {
-    imageops::resize(&image.to_rgb8(), size, size, FilterType::Triangle)
+    let side = image.width().min(image.height());
+    let square = image.crop_imm(
+        (image.width() - side) / 2,
+        (image.height() - side) / 2,
+        side,
+        side,
+    );
+    imageops::resize(&square.to_rgb8(), size, size, FilterType::Triangle)
 }
 
 /// Label-preserving augmentation: random crop, flips, quarter turns and colour jitter.
@@ -178,6 +186,19 @@ mod tests {
             let out = augment(&image, &mut rng);
             assert_eq!(out.dimensions(), (32, 32));
         }
+    }
+
+    #[test]
+    fn resize_crops_the_center_of_wide_photos() {
+        // Red left third, green middle, blue right third: only green survives the crop
+        let wide = RgbImage::from_fn(30, 10, |x, _| match x / 10 {
+            0 => image::Rgb([255, 0, 0]),
+            1 => image::Rgb([0, 255, 0]),
+            _ => image::Rgb([0, 0, 255]),
+        });
+        let out = resize(&DynamicImage::ImageRgb8(wide), 4);
+        assert_eq!(out.dimensions(), (4, 4));
+        assert!(out.pixels().all(|p| p.0 == [0, 255, 0]));
     }
 
     #[test]

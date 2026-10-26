@@ -2,7 +2,7 @@
 
 use std::path::PathBuf;
 
-use anyhow::Result;
+use anyhow::{Result, ensure};
 use clap::{Args, Parser, Subcommand, ValueEnum};
 use serde::Serialize;
 use serde_json::json;
@@ -227,6 +227,7 @@ fn ssl(args: SslArgs) -> Result<()> {
     let split = Split::load(&c.split)?;
     let device = plantssl::device(&c.device)?;
     let (model, meta) = PlantCnn::load(&args.init, &device)?;
+    ensure_same_classes(&meta, &split)?;
     let config = SslConfig {
         rounds: args.rounds,
         threshold: args.threshold,
@@ -259,6 +260,7 @@ fn eval(args: EvalArgs) -> Result<()> {
     let split = Split::load(&c.split)?;
     let device = plantssl::device(&c.device)?;
     let (model, meta) = PlantCnn::load(&args.model, &device)?;
+    ensure_same_classes(&meta, &split)?;
     let (name, pool) = match args.pool {
         Pool::Test => ("test", &split.test),
         Pool::Validation => ("validation", &split.validation),
@@ -283,6 +285,14 @@ fn eval(args: EvalArgs) -> Result<()> {
         info!("  weakest: {:<50} F1 {:.2}%", class.class, class.f1 * 100.0);
     }
     info!("full report in {}", out.display());
+    Ok(())
+}
+
+fn ensure_same_classes(meta: &ModelMeta, split: &Split) -> Result<()> {
+    ensure!(
+        meta.classes == split.classes,
+        "the model was trained on other classes than this split has"
+    );
     Ok(())
 }
 

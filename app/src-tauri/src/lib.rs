@@ -29,7 +29,8 @@ struct ModelInfo {
     image_size: u32,
 }
 
-#[tauri::command]
+// `async` runs the command off the main thread, so the window keeps painting meanwhile
+#[tauri::command(async)]
 fn load_model(dir: PathBuf, state: State<'_, AppState>) -> CmdResult<ModelInfo> {
     let predictor = Predictor::load(&dir, plantssl::device("cpu").map_err(err)?).map_err(err)?;
     let info = ModelInfo {
@@ -48,7 +49,7 @@ struct Classification {
 }
 
 /// Classifies the raw bytes of an image file sent as the request body.
-#[tauri::command]
+#[tauri::command(async)]
 fn classify(request: Request<'_>, state: State<'_, AppState>) -> CmdResult<Classification> {
     let InvokeBody::Raw(bytes) = request.body() else {
         return Err("expected the image bytes as the request body".into());
@@ -72,7 +73,7 @@ struct Run {
 }
 
 /// Every model folder directly inside `dir`, with the JSON each command left there.
-#[tauri::command]
+#[tauri::command(async)]
 fn list_runs(dir: PathBuf) -> CmdResult<Vec<Run>> {
     let mut runs = Vec::new();
     for entry in std::fs::read_dir(&dir).map_err(err)? {

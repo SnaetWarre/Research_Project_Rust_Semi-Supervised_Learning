@@ -1,8 +1,10 @@
 #!/usr/bin/env bash
 # Runs the full experiment: split, supervised baseline, SSL, the fully supervised upper bound,
-# and a test-pool evaluation of all three. Extra arguments go to every training command,
-# for example `scripts/reproduce.sh --device cpu`.
+# and a test-pool evaluation of all three. Extra arguments go to every command after `split`,
+# so only the flags they share work: --device, --batch-size and --seed.
+# Example: scripts/reproduce.sh --device cpu
 set -euo pipefail
+cd "$(dirname "$0")/.."
 
 cargo build --release -p plantssl
 plantssl() { target/release/plantssl "$@"; }

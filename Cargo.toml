@@ -1,7 +1,7 @@
 [workspace]
 resolver = "3"
 members = ["plantssl", "app/src-tauri"]
-default-members = ["plantssl", "app/src-tauri"]
+default-members = ["plantssl"]
 
 [workspace.package]
 edition = "2024"

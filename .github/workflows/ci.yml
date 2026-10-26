@@ -2,38 +2,60 @@ name: CI
 
 on:
   push:
+    branches: [master]
   pull_request:
 
 permissions:
   contents: read
 
+env:
+  CARGO_TERM_COLOR: always
+
 jobs:
   rust:
-    name: ${{ matrix.workspace }}
+    name: Rust
     runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          # CI has no GPU, so build the CPU backend only
-          - workspace: plantvillage_ssl
-            features: --no-default-features --features cpu
-          - workspace: incremental_learning
-            features: ""
+    steps:
+      - uses: actions/checkout@v5
+      # Tauri needs the WebKitGTK headers to build the app crate
+      - name: System libraries
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libsoup-3.0-dev libjavascriptcoregtk-4.1-dev librsvg2-dev
+      # Installs the toolchain pinned in rust-toolchain.toml
+      - run: rustup show active-toolchain
+      - uses: Swatinem/rust-cache@v2
+      # The app embeds the built frontend, so it has to exist before clippy runs
+      - run: mkdir -p app/dist && touch app/dist/index.html
+      - run: cargo fmt --all --check
+      # No GPU on CI runners: build without CUDA and run the CPU backend
+      - run: cargo clippy --workspace --all-targets --no-default-features -- -D warnings
+      - run: cargo test --workspace --no-default-features
+
+  incremental:
+    name: incremental_learning
+    runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: ${{ matrix.workspace }}
+        working-directory: incremental_learning
     steps:
-      - uses: actions/checkout@v4
-      # Pinned so a new Rust release cannot add clippy lints that fail CI
-      - uses: dtolnay/rust-toolchain@master
-        with:
-          toolchain: 1.99.1
-          components: clippy
+      - uses: actions/checkout@v5
+      - run: rustup show active-toolchain
       - uses: Swatinem/rust-cache@v2
         with:
-          workspaces: ${{ matrix.workspace }}
-      - name: Clippy
-        run: cargo clippy --all-targets ${{ matrix.features }} -- -D warnings
-      - name: Test
-        run: cargo test ${{ matrix.features }}
+          workspaces: incremental_learning
+      - run: cargo clippy --all-targets -- -D warnings
+      - run: cargo test
+
+  app:
+    name: App frontend
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: app
+    steps:
+      - uses: actions/checkout@v5
+      - uses: oven-sh/setup-bun@v2
+      - run: bun install --frozen-lockfile
+      - run: bun run check
+      - run: bun run build

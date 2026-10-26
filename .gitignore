@@ -1,38 +1,19 @@
-# Data (large files - do not commit)
-plantvillage_ssl/data/
-cifar10_semi_supervised/
-*.tar.gz
+# Dataset and everything the CLI writes
+/data/
+/runs*/
 
-# Build artifacts
-plantvillage_ssl/target/
-plantvillage_ssl/server/target/
-plantvillage_ssl/gui/src-tauri/target/
-**/target/
+# Build output
+target/
+node_modules/
 
-# Output/models (generated, do not commit)
-plantvillage_ssl/output/
-!plantvillage_ssl/output/benchmarks/
-output/
-
-# Python cache
-__pycache__/
-*.pyc
-
-# IDE
+# Editors and OS files
 .idea/
 .vscode/
 *.swp
-*.swo
-*.mov
+*Zone.Identifier
+.DS_Store
 
-# Mobile export - separate GitHub Pages repo
-plantvillage_ssl/mobile_export/pwa/
-
-# Python virtual environments
-venv/
+# Python caches from the thesis tooling
+__pycache__/
+*.pyc
 .venv/
-
-.venv311/
-
-# Node.js
-node_modules/

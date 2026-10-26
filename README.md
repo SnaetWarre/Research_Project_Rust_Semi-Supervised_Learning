@@ -1,81 +1,144 @@
-# Semi-Supervised Plant Disease Detection in Rust
+# Semi-supervised plant disease detection in Rust
 
-Bachelor research on data-efficient plant-disease classification for offline edge devices. The project implements pseudo-labeling and incremental-learning experiments in Rust with Burn, compares the approach with a PyTorch reference, and packages inference for desktop, mobile, and browser-oriented deployment paths.
+Bachelor research on classifying plant diseases from leaf photos when most photos have no label.
+A small CNN is trained on the 5% of images that keep their labels, then improves itself on the
+other images with pseudo-labels: its own confident predictions, used as training labels. Everything
+runs in Rust with [Burn](https://burn.dev) 0.22, and one model at a time fits in 6 GB of VRAM.
 
 ## Results
 
-| Saved checkpoint | Held-out images | Top-1 accuracy | Macro F1 |
-| --- | ---: | ---: | ---: |
-| Supervised baseline | 8,786 | 86.06% | 86.08% |
-| Semi-supervised learning | 8,786 | **94.90%** | **94.74%** |
+All rows are scored on the same test pool: 8,832 images whose leaves never appear in training or
+in model selection. Validation picked every setting and checkpoint; the test pool was scored once.
 
-The SSL checkpoint improved accuracy by 8.84 percentage points and macro F1 by 8.66 points while starting with 20% labeled data. Both checkpoints were evaluated on the same held-out split, which was excluded from training and pseudo-label selection.
+| Labels | Model | Test accuracy | Macro F1 |
+| --- | --- | ---: | ---: |
+| 5% (4,380 images) | Supervised only | 92.33% | 92.33% |
+| 5% | + pseudo-labels, fine-tuning, 10 rounds¹ | 93.08% | 93.23% |
+| 5% | + pseudo-labels, new student, 1 round | 95.20% | 95.20% |
+| 5% | + pseudo-labels, new student, 3 rounds (default) | **95.41%** | **95.41%** |
+| 80% (stream labels revealed) | Upper bound | 99.47% | 99.46% |
+| 20% (17,568 images) | Supervised only | 97.85% | 97.83% |
+| 20% | + pseudo-labels, fine-tuning, 10 rounds, 0.95 threshold² | 97.85% | 97.83% |
 
-These are results from one saved split and one random seed, not averages across repeated runs. The experiments use PlantVillage's relatively uniform, lab-like images; performance on field images with different lighting, backgrounds, cameras, and disease stages is expected to be lower.
+¹ `plantssl ssl --mode fine-tune --rounds 10`.
+² An earlier version of the selection: one global 0.95 confidence threshold instead of the most
+confident half per class. The student method has not been run with 20% labels.
 
-## Edge deployment
+With 5% of the labels, pseudo-labels lift test accuracy by 3.1 points and close about 43% of the
+gap to a model that sees every label. Validation accuracy climbs every round: 93.00% for the
+supervised start, then 95.15%, 95.75% and 96.11%. 99.6% of the 32,944 pseudo-labels in the last
+round were correct. With 20% labels the supervised model is already at 97.85%, and the SSL run kept its starting
+model: there is little left to fix.
 
-- Burn model weights: approximately **916 KB**
-- ONNX export: approximately **1.8 MB**
-- Compiled Rust release application: approximately **26 MB**
-- RTX 3060 laptop inference: **0.42 ms per image**
-- iPhone 12 through the Tauri Rust backend: approximately **80 ms per image**
+The thesis reports 86.06% and 94.90% for the older code. Those came from a split that leaked
+rotated copies of test leaves into training, so they cannot be compared with the table above.
 
-The deployment result is the main systems advantage: inference can run locally without a Python interpreter, cloud API, or network connection.
+**On the edge.** The model is 1.2M parameters and a 4.7 MB weights file. Classifying one photo
+takes 14.7 ms on a laptop CPU (AMD Ryzen 7 6800H) with Burn's pure-Rust CPU backend, no GPU and no
+Python. Training runs at about 360 images per second on an RTX 3060 laptop GPU with 6 GB.
 
-## Research scope
+## How the experiment works
 
-The repository studies three connected questions:
+**Dataset.** The Kaggle [New Plant Diseases](https://www.kaggle.com/datasets/vipoooool/new-plant-diseases-dataset)
+dataset: 87,867 images in 38 classes. Kaggle built it by rotating and flipping PlantVillage photos
+and saving every copy, so one leaf can appear up to 15 times. `plantssl split` groups the copies of
+each photo and keeps every group inside one pool. Without that, rotated copies of test leaves end
+up in the training data.
 
-1. How effectively can pseudo-labeling use an unlabeled image stream when only 20% of the data starts labeled?
-2. How does adding one class differ for a small taxonomy (5 to 6 classes) versus a larger taxonomy (30 to 31 classes)?
-3. How much labeled data is required for a useful new class while limiting catastrophic forgetting?
+**Pools.** The split is computed once and saved to `runs/split.json`. Every later command reads
+that file.
 
-## Repository structure
+| Pool | Share | Used for |
+| --- | ---: | --- |
+| Labeled | 5% | supervised training |
+| Stream | 75% | unlabeled images for pseudo-labeling |
+| Validation | 10% | picking the best epoch and round |
+| Test | 10% | the final numbers, used once |
+
+**Pseudo-labeling.** The stream arrives in rounds, like new field photos would. Each round:
+
+1. The current model (the teacher) labels every stream image seen so far, so a label it got
+   wrong earlier can change or drop out.
+2. For every disease, the most confident half of the images predicted as that disease is kept
+   (class-balanced self-training, Zou et al. 2018). One global confidence threshold does not
+   work here: at 0.95 it keeps 94% of the stream images of the easiest class and 18% of the
+   hardest, and training on that skewed set kept validation accuracy below the supervised
+   start for 9 of 10 rounds.
+3. A new model (the student) trains from scratch on the labeled pool plus the kept
+   pseudo-labels, with the same 30-epoch schedule as `train`. It becomes the next round's
+   teacher (teacher-student self-training, as in Noisy Student). The teacher is done once its
+   predictions are in, so only one model trains at a time and every run here fit in 6 GB of VRAM.
+
+The default is 3 rounds. The round with the best validation accuracy is saved. `--mode fine-tune`
+keeps training the current model for 3 epochs per round instead. Each round is about ten times
+faster, but fine-tuning gained 0.3 points on validation against 3.1 for students.
+
+Why 5%: with 20% labels and a leak-free split, the supervised model already reaches about 98%
+and pseudo-labels have nothing left to fix (see the 20% row in the results). The SSL papers
+the thesis builds on test at 5% labels too.
+
+**Model.** A stride-2 stem convolution, three stages of two 3x3 convolutions with batch norm and
+max pooling, global average pooling and one linear layer. 1.2M parameters, 128x128 input, a
+4.7 MB weights file.
+
+## Run it
+
+You need Rust (the pinned toolchain installs itself through `rust-toolchain.toml`). Training on
+the GPU needs an NVIDIA card with CUDA drivers.
+
+```bash
+scripts/download-dataset.sh                        # about 2.7 GB into data/plantvillage
+scripts/reproduce.sh                               # everything below, plus the upper bound
+```
+
+Or step by step:
+
+```bash
+cargo run --release -p plantssl -- split           # runs/split.json
+cargo run --release -p plantssl -- train           # runs/supervised
+cargo run --release -p plantssl -- ssl             # runs/ssl
+cargo run --release -p plantssl -- eval --model runs/ssl
+cargo run --release -p plantssl -- predict --model runs/ssl leaf.jpg
+```
+
+Each command has `--help`. Without an NVIDIA GPU, add `--device cpu`, or build with
+`--no-default-features`. The split stores absolute dataset paths, so run `split` again after
+moving the dataset.
+
+## Desktop app
+
+`app/` is a Tauri app with three screens:
+
+- **Classify** loads a model folder and classifies a photo on the CPU, like an edge device would.
+- **Live SSL** starts from a trained model and runs the pseudo-labeling rounds on the GPU. Validation
+  accuracy and pseudo-label precision update after every round, and the run can be stopped.
+- **Runs** shows the training curves, SSL rounds and test scores of every folder in `runs/`.
+
+```bash
+cd app
+bun install
+bun run tauri dev
+```
+
+## Repository
 
 ```text
-plantvillage_ssl/       # Burn training, evaluation, inference, GUI, and export
-incremental_learning/   # 5→6 and 30→31 class experiments
-pytorch_reference/      # reference implementation for comparison
-benchmarks/             # framework and deployment benchmarks
-BachelorProef/thesis/   # research method, final results, limitations, and advice
-research/               # literature study and research notes
+plantssl/       library and CLI: data, model, training, SSL, evaluation
+app/            Tauri 2 + Svelte 5 desktop app
+scripts/        dataset download and the full experiment
+incremental_learning/  separate project: adding new disease classes (EWC, LwF, rehearsal)
+BachelorProef/  thesis and school deliverables
+research/       literature notes
 ```
 
-## Reproduce the main pipeline
+The thesis in `BachelorProef/` describes the earlier version of this code, which is at commit
+[`e69074c7`](https://github.com/SnaetWarre/Research_Project_Rust_Semi-Supervised_Learning/tree/e69074c7).
+Its numbers came from a split that leaked augmented copies of test leaves into training, so they
+are higher than the numbers above.
 
-Install a recent stable Rust toolchain. CPU execution works everywhere; CUDA requires a supported NVIDIA environment.
+## Limits
 
-```bash
-git clone https://github.com/SnaetWarre/Research_Project_Rust_Semi-Supervised_Learning.git
-cd Research_Project_Rust_Semi-Supervised_Learning
-
-./download_plantvillage.sh
-
-cd plantvillage_ssl
-cargo run --release --features cuda -- train \
-  --data-dir data/plantvillage \
-  --labeled-ratio 0.2 \
-  --epochs 30 \
-  --cuda
-```
-
-For CPU validation:
-
-```bash
-cargo check --manifest-path plantvillage_ssl/Cargo.toml --no-default-features --features cpu
-```
-
-Incremental-learning experiments are documented under [incremental_learning](incremental_learning).
-
-## Evidence and documentation
-
-- [Final results and limitations](BachelorProef/thesis/03_results.md)
-- [Research design](BachelorProef/thesis/02_research.md)
-- [Conclusion](BachelorProef/thesis/06_conclusion.md)
-- [Installation and user documentation](plantvillage_ssl/docs/)
-- [Technical portfolio article](https://snaetwarre.github.io/My-Portofolio/blog/blog.html)
-
-## Production considerations
-
-A production agricultural system would need field-data validation, repeated evaluation across seeds and locations, monitoring for drift and low-confidence classes, an update and rollback mechanism for offline devices, and feedback from domain experts. The current repository demonstrates the research and deployment approach; it does not claim clinical or agronomic certification.
+These results come from one split and one seed. Runs are seeded, but GPU kernels are not
+bit-for-bit deterministic, so a rerun lands close to these numbers rather than on them.
+PlantVillage photos are lab shots of single leaves on plain backgrounds, so accuracy on field
+photos with other lighting, backgrounds and cameras will be lower.

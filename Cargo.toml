@@ -1,0 +1,34 @@
+[workspace]
+resolver = "3"
+members = ["plantssl", "app/src-tauri"]
+default-members = ["plantssl"]
+# The incremental-learning research is a separate project with its own workspace
+exclude = ["incremental_learning"]
+
+[workspace.package]
+edition = "2024"
+rust-version = "1.95"
+license = "MIT"
+authors = ["Warre Snaet"]
+
+[workspace.dependencies]
+anyhow = "1.0"
+# Default features carry kernel fusion and autotuning; without them CUDA training is ~100x slower
+burn = { version = "0.22.1", features = ["flex", "persistence"] }
+image = { version = "0.25", default-features = false, features = ["jpeg", "png"] }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+
+[workspace.lints.rust]
+unsafe_code = "forbid"
+
+[workspace.lints.clippy]
+all = { level = "warn", priority = -1 }
+
+[profile.release]
+lto = "thin"
+codegen-units = 1
+
+# Image decoding and Burn's CPU kernels are far too slow unoptimized
+[profile.dev.package."*"]
+opt-level = 3

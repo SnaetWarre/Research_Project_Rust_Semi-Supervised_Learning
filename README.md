@@ -27,15 +27,23 @@ that file.
 | Validation | 10% | picking the best epoch and round |
 | Test | 10% | the final numbers, used once |
 
-**Pseudo-labeling.** The stream arrives in 10 rounds, like new field photos would. Each round the
-model labels every stream image seen so far. A label it got wrong earlier can change or drop out.
-For every disease, the most confident half of the images predicted as that disease is kept
-(class-balanced self-training, Zou et al. 2018). One global confidence threshold does not work
-here: at 0.95 it keeps 94% of the stream images of the easiest class and 18% of the hardest, and
-training on that skewed set kept validation accuracy below the supervised start for 9 of 10 rounds. The model then fine-tunes for
-3 epochs on the labeled pool plus the kept pseudo-labels. The round with the best validation
-accuracy is saved. `--fresh-student` trains a new model from scratch each round instead
-(teacher-student self-training, as in Noisy Student).
+**Pseudo-labeling.** The stream arrives in rounds, like new field photos would. Each round:
+
+1. The current model (the teacher) labels every stream image seen so far, so a label it got
+   wrong earlier can change or drop out.
+2. For every disease, the most confident half of the images predicted as that disease is kept
+   (class-balanced self-training, Zou et al. 2018). One global confidence threshold does not
+   work here: at 0.95 it keeps 94% of the stream images of the easiest class and 18% of the
+   hardest, and training on that skewed set kept validation accuracy below the supervised
+   start for 9 of 10 rounds.
+3. A new model (the student) trains from scratch on the labeled pool plus the kept
+   pseudo-labels, with the same 30-epoch schedule as `train`. It becomes the next round's
+   teacher (teacher-student self-training, as in Noisy Student). The teacher is done once its
+   predictions are in, so only one model is ever in memory.
+
+The round with the best validation accuracy is saved. `--mode fine-tune` keeps training the
+current model for 3 epochs per round instead. It is about ten times faster and gained 0.3
+points on validation, against 2.7 for a student.
 
 Why 5%: with 20% labels and a leak-free split, the supervised model already reaches about 98%
 and pseudo-labels have nothing left to fix (see the 20% row in the results). The SSL papers

@@ -10,9 +10,11 @@
 //!    mostly keep images of classes the model already knows: with 5% labels, a 0.95 threshold
 //!    keeps 94% of the stream images of the easiest class and 18% of the hardest, and training
 //!    on that skewed set lowers accuracy on the hard classes;
-//! 4. train on the labeled pool plus the kept pseudo-labels: either fine-tune the same model, or
-//!    with `fresh_student` train a new model from scratch (teacher-student self-training, as in
-//!    Noisy Student). The student becomes the teacher of the next round.
+//! 4. train a new model from scratch on the labeled pool plus the kept pseudo-labels
+//!    (teacher-student self-training, as in Noisy Student). The student becomes the teacher of
+//!    the next round. [`Mode::FineTune`] keeps training the current model for a few epochs
+//!    instead, which is faster but gained about 0.3 points against 2.7 for a student with 5%
+//!    labels.
 //!
 //! The teacher is only needed for its predictions, so one model is in memory at a time and
 //! peak VRAM stays at the level of plain supervised training. The best round by validation
@@ -20,7 +22,7 @@
 
 use anyhow::{Result, ensure};
 use burn::prelude::*;
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use tracing::info;
 
 use crate::data::Split;
@@ -29,36 +31,55 @@ use crate::model::{ModelMeta, PlantCnn};
 use crate::progress::Observer;
 use crate::train::{self, TrainConfig};
 
+/// How each round trains on the labels plus pseudo-labels.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, clap::ValueEnum)]
+#[serde(rename_all = "kebab-case")]
+pub enum Mode {
+    /// Train a new model from scratch with the full schedule.
+    Student,
+    /// Keep training the current model for a few epochs at a lower learning rate.
+    FineTune,
+}
+
+impl Mode {
+    pub fn default_epochs(self) -> usize {
+        match self {
+            Mode::Student => 30,
+            Mode::FineTune => 3,
+        }
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct SslConfig {
     pub rounds: usize,
     /// Share of each predicted class to keep as pseudo-labels, most confident first.
     pub keep: f32,
-    /// Train a new model from scratch each round instead of fine-tuning the current one.
-    pub fresh_student: bool,
+    pub mode: Mode,
     /// Training settings for each round.
     pub train: TrainConfig,
 }
 
 impl SslConfig {
-    /// The settings shared by `plantssl ssl` and the app. A fresh student trains from scratch, so
-    /// it gets the supervised learning rate and warmup; fine-tuning a trained model uses a lower
-    /// rate and no warmup.
+    /// The settings shared by `plantssl ssl` and the app. A student trains from scratch, so it
+    /// gets the supervised learning rate and warmup; fine-tuning a trained model uses a lower rate
+    /// and no warmup.
     pub fn new(
         rounds: usize,
         keep: f32,
+        mode: Mode,
         epochs_per_round: usize,
-        fresh_student: bool,
         image_size: u32,
     ) -> Self {
+        let student = mode == Mode::Student;
         Self {
             rounds,
             keep,
-            fresh_student,
+            mode,
             train: TrainConfig {
                 epochs: epochs_per_round,
-                learning_rate: if fresh_student { 1e-3 } else { 3e-4 },
-                warmup_epochs: usize::from(fresh_student),
+                learning_rate: if student { 1e-3 } else { 3e-4 },
+                warmup_epochs: usize::from(student),
                 image_size,
                 ..TrainConfig::default()
             },
@@ -68,7 +89,13 @@ impl SslConfig {
 
 impl Default for SslConfig {
     fn default() -> Self {
-        Self::new(10, 0.5, 3, false, TrainConfig::default().image_size)
+        Self::new(
+            3,
+            0.5,
+            Mode::Student,
+            Mode::Student.default_epochs(),
+            TrainConfig::default().image_size,
+        )
     }
 }
 
@@ -162,7 +189,7 @@ pub fn run(
             seed: tc.seed.wrapping_add(round as u64),
             ..tc.clone()
         };
-        let student = if config.fresh_student {
+        let student = if config.mode == Mode::Student {
             // The teacher's predictions are in, so free it before the student trains
             drop(model);
             PlantCnn::new(meta, device)

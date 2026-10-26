@@ -14,7 +14,7 @@ use plantssl::eval::{self, Report};
 use plantssl::model::{ModelMeta, PlantCnn};
 use plantssl::predict::Predictor;
 use plantssl::progress::Observer;
-use plantssl::ssl::{self, SslConfig};
+use plantssl::ssl::{self, Mode, SslConfig};
 use plantssl::train::{self, TrainConfig};
 
 #[derive(Parser)]
@@ -99,19 +99,19 @@ struct SslArgs {
     #[arg(long, default_value = "runs/ssl")]
     out: PathBuf,
     /// The stream is revealed in this many equal slices.
-    #[arg(long, default_value_t = 10)]
+    #[arg(long, default_value_t = 3)]
     rounds: usize,
     /// Share of each predicted class kept as pseudo-labels, most confident first.
     #[arg(long, default_value_t = 0.5)]
     keep: f32,
-    #[arg(long, default_value_t = 3)]
-    epochs_per_round: usize,
-    /// Learning rate per round. Defaults to 3e-4 for fine-tuning and 1e-3 with --fresh-student.
+    #[arg(long, value_enum, default_value = "student")]
+    mode: Mode,
+    /// Defaults to 30 for a student and 3 for fine-tuning.
+    #[arg(long)]
+    epochs_per_round: Option<usize>,
+    /// Defaults to 1e-3 for a student and 3e-4 for fine-tuning.
     #[arg(long)]
     lr: Option<f64>,
-    /// Train a new model from scratch each round instead of fine-tuning the current one.
-    #[arg(long)]
-    fresh_student: bool,
 }
 
 #[derive(Clone, Copy, ValueEnum)]
@@ -238,8 +238,9 @@ fn ssl(args: SslArgs) -> Result<()> {
     let mut config = SslConfig::new(
         args.rounds,
         args.keep,
-        args.epochs_per_round,
-        args.fresh_student,
+        args.mode,
+        args.epochs_per_round
+            .unwrap_or_else(|| args.mode.default_epochs()),
         meta.image_size,
     );
     config.train.batch_size = c.batch_size;

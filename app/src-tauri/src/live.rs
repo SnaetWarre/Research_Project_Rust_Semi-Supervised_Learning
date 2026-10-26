@@ -9,7 +9,7 @@ use anyhow::{Result, ensure};
 use plantssl::data::Split;
 use plantssl::model::PlantCnn;
 use plantssl::progress::{Observer, Stopped};
-use plantssl::ssl::{self, RoundLog, SslConfig};
+use plantssl::ssl::{self, Mode, RoundLog, SslConfig};
 use plantssl::train::EpochLog;
 use serde::{Deserialize, Serialize};
 use tauri::{AppHandle, Emitter, Manager, Runtime, State};
@@ -23,8 +23,8 @@ pub struct SslRequest {
     out: PathBuf,
     rounds: usize,
     keep: f32,
+    mode: Mode,
     epochs_per_round: usize,
-    fresh_student: bool,
 }
 
 #[derive(Clone, Serialize)]
@@ -116,8 +116,8 @@ fn run(request: &SslRequest, observer: &mut dyn Observer) -> Result<usize> {
     let config = SslConfig::new(
         request.rounds,
         request.keep,
+        request.mode,
         request.epochs_per_round,
-        request.fresh_student,
         meta.image_size,
     );
     let result = ssl::run(model, &meta, &split, &config, &device, observer)?;

@@ -8,10 +8,10 @@
   let split = $state(localStorage.getItem("liveSplit") ?? "");
   let init = $state(localStorage.getItem("liveInit") ?? "");
   let out = $state(localStorage.getItem("liveOut") ?? "");
-  let rounds = $state(10);
+  let rounds = $state(3);
   let keep = $state(0.5);
-  let epochsPerRound = $state(3);
-  let freshStudent = $state(false);
+  let mode: "student" | "fine-tune" = $state("student");
+  let epochsPerRound = $state(30);
 
   let running = $state(false);
   let stopping = $state(false);
@@ -78,7 +78,7 @@
     pass = { label: "loading", images: 0, done: 0 };
     running = true;
     try {
-      await startSsl({ split, init, out, rounds, keep, epochs_per_round: epochsPerRound, fresh_student: freshStudent });
+      await startSsl({ split, init, out, rounds, keep, mode, epochs_per_round: epochsPerRound });
     } catch (e) {
       finish({ tone: "error", text: String(e) });
     }
@@ -100,8 +100,8 @@
 <section class="space-y-6">
   <div class="space-y-4 rounded-xl bg-panel p-5">
     <p class="text-sm text-ink-2">
-      Unlabeled photos arrive in rounds. Each round the model labels them itself, keeps its most confident labels for
-      every disease, and trains on them. Watch validation accuracy change as the rounds go by.
+      Unlabeled photos arrive in rounds. Each round the current model labels them, keeps its most confident labels for
+      every disease, and a model trains on them. Watch validation accuracy change as the rounds go by.
     </p>
     <div class="grid gap-3">
       {#each paths as p (p.key)}
@@ -123,8 +123,12 @@
         <input type="number" min="0.05" max="1" step="0.05" bind:value={keep} disabled={running} class="w-24 rounded-md bg-surface px-2 py-1 ring-1 ring-line" /></label>
       <label class="grid gap-1"><span class="text-ink-3">Epochs per round</span>
         <input type="number" min="1" max="50" bind:value={epochsPerRound} disabled={running} class="w-24 rounded-md bg-surface px-2 py-1 ring-1 ring-line" /></label>
-      <label class="flex items-center gap-2 pb-1"><input type="checkbox" bind:checked={freshStudent} disabled={running} />
-        <span class="text-ink-2">New model each round</span></label>
+      <label class="grid gap-1"><span class="text-ink-3">Each round</span>
+        <select bind:value={mode} disabled={running} onchange={() => (epochsPerRound = mode === "student" ? 30 : 3)}
+          class="rounded-md bg-surface px-2 py-1 ring-1 ring-line">
+          <option value="student">Train a new model (slow, best)</option>
+          <option value="fine-tune">Fine-tune the current model (fast)</option>
+        </select></label>
       <div class="ml-auto">
         {#if running}
           <button class="rounded-md bg-red-400/15 px-4 py-1.5 text-red-200 hover:bg-red-400/25 disabled:opacity-50" disabled={stopping} onclick={stop}>

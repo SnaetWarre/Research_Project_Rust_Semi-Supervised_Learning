@@ -51,8 +51,8 @@ export interface SslRequest {
   out: string;
   rounds: number;
   keep: number;
+  mode: "student" | "fine-tune";
   epochs_per_round: number;
-  fresh_student: boolean;
 }
 
 export type SslEvent =

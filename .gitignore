@@ -1,6 +1,6 @@
 # Dataset and everything the CLI writes
 /data/
-/runs/
+/runs*/
 
 # Build output
 /target/

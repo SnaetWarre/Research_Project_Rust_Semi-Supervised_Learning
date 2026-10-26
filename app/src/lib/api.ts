@@ -26,7 +26,6 @@ export interface EpochLog {
 export interface RoundLog {
   round: number;
   revealed: number;
-  confident: number;
   accepted: number;
   precision: number;
   val_accuracy: number;
@@ -51,7 +50,7 @@ export interface SslRequest {
   init: string;
   out: string;
   rounds: number;
-  threshold: number;
+  keep: number;
   epochs_per_round: number;
   fresh_student: boolean;
 }

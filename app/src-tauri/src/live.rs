@@ -22,7 +22,7 @@ pub struct SslRequest {
     init: PathBuf,
     out: PathBuf,
     rounds: usize,
-    threshold: f32,
+    keep: f32,
     epochs_per_round: usize,
     fresh_student: bool,
 }
@@ -100,7 +100,7 @@ fn run(request: &SslRequest, observer: &mut dyn Observer) -> Result<usize> {
     );
     let config = SslConfig {
         rounds: request.rounds,
-        threshold: request.threshold,
+        keep: request.keep,
         fresh_student: request.fresh_student,
         train: TrainConfig {
             epochs: request.epochs_per_round,

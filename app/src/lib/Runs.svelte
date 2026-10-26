@@ -90,12 +90,12 @@
           <summary class="cursor-pointer text-ink-2">Pseudo-labels per round</summary>
           <table class="mt-3 w-full text-left tabular-nums">
             <thead class="text-ink-3">
-              <tr><th class="py-1 font-normal">Round</th><th class="font-normal">Revealed</th><th class="font-normal">Confident</th><th class="font-normal">Used</th><th class="font-normal">Correct</th><th class="font-normal">Validation</th></tr>
+              <tr><th class="py-1 font-normal">Round</th><th class="font-normal">Revealed</th><th class="font-normal">Used</th><th class="font-normal">Correct</th><th class="font-normal">Validation</th></tr>
             </thead>
             <tbody class="text-ink-2">
               {#each run.ssl.rounds.slice(1) as r (r.round)}
                 <tr class="border-t border-line">
-                  <td class="py-1">{r.round}</td><td>{r.revealed.toLocaleString()}</td><td>{r.confident.toLocaleString()}</td>
+                  <td class="py-1">{r.round}</td><td>{r.revealed.toLocaleString()}</td>
                   <td>{r.accepted.toLocaleString()}</td><td>{percent(r.precision)}</td><td>{percent(r.val_accuracy, 2)}</td>
                 </tr>
               {/each}

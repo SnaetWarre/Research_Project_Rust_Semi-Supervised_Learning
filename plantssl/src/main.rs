@@ -101,9 +101,9 @@ struct SslArgs {
     /// The stream is revealed in this many equal slices.
     #[arg(long, default_value_t = 10)]
     rounds: usize,
-    /// Minimum confidence for a pseudo-label.
-    #[arg(long, default_value_t = 0.95)]
-    threshold: f32,
+    /// Share of each predicted class kept as pseudo-labels, most confident first.
+    #[arg(long, default_value_t = 0.5)]
+    keep: f32,
     #[arg(long, default_value_t = 3)]
     epochs_per_round: usize,
     #[arg(long, default_value_t = 3e-4)]
@@ -236,7 +236,7 @@ fn ssl(args: SslArgs) -> Result<()> {
     ensure_same_classes(&meta, &split)?;
     let config = SslConfig {
         rounds: args.rounds,
-        threshold: args.threshold,
+        keep: args.keep,
         fresh_student: args.fresh_student,
         train: TrainConfig {
             epochs: args.epochs_per_round,

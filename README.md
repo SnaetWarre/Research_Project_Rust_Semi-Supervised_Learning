@@ -1,7 +1,7 @@
 # Semi-supervised plant disease detection in Rust
 
 Bachelor research on classifying plant diseases from leaf photos when most photos have no label.
-A small CNN is trained on the 20% of images that keep their labels, then improves itself on the
+A small CNN is trained on the 5% of images that keep their labels, then improves itself on the
 other images with pseudo-labels: its own confident predictions, used as training labels. Everything
 runs in Rust with [Burn](https://burn.dev) 0.22, and one model at a time fits in 6 GB of VRAM.
 
@@ -22,8 +22,8 @@ that file.
 
 | Pool | Share | Used for |
 | --- | ---: | --- |
-| Labeled | 20% | supervised training |
-| Stream | 60% | unlabeled images for pseudo-labeling |
+| Labeled | 5% | supervised training |
+| Stream | 75% | unlabeled images for pseudo-labeling |
 | Validation | 10% | picking the best epoch and round |
 | Test | 10% | the final numbers, used once |
 
@@ -32,7 +32,12 @@ model labels every stream image seen so far. A label it got wrong earlier can ch
 Predictions at 95% confidence or more are kept, up to each class's expected share of the images,
 so classes the model finds easy cannot flood the training set. The model then fine-tunes for
 3 epochs on the labeled pool plus the kept pseudo-labels. The round with the best validation
-accuracy is saved.
+accuracy is saved. `--fresh-student` trains a new model from scratch each round instead
+(teacher-student self-training, as in Noisy Student).
+
+Why 5%: with 20% labels and a leak-free split, the supervised model already reaches about 98%
+and pseudo-labels have nothing left to fix (see the 20% row in the results). The SSL papers
+the thesis builds on test at 5% labels too.
 
 **Model.** A stride-2 stem convolution, three stages of two 3x3 convolutions with batch norm and
 max pooling, global average pooling and one linear layer. 1.2M parameters, 128x128 input, a
@@ -59,13 +64,17 @@ cargo run --release -p plantssl -- predict --model runs/ssl leaf.jpg
 ```
 
 Each command has `--help`. Without an NVIDIA GPU, add `--device cpu`, or build with
-`--no-default-features`. Run the commands from the repository root: the split stores dataset
-paths relative to it.
+`--no-default-features`. The split stores absolute dataset paths, so run `split` again after
+moving the dataset.
 
 ## Desktop app
 
-`app/` is a Tauri app with two screens. **Classify** loads a model folder and classifies a photo on
-the CPU. **Runs** shows the training curves, SSL rounds and test scores of every folder in `runs/`.
+`app/` is a Tauri app with three screens:
+
+- **Classify** loads a model folder and classifies a photo on the CPU, like an edge device would.
+- **Live SSL** starts from a trained model and runs the pseudo-labeling rounds on the GPU. Validation
+  accuracy and pseudo-label precision update after every round, and the run can be stopped.
+- **Runs** shows the training curves, SSL rounds and test scores of every folder in `runs/`.
 
 ```bash
 cd app

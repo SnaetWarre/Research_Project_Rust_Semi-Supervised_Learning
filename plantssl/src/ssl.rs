@@ -1,12 +1,15 @@
-//! Self-training with confidence-thresholded pseudo-labels.
+//! Class-balanced self-training with pseudo-labels.
 //!
 //! The stream pool arrives in rounds, like new field photos would. Each round:
 //!
 //! 1. reveal the next slice of the stream;
 //! 2. let the current model label every image revealed so far, so a label it got wrong in an
 //!    earlier round can change or drop out;
-//! 3. keep labels at or above the confidence threshold, capped per class at that class's
-//!    expected share of the revealed images, so easy classes cannot flood the training set;
+//! 3. for every class, keep the most confident share of the images predicted as that class
+//!    (class-balanced self-training, Zou et al. 2018). One global confidence threshold would
+//!    mostly keep images of classes the model already knows: with 5% labels, a 0.95 threshold
+//!    keeps 94% of the stream images of the easiest class and 18% of the hardest, and training
+//!    on that skewed set lowers accuracy on the hard classes;
 //! 4. train on the labeled pool plus the kept pseudo-labels: either fine-tune the same model, or
 //!    with `fresh_student` train a new model from scratch (teacher-student self-training, as in
 //!    Noisy Student). The student becomes the teacher of the next round.
@@ -29,8 +32,8 @@ use crate::train::{self, TrainConfig};
 #[derive(Debug, Clone)]
 pub struct SslConfig {
     pub rounds: usize,
-    /// Minimum softmax probability for a pseudo-label.
-    pub threshold: f32,
+    /// Share of each predicted class to keep as pseudo-labels, most confident first.
+    pub keep: f32,
     /// Train a new model from scratch each round instead of fine-tuning the current one.
     pub fresh_student: bool,
     /// Training settings for each round.
@@ -41,7 +44,7 @@ impl Default for SslConfig {
     fn default() -> Self {
         Self {
             rounds: 10,
-            threshold: 0.95,
+            keep: 0.5,
             fresh_student: false,
             train: TrainConfig {
                 epochs: 3,
@@ -58,8 +61,6 @@ pub struct RoundLog {
     pub round: usize,
     /// Stream images revealed so far.
     pub revealed: usize,
-    /// Revealed images at or above the threshold, before the per-class cap.
-    pub confident: usize,
     /// Pseudo-labels used for training this round.
     pub accepted: usize,
     /// Share of accepted pseudo-labels that match the hidden true label.
@@ -86,7 +87,10 @@ pub fn run(
     let labeled = split.resolve(&split.labeled);
     let validation = split.resolve(&split.validation);
     let stream = split.resolve(&split.stream);
-    let quota = ClassQuota::from_labeled(&split.labeled, split.classes.len());
+    ensure!(
+        config.keep > 0.0 && config.keep <= 1.0,
+        "keep must be in (0, 1]"
+    );
 
     let initial = eval::accuracy(
         &eval::predict(
@@ -103,7 +107,6 @@ pub fn run(
     let mut rounds = vec![RoundLog {
         round: 0,
         revealed: 0,
-        confident: 0,
         accepted: 0,
         precision: 0.0,
         val_accuracy: initial,
@@ -122,11 +125,7 @@ pub fn run(
             device,
             observer,
         )?;
-        let confident = predictions
-            .iter()
-            .filter(|p| p.confidence >= config.threshold)
-            .count();
-        let accepted = select(&predictions, config.threshold, &quota);
+        let accepted = select(&predictions, split.classes.len(), config.keep);
 
         // The hidden labels are read here, and only here, to report precision.
         let correct = accepted
@@ -163,15 +162,13 @@ pub fn run(
         let log = RoundLog {
             round,
             revealed: revealed.len(),
-            confident,
             accepted: accepted.len(),
             precision: correct as f64 / accepted.len().max(1) as f64,
             val_accuracy: fit.best_val_accuracy,
         };
         info!(
-            "round {round}: {} revealed, {} confident, {} accepted ({:.1}% correct), validation accuracy {:.2}%",
+            "round {round}: {} revealed, {} accepted ({:.1}% correct), validation accuracy {:.2}%",
             log.revealed,
-            log.confident,
             log.accepted,
             log.precision * 100.0,
             log.val_accuracy * 100.0
@@ -190,45 +187,21 @@ pub fn run(
     })
 }
 
-/// How many pseudo-labels each class may receive, from its share of the labeled pool.
-struct ClassQuota {
-    shares: Vec<f64>,
-}
-
-impl ClassQuota {
-    fn from_labeled(labeled: &[crate::data::Sample], classes: usize) -> Self {
-        let mut counts = vec![0usize; classes];
-        for sample in labeled {
-            counts[sample.label] += 1;
-        }
-        let total = labeled.len().max(1) as f64;
-        Self {
-            shares: counts.iter().map(|&c| c as f64 / total).collect(),
-        }
-    }
-
-    fn limit(&self, class: usize, revealed: usize) -> usize {
-        (self.shares[class] * revealed as f64).ceil() as usize
-    }
-}
-
-/// Indices of predictions to use as pseudo-labels: above the threshold, and per predicted class
-/// the most confident ones up to that class's quota.
-fn select(predictions: &[Prediction], threshold: f32, quota: &ClassQuota) -> Vec<usize> {
-    let mut by_class: Vec<Vec<usize>> = vec![Vec::new(); quota.shares.len()];
+/// Indices of predictions to use as pseudo-labels: for each predicted class, the most confident
+/// `keep` share of the images predicted as that class.
+fn select(predictions: &[Prediction], classes: usize, keep: f32) -> Vec<usize> {
+    let mut by_class: Vec<Vec<usize>> = vec![Vec::new(); classes];
     for (i, p) in predictions.iter().enumerate() {
-        if p.confidence >= threshold {
-            by_class[p.label].push(i);
-        }
+        by_class[p.label].push(i);
     }
     let mut accepted = Vec::new();
-    for (class, mut indices) in by_class.into_iter().enumerate() {
+    for mut indices in by_class {
         indices.sort_by(|&a, &b| {
             predictions[b]
                 .confidence
                 .total_cmp(&predictions[a].confidence)
         });
-        indices.truncate(quota.limit(class, predictions.len()));
+        indices.truncate((indices.len() as f32 * keep).round() as usize);
         accepted.extend(indices);
     }
     accepted.sort_unstable();
@@ -244,13 +217,17 @@ mod tests {
     }
 
     #[test]
-    fn select_applies_threshold_and_class_cap() {
-        // Two equally common classes, so each may take half of the four revealed images.
-        let quota = ClassQuota {
-            shares: vec![0.5, 0.5],
-        };
-        let predictions = [p(0, 0.99), p(0, 0.97), p(0, 0.98), p(1, 0.5)];
-        // Class 0 has three confident predictions but a cap of two: the two most confident win.
-        assert_eq!(select(&predictions, 0.9, &quota), vec![0, 2]);
+    fn select_keeps_the_same_share_of_every_class() {
+        // Class 0 is predicted four times with high confidence, class 1 twice with low confidence.
+        let predictions = [
+            p(0, 0.99),
+            p(0, 0.97),
+            p(1, 0.40),
+            p(0, 0.98),
+            p(1, 0.60),
+            p(0, 0.90),
+        ];
+        // Half of each class: the two most confident of class 0, the more confident of class 1.
+        assert_eq!(select(&predictions, 2, 0.5), vec![0, 3, 4]);
     }
 }

@@ -9,7 +9,7 @@
   let init = $state(localStorage.getItem("liveInit") ?? "");
   let out = $state(localStorage.getItem("liveOut") ?? "");
   let rounds = $state(10);
-  let threshold = $state(0.95);
+  let keep = $state(0.5);
   let epochsPerRound = $state(3);
   let freshStudent = $state(false);
 
@@ -78,7 +78,7 @@
     pass = { label: "loading", images: 0, done: 0 };
     running = true;
     try {
-      await startSsl({ split, init, out, rounds, threshold, epochs_per_round: epochsPerRound, fresh_student: freshStudent });
+      await startSsl({ split, init, out, rounds, keep, epochs_per_round: epochsPerRound, fresh_student: freshStudent });
     } catch (e) {
       finish({ tone: "error", text: String(e) });
     }
@@ -100,8 +100,8 @@
 <section class="space-y-6">
   <div class="space-y-4 rounded-xl bg-panel p-5">
     <p class="text-sm text-ink-2">
-      Unlabeled photos arrive in rounds. Each round the model labels them itself, keeps the labels it is sure of, and
-      trains on them. Watch validation accuracy change as the rounds go by.
+      Unlabeled photos arrive in rounds. Each round the model labels them itself, keeps its most confident labels for
+      every disease, and trains on them. Watch validation accuracy change as the rounds go by.
     </p>
     <div class="grid gap-3">
       {#each paths as p (p.key)}
@@ -119,8 +119,8 @@
     <div class="flex flex-wrap items-end gap-4 text-sm">
       <label class="grid gap-1"><span class="text-ink-3">Rounds</span>
         <input type="number" min="1" max="50" bind:value={rounds} disabled={running} class="w-20 rounded-md bg-surface px-2 py-1 ring-1 ring-line" /></label>
-      <label class="grid gap-1"><span class="text-ink-3">Confidence</span>
-        <input type="number" min="0.5" max="0.999" step="0.01" bind:value={threshold} disabled={running} class="w-24 rounded-md bg-surface px-2 py-1 ring-1 ring-line" /></label>
+      <label class="grid gap-1"><span class="text-ink-3">Keep per class</span>
+        <input type="number" min="0.05" max="1" step="0.05" bind:value={keep} disabled={running} class="w-24 rounded-md bg-surface px-2 py-1 ring-1 ring-line" /></label>
       <label class="grid gap-1"><span class="text-ink-3">Epochs per round</span>
         <input type="number" min="1" max="50" bind:value={epochsPerRound} disabled={running} class="w-24 rounded-md bg-surface px-2 py-1 ring-1 ring-line" /></label>
       <label class="flex items-center gap-2 pb-1"><input type="checkbox" bind:checked={freshStudent} disabled={running} />

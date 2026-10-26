@@ -51,7 +51,9 @@ CUDA is the default feature. Pass `--device cpu` to run on the CPU, or build wit
 3. In `ssl.rs`, stream labels may only be read to report pseudo-label precision. Training uses
    the predicted label.
 4. Model selection uses the validation pool. The test pool is for `eval` only.
-5. Do not use label smoothing: it caps softmax confidence and breaks the 0.95 threshold.
+5. Do not use label smoothing: it flattens softmax confidence, which pseudo-label selection ranks by.
+6. Pseudo-labels are chosen per class (`ssl::select`). A single global confidence threshold skews
+   the training set toward easy classes and made SSL worse than the supervised start.
 
 ## Code style
 

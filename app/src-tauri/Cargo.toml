@@ -24,6 +24,10 @@ serde_json.workspace = true
 tauri = { version = "2.12", features = [] }
 tauri-plugin-dialog = "2.8"
 
+[dev-dependencies]
+tauri = { version = "2.12", features = ["test"] }
+tempfile = "3"
+
 [features]
 # Set by the Tauri CLI for production builds
 custom-protocol = ["tauri/custom-protocol"]

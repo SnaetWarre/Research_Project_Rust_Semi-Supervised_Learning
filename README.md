@@ -32,7 +32,7 @@ model labels every stream image seen so far. A label it got wrong earlier can ch
 For every disease, the most confident half of the images predicted as that disease is kept
 (class-balanced self-training, Zou et al. 2018). One global confidence threshold does not work
 here: at 0.95 it keeps 94% of the stream images of the easiest class and 18% of the hardest, and
-training on that skewed set made accuracy worse than the supervised start. The model then fine-tunes for
+training on that skewed set kept validation accuracy below the supervised start for 9 of 10 rounds. The model then fine-tunes for
 3 epochs on the labeled pool plus the kept pseudo-labels. The round with the best validation
 accuracy is saved. `--fresh-student` trains a new model from scratch each round instead
 (teacher-student self-training, as in Noisy Student).

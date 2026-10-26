@@ -1,0 +1,33 @@
+[package]
+name = "plant-training"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+# Internal crates
+plant-core = { path = "../plant-core" }
+plant-dataset = { path = "../plant-dataset" }
+
+# Burn framework
+burn = { workspace = true }
+burn-ndarray = { workspace = true }
+
+# Serialization
+serde = { workspace = true }
+serde_json = { workspace = true }
+
+# Error handling
+anyhow = { workspace = true }
+thiserror = { workspace = true }
+
+# Utilities
+indicatif = { workspace = true }
+tracing = { workspace = true }
+chrono = { workspace = true }
+
+[dev-dependencies]
+tempfile = { workspace = true }
+rand = { workspace = true }

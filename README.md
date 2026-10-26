@@ -90,6 +90,7 @@ bun run tauri dev
 plantssl/       library and CLI: data, model, training, SSL, evaluation
 app/            Tauri 2 + Svelte 5 desktop app
 scripts/        dataset download and the full experiment
+incremental_learning/  separate project: adding new disease classes (EWC, LwF, rehearsal)
 BachelorProef/  thesis and school deliverables
 research/       literature notes
 ```

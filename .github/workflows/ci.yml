@@ -32,6 +32,21 @@ jobs:
       - run: cargo clippy --workspace --all-targets --no-default-features -- -D warnings
       - run: cargo test --workspace --no-default-features
 
+  incremental:
+    name: incremental_learning
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: incremental_learning
+    steps:
+      - uses: actions/checkout@v5
+      - run: rustup show active-toolchain
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: incremental_learning
+      - run: cargo clippy --all-targets -- -D warnings
+      - run: cargo test
+
   app:
     name: App frontend
     runs-on: ubuntu-latest

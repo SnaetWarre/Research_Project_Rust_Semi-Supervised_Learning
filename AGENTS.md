@@ -17,6 +17,9 @@ plantssl/           Library and `plantssl` CLI
   src/predict.rs    Single-image classification, used by the app
 app/                Tauri 2 desktop app (Svelte 5, Tailwind 4, Vite)
 scripts/            Dataset download and the full experiment
+incremental_learning/ Separate project and Cargo workspace (Burn 0.21): new-class experiments
+                    with EWC, LwF and rehearsal. Not part of the root workspace; build it from
+                    inside its own folder.
 BachelorProef/      Thesis and school deliverables (describe the older code at commit e69074c7)
 research/           Literature notes
 ```

@@ -2,6 +2,8 @@
 resolver = "3"
 members = ["plantssl", "app/src-tauri"]
 default-members = ["plantssl"]
+# The incremental-learning research is a separate project with its own workspace
+exclude = ["incremental_learning"]
 
 [workspace.package]
 edition = "2024"

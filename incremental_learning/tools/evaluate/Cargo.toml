@@ -1,0 +1,38 @@
+[package]
+name = "evaluate"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[[bin]]
+name = "evaluate"
+path = "src/main.rs"
+
+[dependencies]
+# Workspace crates
+plant-core = { path = "../../crates/plant-core" }
+plant-dataset = { path = "../../crates/plant-dataset" }
+plant-training = { path = "../../crates/plant-training" }
+
+# Burn framework
+burn = { workspace = true }
+
+# CLI
+clap = { workspace = true }
+
+# Serialization
+serde = { workspace = true }
+serde_json = { workspace = true }
+csv = { workspace = true }
+
+# Error handling
+anyhow = { workspace = true }
+
+# Logging
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }
+
+# Progress
+indicatif = { workspace = true }

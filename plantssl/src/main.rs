@@ -4,6 +4,7 @@ use std::path::PathBuf;
 
 use anyhow::{Result, ensure};
 use clap::{Args, Parser, Subcommand, ValueEnum};
+use indicatif::{ProgressBar, ProgressStyle};
 use serde::Serialize;
 use serde_json::json;
 use tracing::info;
@@ -12,6 +13,7 @@ use plantssl::data::{Dataset, Split, SplitConfig};
 use plantssl::eval::{self, Report};
 use plantssl::model::{ModelMeta, PlantCnn};
 use plantssl::predict::Predictor;
+use plantssl::progress::Observer;
 use plantssl::ssl::{self, SslConfig};
 use plantssl::train::{self, TrainConfig};
 
@@ -44,7 +46,7 @@ struct SplitArgs {
     #[arg(long, default_value = "runs/split.json")]
     out: PathBuf,
     /// Share of all images that keeps its labels.
-    #[arg(long, default_value_t = 0.2)]
+    #[arg(long, default_value_t = 0.05)]
     labeled: f64,
     #[arg(long, default_value_t = 0.1)]
     validation: f64,
@@ -106,6 +108,9 @@ struct SslArgs {
     epochs_per_round: usize,
     #[arg(long, default_value_t = 3e-4)]
     lr: f64,
+    /// Train a new model from scratch each round instead of fine-tuning the current one.
+    #[arg(long)]
+    fresh_student: bool,
 }
 
 #[derive(Clone, Copy, ValueEnum)]
@@ -207,6 +212,7 @@ fn train(args: TrainArgs) -> Result<()> {
         &split.resolve(&split.validation),
         &config,
         &device,
+        &mut Bar::default(),
     )?;
     fit.model.save(&args.out, &meta)?;
     plantssl::write_json(
@@ -231,17 +237,19 @@ fn ssl(args: SslArgs) -> Result<()> {
     let config = SslConfig {
         rounds: args.rounds,
         threshold: args.threshold,
+        fresh_student: args.fresh_student,
         train: TrainConfig {
             epochs: args.epochs_per_round,
             batch_size: c.batch_size,
             learning_rate: args.lr,
-            warmup_epochs: 0,
+            // A model trained from scratch needs the same warmup as `train`
+            warmup_epochs: usize::from(args.fresh_student),
             image_size: meta.image_size,
             seed: c.seed,
             ..TrainConfig::default()
         },
     };
-    let run = ssl::run(model, &split, &config, &device)?;
+    let run = ssl::run(model, &meta, &split, &config, &device, &mut Bar::default())?;
     run.model.save(&args.out, &meta)?;
     plantssl::write_json(
         &args.out.join("ssl.json"),
@@ -266,7 +274,14 @@ fn eval(args: EvalArgs) -> Result<()> {
         Pool::Validation => ("validation", &split.validation),
     };
     let samples = split.resolve(pool);
-    let predictions = eval::predict(&model, &samples, meta.image_size, c.batch_size * 2, &device)?;
+    let predictions = eval::predict(
+        &model,
+        &samples,
+        meta.image_size,
+        c.batch_size * 2,
+        &device,
+        &mut Bar::default(),
+    )?;
     let truth: Vec<usize> = samples.iter().map(|(_, label)| *label).collect();
     let predicted: Vec<usize> = predictions.iter().map(|p| p.label).collect();
     let report = Report::new(&split.classes, &truth, &predicted);
@@ -286,6 +301,36 @@ fn eval(args: EvalArgs) -> Result<()> {
     }
     info!("full report in {}", out.display());
     Ok(())
+}
+
+/// A progress bar on stderr for each pass over the data. Hidden when stderr is not a terminal.
+#[derive(Default)]
+struct Bar(Option<ProgressBar>);
+
+impl Observer for Bar {
+    fn pass(&mut self, label: &str, images: usize) {
+        if let Some(bar) = self.0.take() {
+            bar.finish_and_clear();
+        }
+        let bar = ProgressBar::new(images as u64).with_message(label.to_string());
+        bar.set_style(
+            ProgressStyle::with_template(
+                "{msg:>12} [{bar:30}] {pos}/{len} images ({per_sec}, {eta} left)",
+            )
+            .expect("valid template")
+            .progress_chars("=> "),
+        );
+        self.0 = Some(bar);
+    }
+
+    fn images_done(&mut self, done: usize) {
+        if let Some(bar) = &self.0 {
+            bar.set_position(done as u64);
+            if bar.position() >= bar.length().unwrap_or(0) {
+                bar.finish_and_clear();
+            }
+        }
+    }
 }
 
 fn ensure_same_classes(meta: &ModelMeta, split: &Split) -> Result<()> {

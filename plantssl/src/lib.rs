@@ -14,6 +14,7 @@ pub mod eval;
 pub mod images;
 pub mod model;
 pub mod predict;
+pub mod progress;
 pub mod ssl;
 pub mod train;
 
@@ -21,7 +22,6 @@ use std::path::Path;
 
 use anyhow::{Result, bail};
 use burn::prelude::Device;
-use indicatif::{ProgressBar, ProgressStyle};
 use serde::Serialize;
 
 /// Picks a compute device by name: `cuda`, `wgpu` or `cpu`.
@@ -57,17 +57,4 @@ pub fn write_json(path: &Path, value: &impl Serialize) -> Result<()> {
     }
     std::fs::write(path, serde_json::to_string_pretty(value)?)?;
     Ok(())
-}
-
-/// A progress bar on stderr. Hidden when stderr is not a terminal.
-pub(crate) fn progress(len: usize, label: &str) -> ProgressBar {
-    let bar = ProgressBar::new(len as u64).with_message(label.to_string());
-    bar.set_style(
-        ProgressStyle::with_template(
-            "{msg:>14} [{bar:30}] {pos}/{len} images ({per_sec}, {eta} left)",
-        )
-        .expect("valid template")
-        .progress_chars("=> "),
-    );
-    bar
 }

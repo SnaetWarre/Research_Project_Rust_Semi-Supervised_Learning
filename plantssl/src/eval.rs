@@ -8,6 +8,7 @@ use serde::Serialize;
 
 use crate::images::Loader;
 use crate::model::PlantCnn;
+use crate::progress::{Observer, Stopped};
 
 /// The most likely class for one image and its softmax probability.
 #[derive(Debug, Clone, Copy)]
@@ -23,6 +24,7 @@ pub fn predict(
     image_size: u32,
     batch_size: usize,
     device: &Device,
+    observer: &mut dyn Observer,
 ) -> Result<Vec<Prediction>> {
     let model = model.valid();
     let device = device.clone().without_autodiff();
@@ -32,7 +34,11 @@ pub fn predict(
         augment_seed: None,
     };
     let mut predictions = Vec::with_capacity(samples.len());
+    observer.pass("predicting", samples.len());
     loader.for_each(samples, &device, |batch| {
+        if observer.should_stop() {
+            return Err(Stopped.into());
+        }
         let probabilities = model.probabilities(batch.images);
         let (confidence, label) = probabilities.max_dim_with_indices(1);
         let confidence: Vec<f32> = confidence
@@ -52,6 +58,7 @@ pub fn predict(
                     confidence,
                 }),
         );
+        observer.images_done(predictions.len());
         Ok(())
     })?;
     Ok(predictions)

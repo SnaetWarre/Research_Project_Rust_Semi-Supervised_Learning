@@ -16,6 +16,7 @@ use tracing::info;
 use crate::eval;
 use crate::images::Loader;
 use crate::model::PlantCnn;
+use crate::progress::{Observer, Stopped};
 
 #[derive(Debug, Clone)]
 pub struct TrainConfig {
@@ -67,6 +68,7 @@ pub fn fit(
     validation: &[(PathBuf, usize)],
     config: &TrainConfig,
     device: &Device,
+    observer: &mut dyn Observer,
 ) -> Result<Fit> {
     ensure!(
         config.epochs > 0 && config.batch_size > 0,
@@ -102,10 +104,14 @@ pub fn fit(
             augment_seed: Some(seed),
         };
 
-        let progress = crate::progress(order.len(), &format!("epoch {epoch}/{}", config.epochs));
+        observer.pass(&format!("epoch {epoch}/{}", config.epochs), order.len());
+        let mut done = 0;
         // Summed on the device: reading the loss every step would stall the GPU
         let mut loss_sum: Option<Tensor<1>> = None;
         loader.for_each(&order, &train_device, |batch| {
+            if observer.should_stop() {
+                return Err(Stopped.into());
+            }
             let targets = batch.targets(&train_device);
             let count = batch.labels.len();
             let current = model.take().expect("model is put back after every step");
@@ -118,10 +124,10 @@ pub fn fit(
                 Some(sum) => sum + weighted,
                 None => weighted,
             });
-            progress.inc(count as u64);
+            done += count;
+            observer.images_done(done);
             Ok(())
         })?;
-        progress.finish_and_clear();
 
         let current = model.as_ref().expect("model is put back after every step");
         let predictions = eval::predict(
@@ -130,6 +136,7 @@ pub fn fit(
             config.image_size,
             config.batch_size * 2,
             device,
+            observer,
         )?;
         let log = EpochLog {
             epoch,
@@ -144,6 +151,7 @@ pub fn fit(
             log.val_accuracy * 100.0,
             log.seconds
         );
+        observer.epoch(&log);
         if best
             .as_ref()
             .is_none_or(|(_, acc, _)| log.val_accuracy > *acc)

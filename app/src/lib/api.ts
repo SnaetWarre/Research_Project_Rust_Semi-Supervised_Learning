@@ -46,6 +46,29 @@ export interface Run {
   test: TestReport | null;
 }
 
+export interface SslRequest {
+  split: string;
+  init: string;
+  out: string;
+  rounds: number;
+  threshold: number;
+  epochs_per_round: number;
+  fresh_student: boolean;
+}
+
+export type SslEvent =
+  | { kind: "pass"; label: string; images: number }
+  | { kind: "progress"; done: number }
+  | ({ kind: "epoch" } & EpochLog)
+  | ({ kind: "round" } & RoundLog)
+  | { kind: "finished"; best_round: number; out: string }
+  | { kind: "stopped" }
+  | { kind: "failed"; message: string };
+
+export const startSsl = (request: SslRequest) => invoke<void>("start_ssl", { request });
+
+export const stopSsl = () => invoke<void>("stop_ssl");
+
 export const loadModel = (dir: string) => invoke<ModelInfo>("load_model", { dir });
 
 export const classify = (bytes: Uint8Array) => invoke<Classification>("classify", bytes);

@@ -17,7 +17,7 @@ tauri-build = { version = "2.7", features = [] }
 [dependencies]
 anyhow.workspace = true
 image.workspace = true
-# Inference runs on the CPU so the app works on machines without a GPU
+# Classification runs on the CPU, like it would on an edge device
 plantssl = { path = "../../plantssl", default-features = false }
 serde.workspace = true
 serde_json.workspace = true
@@ -29,6 +29,9 @@ tauri = { version = "2.12", features = ["test"] }
 tempfile = "3"
 
 [features]
+# Live SSL trains on the GPU; build with --no-default-features for machines without CUDA
+default = ["cuda"]
+cuda = ["plantssl/cuda"]
 # Set by the Tauri CLI for production builds
 custom-protocol = ["tauri/custom-protocol"]
 

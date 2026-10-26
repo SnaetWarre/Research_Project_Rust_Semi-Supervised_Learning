@@ -1,4 +1,7 @@
-//! Tauri backend: loads a model, classifies photos and reads the JSON files a run writes.
+//! Tauri backend: loads a model, classifies photos, runs SSL live and reads the JSON files a run
+//! writes.
+
+mod live;
 
 use std::path::{Path, PathBuf};
 use std::sync::Mutex;
@@ -110,7 +113,14 @@ fn read_json(path: &Path) -> Option<Value> {
 fn with_commands<R: tauri::Runtime>(builder: tauri::Builder<R>) -> tauri::Builder<R> {
     builder
         .manage(AppState::default())
-        .invoke_handler(tauri::generate_handler![load_model, classify, list_runs])
+        .manage(live::LiveState::default())
+        .invoke_handler(tauri::generate_handler![
+            load_model,
+            classify,
+            list_runs,
+            live::start_ssl,
+            live::stop_ssl
+        ])
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]

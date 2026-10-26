@@ -1,9 +1,11 @@
 <script lang="ts">
   import Classify from "./lib/Classify.svelte";
+  import LiveSsl from "./lib/LiveSsl.svelte";
   import Runs from "./lib/Runs.svelte";
 
   const tabs = [
     { id: "classify", label: "Classify" },
+    { id: "live", label: "Live SSL" },
     { id: "runs", label: "Runs" },
   ] as const;
 
@@ -29,8 +31,9 @@
   </header>
 
   <main class="mx-auto max-w-5xl p-6">
-    <!-- Both stay mounted so a loaded model or run list survives switching tabs -->
+    <!-- All stay mounted so a loaded model, a running SSL session or the run list survive switching tabs -->
     <div hidden={tab !== "classify"}><Classify /></div>
+    <div hidden={tab !== "live"}><LiveSsl /></div>
     <div hidden={tab !== "runs"}><Runs /></div>
   </main>
 </div>

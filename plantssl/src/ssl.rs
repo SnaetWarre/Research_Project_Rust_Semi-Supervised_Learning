@@ -7,10 +7,13 @@
 //!    earlier round can change or drop out;
 //! 3. keep labels at or above the confidence threshold, capped per class at that class's
 //!    expected share of the revealed images, so easy classes cannot flood the training set;
-//! 4. fine-tune the same model on the labeled pool plus the kept pseudo-labels.
+//! 4. train on the labeled pool plus the kept pseudo-labels: either fine-tune the same model, or
+//!    with `fresh_student` train a new model from scratch (teacher-student self-training, as in
+//!    Noisy Student). The student becomes the teacher of the next round.
 //!
-//! Only one model is in memory at any time, which keeps peak VRAM at the level of plain
-//! supervised training. The best round by validation accuracy is kept.
+//! The teacher is only needed for its predictions, so one model is in memory at a time and
+//! peak VRAM stays at the level of plain supervised training. The best round by validation
+//! accuracy is kept.
 
 use anyhow::{Result, ensure};
 use burn::prelude::*;
@@ -19,7 +22,8 @@ use tracing::info;
 
 use crate::data::Split;
 use crate::eval::{self, Prediction};
-use crate::model::PlantCnn;
+use crate::model::{ModelMeta, PlantCnn};
+use crate::progress::Observer;
 use crate::train::{self, TrainConfig};
 
 #[derive(Debug, Clone)]
@@ -27,7 +31,9 @@ pub struct SslConfig {
     pub rounds: usize,
     /// Minimum softmax probability for a pseudo-label.
     pub threshold: f32,
-    /// Training settings for the fine-tuning in each round.
+    /// Train a new model from scratch each round instead of fine-tuning the current one.
+    pub fresh_student: bool,
+    /// Training settings for each round.
     pub train: TrainConfig,
 }
 
@@ -36,6 +42,7 @@ impl Default for SslConfig {
         Self {
             rounds: 10,
             threshold: 0.95,
+            fresh_student: false,
             train: TrainConfig {
                 epochs: 3,
                 learning_rate: 3e-4,
@@ -66,7 +73,14 @@ pub struct SslRun {
     pub rounds: Vec<RoundLog>,
 }
 
-pub fn run(model: PlantCnn, split: &Split, config: &SslConfig, device: &Device) -> Result<SslRun> {
+pub fn run(
+    model: PlantCnn,
+    meta: &ModelMeta,
+    split: &Split,
+    config: &SslConfig,
+    device: &Device,
+    observer: &mut dyn Observer,
+) -> Result<SslRun> {
     ensure!(config.rounds > 0, "need at least one round");
     let tc = &config.train;
     let labeled = split.resolve(&split.labeled);
@@ -81,6 +95,7 @@ pub fn run(model: PlantCnn, split: &Split, config: &SslConfig, device: &Device) 
             tc.image_size,
             tc.batch_size * 2,
             device,
+            observer,
         )?,
         &validation,
     );
@@ -93,13 +108,20 @@ pub fn run(model: PlantCnn, split: &Split, config: &SslConfig, device: &Device) 
         precision: 0.0,
         val_accuracy: initial,
     }];
+    observer.round(&rounds[0]);
     let mut best = (0, initial, model.clone());
     let mut model = model;
 
     for round in 1..=config.rounds {
         let revealed = &stream[..stream.len() * round / config.rounds];
-        let predictions =
-            eval::predict(&model, revealed, tc.image_size, tc.batch_size * 2, device)?;
+        let predictions = eval::predict(
+            &model,
+            revealed,
+            tc.image_size,
+            tc.batch_size * 2,
+            device,
+            observer,
+        )?;
         let confident = predictions
             .iter()
             .filter(|p| p.confidence >= config.threshold)
@@ -122,8 +144,20 @@ pub fn run(model: PlantCnn, split: &Split, config: &SslConfig, device: &Device) 
             seed: tc.seed.wrapping_add(round as u64),
             ..tc.clone()
         };
-        let fit = train::fit(model, &train_set, &validation, &round_config, device)?;
-        // The next round continues from this round's best epoch.
+        let student = if config.fresh_student {
+            PlantCnn::new(meta, device)
+        } else {
+            model
+        };
+        let fit = train::fit(
+            student,
+            &train_set,
+            &validation,
+            &round_config,
+            device,
+            observer,
+        )?;
+        // The next round's teacher is this round's best epoch.
         model = fit.model;
 
         let log = RoundLog {
@@ -142,6 +176,7 @@ pub fn run(model: PlantCnn, split: &Split, config: &SslConfig, device: &Device) 
             log.precision * 100.0,
             log.val_accuracy * 100.0
         );
+        observer.round(&log);
         if log.val_accuracy > best.1 {
             best = (round, log.val_accuracy, model.clone());
         }

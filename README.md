@@ -7,7 +7,29 @@ runs in Rust with [Burn](https://burn.dev) 0.22, and one model at a time fits in
 
 ## Results
 
-RESULTS_TABLE
+All rows are scored on the same test pool: 8,832 images whose leaves never appear in training or
+in model selection. Validation picked every setting and checkpoint; the test pool was scored once.
+
+| Labels | Model | Test accuracy | Macro F1 |
+| --- | --- | ---: | ---: |
+| 5% (4,380 images) | Supervised only | 92.33% | 92.33% |
+| 5% | + pseudo-labels, fine-tuning each round | 93.08% | 93.23% |
+| 5% | + pseudo-labels, new student (default) | **95.20%** | **95.20%** |
+| 80% (stream labels revealed) | Upper bound | 99.47% | 99.46% |
+| 20% (17,568 images) | Supervised only | 97.85% | 97.83% |
+| 20% | + pseudo-labels, fine-tuning each round | 97.85% | 97.83% |
+
+With 5% of the labels, pseudo-labels lift test accuracy by 2.9 points and close about 40% of the
+gap to a model that sees every label. 99.4% of the 32,952 pseudo-labels the student trained on were
+correct. With 20% labels the supervised model is already at 97.85%, and SSL kept its starting
+model: there is too little left to fix.
+
+The thesis reports 86.06% and 94.90% for the older code. Those came from a split that leaked
+rotated copies of test leaves into training, so they cannot be compared with the table above.
+
+**On the edge.** The model is 1.2M parameters and a 4.7 MB weights file. Classifying one photo
+takes 14.7 ms on a laptop CPU (AMD Ryzen 7 6800H) with Burn's pure-Rust CPU backend, no GPU and no
+Python. Training runs at about 360 images per second on an RTX 3060 laptop GPU with 6 GB.
 
 ## How the experiment works
 

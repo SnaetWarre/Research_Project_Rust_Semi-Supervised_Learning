@@ -81,4 +81,5 @@ export function className(raw: string): string {
   return condition ? `${clean(plant)}: ${clean(condition)}` : clean(plant);
 }
 
-export const percent = (value: number, digits = 1) => `${(value * 100).toFixed(digits)}%`;
+export const percent = (value: number, digits = 1) =>
+  value > 0 && value * 100 < 10 ** -digits ? `<${10 ** -digits}%` : `${(value * 100).toFixed(digits)}%`;

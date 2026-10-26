@@ -24,14 +24,25 @@
   const ys = $derived(points.map((p) => p.y));
   const xMin = $derived(Math.min(...xs));
   const xMax = $derived(Math.max(...xs));
-  const yMin = $derived(Math.max(0, Math.min(...ys) - 0.02));
-  const yMax = $derived(Math.min(1, Math.max(...ys) + 0.02));
+  // Round tick values: the smallest step that gives at most five ticks
+  const yStep = $derived.by(() => {
+    const range = Math.max(...ys) - Math.min(...ys);
+    return [0.005, 0.01, 0.02, 0.05, 0.1, 0.2].find((s) => range / s <= 4) ?? 0.25;
+  });
+  const yMin = $derived(Math.max(0, Math.floor(Math.min(...ys) / yStep) * yStep));
+  const yMax = $derived(Math.min(1, Math.max(Math.ceil(Math.max(...ys) / yStep) * yStep, yMin + yStep)));
+  const xStep = $derived(Math.max(1, Math.ceil((xMax - xMin) / 10)));
 
   const sx = (x: number) => pad.left + ((x - xMin) / Math.max(xMax - xMin, 1)) * (width - pad.left - pad.right);
   const sy = (y: number) => pad.top + (1 - (y - yMin) / Math.max(yMax - yMin, 1e-9)) * (height - pad.top - pad.bottom);
 
   const path = $derived(points.map((p, i) => `${i ? "L" : "M"}${sx(p.x)},${sy(p.y)}`).join(""));
-  const ticks = $derived([0, 1, 2, 3].map((i) => yMin + ((yMax - yMin) * i) / 3));
+  const ticks = $derived(
+    Array.from({ length: Math.round((yMax - yMin) / yStep) + 1 }, (_, i) => yMin + i * yStep),
+  );
+  const xTicks = $derived(
+    Array.from({ length: Math.floor((xMax - xMin) / xStep) + 1 }, (_, i) => xMin + i * xStep),
+  );
   const keptPoint = $derived(points.find((p) => p.x === kept));
 
   function onMove(event: PointerEvent) {
@@ -58,8 +69,9 @@
           >{format(t)}</text
         >
       {/each}
-      <text x={width - pad.right} y={height - 6} text-anchor="end" class="fill-ink-3 text-[11px]">{xLabel}</text>
-      <text x={pad.left} y={height - 6} class="fill-ink-3 text-[11px] tabular-nums">{xMin}</text>
+      {#each xTicks as t (t)}
+        <text x={sx(t)} y={height - 10} text-anchor="middle" class="fill-ink-3 text-[11px] tabular-nums">{t}</text>
+      {/each}
 
       <path d={path} fill="none" class="stroke-series" stroke-width="2" stroke-linejoin="round" />
       {#if keptPoint}

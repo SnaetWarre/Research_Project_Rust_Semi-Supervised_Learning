@@ -97,7 +97,7 @@
         {@const [top, ...rest] = result.scores}
         <p class="text-sm text-ink-3">Most likely</p>
         <p class="mt-1 text-xl font-semibold">{className(top.class)}</p>
-        <p class="text-3xl font-semibold tabular-nums text-ink">{percent(top.probability)}</p>
+        <p class="text-3xl font-semibold tabular-nums text-ink">{percent(top.probability, 2)}</p>
         <ul class="mt-6 space-y-3">
           {#each rest as score (score.class)}
             <li>
@@ -106,7 +106,7 @@
                 <span class="tabular-nums text-ink-2">{percent(score.probability)}</span>
               </div>
               <div class="mt-1 h-1.5 rounded-full bg-line">
-                <div class="h-full rounded-full bg-series" style:width={percent(score.probability)}></div>
+                <div class="h-full rounded-full bg-series" style:width="{score.probability * 100}%"></div>
               </div>
             </li>
           {/each}

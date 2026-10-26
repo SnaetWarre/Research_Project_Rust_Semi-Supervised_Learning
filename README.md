@@ -13,18 +13,22 @@ in model selection. Validation picked every setting and checkpoint; the test poo
 | Labels | Model | Test accuracy | Macro F1 |
 | --- | --- | ---: | ---: |
 | 5% (4,380 images) | Supervised only | 92.33% | 92.33% |
-| 5% | + pseudo-labels, fine-tuning, 10 rounds | 93.08% | 93.23% |
+| 5% | + pseudo-labels, fine-tuning, 10 rounds¹ | 93.08% | 93.23% |
 | 5% | + pseudo-labels, new student, 1 round | 95.20% | 95.20% |
 | 5% | + pseudo-labels, new student, 3 rounds (default) | **95.41%** | **95.41%** |
 | 80% (stream labels revealed) | Upper bound | 99.47% | 99.46% |
 | 20% (17,568 images) | Supervised only | 97.85% | 97.83% |
-| 20% | + pseudo-labels, fine-tuning, 10 rounds | 97.85% | 97.83% |
+| 20% | + pseudo-labels, fine-tuning, 10 rounds, 0.95 threshold² | 97.85% | 97.83% |
+
+¹ `plantssl ssl --mode fine-tune --rounds 10`.
+² An earlier version of the selection: one global 0.95 confidence threshold instead of the most
+confident half per class. The student method has not been run with 20% labels.
 
 With 5% of the labels, pseudo-labels lift test accuracy by 3.1 points and close about 43% of the
 gap to a model that sees every label. Validation accuracy climbs every round: 93.00% for the
 supervised start, then 95.15%, 95.75% and 96.11%. 99.6% of the 32,944 pseudo-labels in the last
-round were correct. With 20% labels the supervised model is already at 97.85%, and SSL kept its starting
-model: there is too little left to fix.
+round were correct. With 20% labels the supervised model is already at 97.85%, and the SSL run kept its starting
+model: there is little left to fix.
 
 The thesis reports 86.06% and 94.90% for the older code. Those came from a split that leaked
 rotated copies of test leaves into training, so they cannot be compared with the table above.
@@ -134,6 +138,7 @@ are higher than the numbers above.
 
 ## Limits
 
-These results come from one split and one seed. PlantVillage photos are lab shots of single leaves
-on plain backgrounds, so accuracy on field photos with other lighting, backgrounds and cameras
-will be lower.
+These results come from one split and one seed. Runs are seeded, but GPU kernels are not
+bit-for-bit deterministic, so a rerun lands close to these numbers rather than on them.
+PlantVillage photos are lab shots of single leaves on plain backgrounds, so accuracy on field
+photos with other lighting, backgrounds and cameras will be lower.

@@ -190,8 +190,7 @@ pub fn run(
             ..tc.clone()
         };
         let student = if config.mode == Mode::Student {
-            // The teacher's predictions are in, so free it before the student trains
-            drop(model);
+            device.seed(round_config.seed);
             PlantCnn::new(meta, device)
         } else {
             model

@@ -25,12 +25,16 @@
   const xMin = $derived(Math.min(...xs));
   const xMax = $derived(Math.max(...xs));
   // Round tick values: the smallest step that gives at most five ticks
-  const yStep = $derived.by(() => {
-    const range = Math.max(...ys) - Math.min(...ys);
-    return [0.005, 0.01, 0.02, 0.05, 0.1, 0.2].find((s) => range / s <= 4) ?? 0.25;
-  });
-  const yMin = $derived(Math.max(0, Math.floor(Math.min(...ys) / yStep) * yStep));
-  const yMax = $derived(Math.min(1, Math.max(Math.ceil(Math.max(...ys) / yStep) * yStep, yMin + yStep)));
+  // The 1e-9 keeps floating-point noise (0.29 / 0.01 = 28.999...) from adding an empty band
+  const floorTo = (v: number, s: number) => Math.floor(v / s + 1e-9) * s;
+  const ceilTo = (v: number, s: number) => Math.ceil(v / s - 1e-9) * s;
+  const yStep = $derived(
+    [0.005, 0.01, 0.02, 0.05, 0.1, 0.2, 0.25].find(
+      (s) => (ceilTo(Math.max(...ys), s) - floorTo(Math.min(...ys), s)) / s <= 4,
+    ) ?? 0.25,
+  );
+  const yMax = $derived(Math.min(1, Math.max(ceilTo(Math.max(...ys), yStep), yStep)));
+  const yMin = $derived(Math.max(0, Math.min(floorTo(Math.min(...ys), yStep), yMax - yStep)));
   const xStep = $derived(Math.max(1, Math.ceil((xMax - xMin) / 10)));
 
   const sx = (x: number) => pad.left + ((x - xMin) / Math.max(xMax - xMin, 1)) * (width - pad.left - pad.right);

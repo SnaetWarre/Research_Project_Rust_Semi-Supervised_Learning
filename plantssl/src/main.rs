@@ -207,6 +207,7 @@ fn train(args: TrainArgs) -> Result<()> {
         seed: c.seed,
         ..TrainConfig::default()
     };
+    device.seed(c.seed);
     let fit = train::fit(
         PlantCnn::new(&meta, &device),
         &train_set,
@@ -252,7 +253,13 @@ fn ssl(args: SslArgs) -> Result<()> {
     run.model.save(&args.out, &meta)?;
     plantssl::write_json(
         &args.out.join("ssl.json"),
-        &json!({ "args": args, "best_round": run.best_round, "rounds": run.rounds }),
+        &json!({
+            "args": args,
+            "epochs_per_round": config.train.epochs,
+            "learning_rate": config.train.learning_rate,
+            "best_round": run.best_round,
+            "rounds": run.rounds,
+        }),
     )?;
     info!(
         "kept round {}. Saved to {}",
